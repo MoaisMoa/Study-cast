@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-StudycastApplication<studycast>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.younghee.studycast.StudycastApplication",
+            "projectName": "studycast",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
