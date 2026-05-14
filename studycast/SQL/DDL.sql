@@ -1,5 +1,18 @@
 -- 테이블 삭제 (CASCADE로 제약조건까지 깔끔하게 제거)
-DROP TABLE IF EXISTS users, user_auths, roles, user_interests, rooms, categories, room_participants, room_visit_histories, study_logs, study_sessions, ddays CASCADE;
+DROP TABLE IF EXISTS
+    users,
+    user_auths,
+    roles,
+    user_interests,
+    rooms,
+    categories,
+    room_participants,
+    room_visit_histories,
+    study_logs,
+    study_sessions,
+    ddays,
+    chats
+CASCADE;
 
 -- 1. 회원 정보 테이블
 CREATE TABLE IF NOT EXISTS users (
@@ -138,3 +151,23 @@ COMMENT ON COLUMN users.user_uuid IS '회원 식별 번호';
 COMMENT ON COLUMN roles.role_code IS '권한 식별 번호';
 COMMENT ON COLUMN categories.category_no IS '카테고리 고유 번호';
 COMMENT ON COLUMN study_sessions.user_uuid IS '유저 고유 번호';
+
+CREATE TABLE IF NOT EXISTS chats (
+    chat_no BIGSERIAL NOT NULL PRIMARY KEY,
+    room_no BIGINT NOT NULL,
+    user_uuid UUID NOT NULL,
+    message TEXT NOT NULL,
+    sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_useruuid FOREIGN KEY(user_uuid)
+    REFERENCES users(user_uuid) ON DELETE CASCADE,
+
+    CONSTRAINT fk_roomno FOREIGN KEY(room_no)
+    REFERENCES rooms(room_no) ON DELETE CASCADE
+);
+
+COMMENT ON COLUMN chats.chat_no IS '채팅 로그 고유 번호';
+COMMENT ON COLUMN chats.room_no IS '채팅이 발생한 방 번호';
+COMMENT ON COLUMN chats.user_uuid IS '메시지를 보낸 유저';
+COMMENT ON COLUMN chats.message IS '채팅 매시지 내용';
+COMMENT ON COLUMN chats.sent_at IS '메시지 전송 일시';
