@@ -1,10 +1,11 @@
-CREATE TABLE users (
-    user_uuid VARCHAR(64) NOT NULL PRIMARY KEY,
+-- Active: 1778135432146@@127.0.0.1@5432@studycast_db
+CREATE TABLE IF NOT EXISTS users (
+    user_uuid UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     user_email VARCHAR(255) NOT NULL UNIQUE,
     user_password VARCHAR(255) NOT NULL,
     user_name VARCHAR(255) NOT NULL,
     user_profile_image VARCHAR(255),
-    user_status VARCHAR(50) NOT NULL,
+    user_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP
