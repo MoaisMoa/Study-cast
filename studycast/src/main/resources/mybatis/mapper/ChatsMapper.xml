@@ -1,0 +1,54 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.younghee.mapper.ChatsMapper">
+
+    <insert id="insertChat" parameterType="com.younghee.dto.ChatsDTO" useGeneratedKeys="true" keyProperty="chatNo" keyColumn="chat_no">
+        INSERT INTO chats (
+            room_no,
+            user_uuid,
+            message
+        ) VALUES (
+            #{roomNo},
+            #{userUuid}::uuid, #{message}
+        )
+    </insert>
+
+    <select id="selectChatsByRoomNo" parameterType="long" resultType="map">
+        SELECT 
+            c.chat_no             AS "chatNo",
+            c.room_no             AS "roomNo",
+            c.user_uuid           AS "userUuid",
+            c.message             AS "message",
+            c.sent_at             AS "sentAt",
+            u.user_name           AS "userName",
+            u.user_profile_image  AS "userProfileImage"
+        FROM chats c
+        INNER JOIN users u ON c.user_uuid = u.user_uuid
+        WHERE c.room_no = #{roomNo}
+        ORDER BY c.sent_at ASC
+    </select>
+
+    <select id="selectRecentChats" resultType="map">
+        SELECT 
+            c.chat_no             AS "chatNo",
+            c.room_no             AS "roomNo",
+            c.user_uuid           AS "userUuid",
+            c.message             AS "message",
+            c.sent_at             AS "sentAt",
+            u.user_name           AS "userName",
+            u.user_profile_image  AS "userProfileImage"
+        FROM chats c
+        INNER JOIN users u ON c.user_uuid = u.user_uuid
+        WHERE c.room_no = #{roomNo}
+        ORDER BY c.sent_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <delete id="deleteChat" parameterType="long">
+        DELETE FROM chats
+        WHERE chat_no = #{chatNo}
+    </delete>
+
+</mapper>
