@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.younghee.mapper.ChatsMapper">
+<mapper namespace="com.younghee.dao.ChatsMapper">
 
     <insert id="insertChat" parameterType="com.younghee.dto.ChatsDTO" useGeneratedKeys="true" keyProperty="chatNo" keyColumn="chat_no">
         INSERT INTO chats (
@@ -31,7 +31,7 @@
     </select>
 
     <select id="selectRecentChats" resultType="map">
-        SELECT 
+        SELECT
             c.chat_no             AS "chatNo",
             c.room_no             AS "roomNo",
             c.user_uuid           AS "userUuid",
