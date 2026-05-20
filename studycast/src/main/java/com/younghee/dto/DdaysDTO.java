@@ -4,12 +4,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+// D-day DTO
+
 public class DdaysDTO {
-    private Long ddayNo;
-    private UUID userUuid;
-    private String ddayTitle;
-    private LocalDate targetDate;
-    private boolean isMain;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private Long ddayNo;                // 디데이 고유 번호
+    private UUID userUuid;              // 회원 고유 번호
+    private String ddayTitle;           // 목표 제목
+    private LocalDate targetDate;       // 목표 날짜
+    private boolean isMain;             // 디데이 노출 여부
+    private LocalDateTime createdAt;    // 생성 일시
+    private LocalDateTime updatedAt;    // 수정 일시
 }

@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+// 채팅DTO
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
