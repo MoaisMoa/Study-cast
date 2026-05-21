@@ -10,7 +10,7 @@
         <result property="userName" column="user_name"/>
         <result property="userProfileImage" column="user_profile_image"/>
         <result property="userStatus" column="user_status"/>
-        <result property="createdAt" column="create_at"/>
+        <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
         <result property="deletedAt" column="deleted_at"/>
     </resultMap>
@@ -30,4 +30,49 @@
         FROM users
         WHERE user_email = #{userEmail}
     </select>
+
+    <!-- UUID로 회원 조회 -->
+    <select id="findByUuid" resultMap="UserResultMap">
+        SELECT
+            user_uuid,
+            user_email,
+            user_password,
+            user_name,
+            user_profile_image,
+            user_status,
+            created_at,
+            updated_at,
+            deleted_at
+        FROM users
+        WHERE user_uuid = #{userUuid}
+    </select>
+
+    <!-- 회원가입 -->
+    <insert id="insertUser" parameterType="UserDTO">
+        INSERT INTO users (
+            user_uuid,
+            user_email,
+            user_password,
+            user_name,
+            user_profile_image,
+            user_status
+        ) 
+        VALUES (
+            #{userUuid},
+            #{userEmail},
+            #{userPassword},
+            #{userName},
+            #{userProfileImage},
+            COALESCE(#{userStatus}, 'ACTIVE')
+        )
+    </insert>
+
+    <!-- 사용자 상태 변경 -->
+    <update id="updatedUserStatus">
+        UPDATE users
+        SET
+            user_status = #{userStatus},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_uuid = #{userUuid}
+    </update>
 </mapper>
