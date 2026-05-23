@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.younghee.dao.RoleMapper">
+<mapper namespace="com.younghee.studycast.dao.RoleMapper">
     <!-- 회원가입 시 기본 권한 부여 -->
     <insert id="insertDefaultRole">
         INSERT INTO roles (

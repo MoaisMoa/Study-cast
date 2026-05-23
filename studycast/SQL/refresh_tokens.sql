@@ -20,6 +20,6 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_uuid ON refresh_tokens(user_u
 COMMENT ON TABLE refresh_tokens IS 'JWT Refresh Token 저장소';
 
 COMMENT ON COLUMN refresh_tokens.user_uuid IS '회원 UUID';
-COMMENT ON COLUMN refresh_tokens.tokens_hash IS 'Refresh Token SHA-256 해시값';
+COMMENT ON COLUMN refresh_tokens.token_hash IS 'Refresh Token SHA-256 해시값';
 COMMENT ON COLUMN refresh_tokens.expiry_date IS 'Refresh Token 만료 시간';
 COMMENT ON COLUMN refresh_tokens.revoked IS '토큰 폐기 여부';

@@ -2,9 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.younghee.dao.ChatsMapper">
+<mapper namespace="com.younghee.studycast.dao.ChatsMapper">
 
-    <insert id="insertChat" parameterType="com.younghee.dto.ChatsDTO" useGeneratedKeys="true" keyProperty="chatNo" keyColumn="chat_no">
+    <insert id="insertChat" parameterType="com.younghee.studycast.dto.ChatsDTO" useGeneratedKeys="true" keyProperty="chatNo" keyColumn="chat_no">
         INSERT INTO chats (
             room_no,
             user_uuid,

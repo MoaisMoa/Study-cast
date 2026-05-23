@@ -1,0 +1,19 @@
+package com.younghee.studycast.dto;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class ChatsDTO {
+    private Long chatNo;
+    private Long roomNo;
+    private UUID userUuid;
+    private String message;
+    private LocalDateTime sentAt;
+}

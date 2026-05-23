@@ -3,9 +3,9 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.younghee.dao.RefreshTokenMapper">
+<mapper namespace="com.younghee.studycast.dao.RefreshTokenMapper">
 
-    <resultMap id="RefreshTokenResultMap" type="com.younghee.dto.RefreshTokenDTO">
+    <resultMap id="RefreshTokenResultMap" type="com.younghee.studycast.dto.RefreshTokenDTO">
         <id property="tokenNo" column="token_no"/>
         <result property="userUuid" column="user_uuid"/>
         <result property="tokenHash" column="token_hash"/>
