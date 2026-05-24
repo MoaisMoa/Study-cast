@@ -1,3 +1,4 @@
+-- Active: 1779633169861@@127.0.0.1@5432@studycast_db
 -- 테이블 삭제 (CASCADE로 제약조건까지 깔끔하게 제거)
 DROP TABLE IF EXISTS
     users,
@@ -21,13 +22,16 @@ CREATE TABLE IF NOT EXISTS users (
     user_password VARCHAR(255) NOT NULL,
     user_name VARCHAR(255) NOT NULL,
     user_profile_image VARCHAR(255),
+    user_gender VARCHAR(20),
+    user_birth_date DATE,
+    user_bio VARCHAR(20),
     user_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP
 );
 
--- 2. 카테고리 (다른 테이블들이 참조하므로 먼저 생성)
+-- 2. 카테고리
 CREATE TABLE IF NOT EXISTS categories (
     category_no INT NOT NULL PRIMARY KEY,
     category_name VARCHAR(50) NOT NULL UNIQUE
@@ -39,7 +43,7 @@ CREATE TABLE IF NOT EXISTS user_auths (
     user_uuid UUID NOT NULL,
     social_type VARCHAR(20) NOT NULL,
     social_id VARCHAR(255) NOT NULL UNIQUE,
-    connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 오타 수정
+    connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_user_uuid FOREIGN KEY (user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE
 );
@@ -61,7 +65,7 @@ CREATE TABLE IF NOT EXISTS user_interests (
     category_no INT NOT NULL, -- 타입 일치
 
     CONSTRAINT fk_user_interest FOREIGN KEY(user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE,
-    CONSTRAINT fk_category_no FOREIGN KEY(category_no) REFERENCES categories(category_no) ON DELETE CASCADE -- 참조 컬럼 수정
+    CONSTRAINT fk_category_no FOREIGN KEY(category_no) REFERENCES categories(category_no) ON DELETE CASCADE
 );
 
 -- 6. 스터디룸
@@ -146,7 +150,6 @@ CREATE TABLE IF NOT EXISTS ddays (
     CONSTRAINT fk_useruuid FOREIGN KEY(user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE
 );
 
--- COMMENT 설정 (생략된 부분 보완)
 COMMENT ON COLUMN users.user_uuid IS '회원 식별 번호';
 COMMENT ON COLUMN roles.role_code IS '권한 식별 번호';
 COMMENT ON COLUMN categories.category_no IS '카테고리 고유 번호';
