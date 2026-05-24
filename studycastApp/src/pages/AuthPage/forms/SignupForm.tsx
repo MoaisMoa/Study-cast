@@ -66,7 +66,12 @@ export function SignupForm({ onNavigate }: SignupFormProps) {
     if (!validate()) return;
     setLoading(true);
     try {
-      const result = await signup({ name, email, password: pw });
+      const result = await signup({ 
+        name, 
+        email, 
+        password: pw,
+        confirmPassword: pw2
+      });
       if (!result.ok) {
         setServerError(result.message ?? "회원가입 처리 중 오류가 발생했습니다.");
         return;

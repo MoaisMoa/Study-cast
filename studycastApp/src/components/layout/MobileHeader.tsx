@@ -9,7 +9,7 @@ import { ProfileMenu } from "./ProfileMenu";
 export function MobileHeader() {
   const T = useT();
   const { mode, toggle } = useThemeCtx();
-  const { setPage } = usePage();
+  const { page, setPage } = usePage();
   const { setQuery } = useSearch();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -151,6 +151,38 @@ export function MobileHeader() {
           <Icon name={mode === "dark" ? "sun" : "moon"} size={16} color={T.text2} />
         </button>
         <ProfileMenu avatarSize={32} caretSize={14} />
+      </div>
+
+      {/* 하단: 홈 / 방문한 방 탭 (데스크탑 헤더과 일치) */}
+      <div style={{ display: "flex", padding: "0 16px", borderTop: `1px solid ${T.border}` }}>
+        {([
+          ["홈", "home"],
+          ["방문한 방", "fav"],
+        ] as const).map(([label, key]) => {
+          const active = page === key;
+          return (
+            <button
+              key={key}
+              onClick={() => {
+                setPage(key);
+                navigate("/");
+              }}
+              style={{
+                padding: "8px 14px",
+                fontSize: 13,
+                fontWeight: active ? 700 : 400,
+                color: active ? T.red : T.text2,
+                background: "none",
+                border: "none",
+                borderBottom: `2px solid ${active ? T.red : "transparent"}`,
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
     </header>
   );

@@ -6,6 +6,8 @@
  * 백엔드 연결 시 `request` 함수만 교체하면 된다.
  */
 
+import axios from "axios";
+
 export interface ApiClientConfig {
   baseURL: string;
   /** 모든 mock 호출의 기본 지연 시간(ms) */
@@ -53,3 +55,21 @@ export async function mockRequest<T>(
  *   return (await res.json()) as T;
  * }
  */
+
+// axios (Spring API 호출)
+export const apiClient = axios.create({
+  baseURL: "http://localhost:8080",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+// 요청마다 accessToken 자동 첨부
+apiClient.interceptors.request.use((config) => {
+  const accessToken = localStorage.getItem("sc_access_token");
+
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  return config;
+})

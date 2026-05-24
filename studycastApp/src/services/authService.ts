@@ -18,53 +18,143 @@ import {
   TAKEN_EMAILS,
   VALID_USERS,
 } from "@/data/auth";
-import { mockRequest } from "./apiClient";
+import { apiClient, mockRequest } from "./apiClient";
 
 const SAVED_EMAIL_KEY = "sc_saved_email";
-const TOKEN_KEY = "sc_token";
+const ACCESS_TOKEN_KEY = "sc_access_token";
+const REFRESH_TOKEN_KEY = "sc_refresh_token";
 const USER_KEY = "sc_user";
+
+interface BackendAuthResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+interface BackendUser {
+  userUuid: string;
+  userEmail: string;
+  userName: string;
+  userProfileImage?: string | null;
+  userStatus: string;
+}
 
 /** 로그인 */
 export async function login(
   payload: LoginPayload,
   remember: boolean
 ): Promise<AuthResult & { user?: AuthUser }> {
-  await mockRequest(null, { latency: 700 });
-  const matched = VALID_USERS.find(
-    (u) => u.email === payload.email && u.pw === payload.password
-  );
-  if (!matched) {
-    return { ok: false, message: "이메일 또는 비밀번호가 올바르지 않습니다." };
-  }
-  if (remember) localStorage.setItem(SAVED_EMAIL_KEY, payload.email);
-  else localStorage.removeItem(SAVED_EMAIL_KEY);
+  try {
+    const response = await apiClient.post<BackendAuthResponse>("/api/auth/login", {
+      userEmail: payload.email,
+      userPassword: payload.password,
+    });
 
-  const user: AuthUser = { email: matched.email, name: matched.email.split("@")[0] };
-  localStorage.setItem(TOKEN_KEY, JSON.stringify(user));
-  return { ok: true, user };
+    const { accessToken, refreshToken } = response.data;
+
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+
+    if (remember) {
+      localStorage.setItem(SAVED_EMAIL_KEY, payload.email);
+    } else {
+      localStorage.removeItem(SAVED_EMAIL_KEY);
+    }
+
+    const meResponse = await apiClient.get<BackendUser>("/api/auth/me");
+
+    const user: AuthUser = {
+      email: meResponse.data.userEmail,
+      name: meResponse.data.userName,
+    };
+
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+
+    return { ok: true, user };
+  } catch (e: any) {
+    return {
+      ok: false,
+      message:
+        e.response?.data?.message ||
+        "로그인 처리 중 오류가 발생했습니다."
+    }
+  }
 }
 
 /** 회원가입 */
 export async function signup(payload: SignupPayload): Promise<AuthResult> {
   try {
-    await mockRequest(null, {
-      latency: 800,
-      failRate: 0.2,
-      failMessage: "회원가입 처리 중 오류가 발생했습니다.",
+    await apiClient.post("/api/auth/signup", {
+      userEmail: payload.email,
+      userPassword: payload.password,
+      userPasswordConfirm: payload.confirmPassword,
+      userName: payload.name
     });
-    localStorage.setItem(
-      USER_KEY,
-      JSON.stringify({ name: payload.name, email: payload.email })
-    );
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, message: (e as Error).message };
+
+    return {ok: true};
+  } catch (e: any) {
+    return {
+      ok: false,
+      message:
+        e.response?.data?.message ||
+        "회원가입 처리 중 오류가 발생했습니다."
+    }
   }
 }
 
 /** 이메일 중복 여부 */
 export function isEmailTaken(email: string): boolean {
-  return TAKEN_EMAILS.includes(email.trim().toLowerCase());
+  // 실제 중복 검사는 회원가입 API에서 처리하므로, 화면 즉시 검사용으로 일단 false 처리
+  return false;
+}
+
+/** 인증 사용자 정보 조회 */
+export async function fetchCurrentUser(): Promise<AuthUser | null> {
+  try {
+    const response = await apiClient.get<BackendUser>("/api/auth/me");
+
+    const user: AuthUser = {
+      email: response.data.userEmail,
+      name: response.data.userName,
+    };
+
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+/** 로그아웃 */
+export async function logout(): Promise<void> {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+
+  try {
+    if (refreshToken) {
+      await apiClient.post("/api/auth/logout", {
+        refreshToken
+      });
+    }
+  } finally {
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  }
+}
+
+/** 저장된 이메일 / 로그인 상태 */
+export function getSavedEmail(): string | null {
+  return localStorage.getItem(SAVED_EMAIL_KEY);
+}
+
+export function getCurrentUser(): AuthUser | null {
+  const raw = localStorage.getItem(USER_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AuthUser;
+  } catch {
+    return null;
+  }
 }
 
 /** 비밀번호 찾기 — 인증번호 발송 */
@@ -109,21 +199,4 @@ export async function resetPassword(payload: ResetPwPayload): Promise<AuthResult
   } catch (e) {
     return { ok: false, message: (e as Error).message };
   }
-}
-
-/** 저장된 이메일 / 로그인 상태 */
-export function getSavedEmail(): string | null {
-  return localStorage.getItem(SAVED_EMAIL_KEY);
-}
-export function getCurrentUser(): AuthUser | null {
-  const raw = localStorage.getItem(TOKEN_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as AuthUser;
-  } catch {
-    return null;
-  }
-}
-export function logout(): void {
-  localStorage.removeItem(TOKEN_KEY);
 }
