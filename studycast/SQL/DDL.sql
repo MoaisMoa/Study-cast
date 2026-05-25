@@ -1,6 +1,8 @@
 -- Active: 1779633169861@@127.0.0.1@5432@studycast_db
+-- Active: 1779245779408@@localhost@5432@studycast_db@public
 -- 테이블 삭제 (CASCADE로 제약조건까지 깔끔하게 제거)
 DROP TABLE IF EXISTS
+    refresh_tokens,
     users,
     user_auths,
     roles,
@@ -14,6 +16,8 @@ DROP TABLE IF EXISTS
     ddays,
     chats
 CASCADE;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- 1. 회원 정보 테이블
 CREATE TABLE IF NOT EXISTS users (
@@ -52,9 +56,9 @@ CREATE TABLE IF NOT EXISTS user_auths (
 CREATE TABLE IF NOT EXISTS roles (
     role_code SERIAL PRIMARY KEY,
     user_uuid UUID NOT NULL,
-    role VARCHAR(50) NOT NULL,
+    role VARCHAR(50) NOT NULL DEFAULT 'ROLE_USER',  -- ROLE_USER 권한 부여 (기본값))
     
-    CONSTRAINT fk_user FOREIGN KEY(user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE,
+    CONSTRAINT fk_roles_user FOREIGN KEY(user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE,
     CONSTRAINT uq_user_role UNIQUE (user_uuid, role) 
 );
 
@@ -147,7 +151,7 @@ CREATE TABLE IF NOT EXISTS ddays (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT fk_useruuid FOREIGN KEY(user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE
+    CONSTRAINT fk_ddays_user FOREIGN KEY(user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE
 );
 
 COMMENT ON COLUMN users.user_uuid IS '회원 식별 번호';
@@ -162,7 +166,7 @@ CREATE TABLE IF NOT EXISTS chats (
     message TEXT NOT NULL,
     sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_useruuid FOREIGN KEY(user_uuid)
+    CONSTRAINT fk_chats_user FOREIGN KEY(user_uuid)
     REFERENCES users(user_uuid) ON DELETE CASCADE,
 
     CONSTRAINT fk_roomno FOREIGN KEY(room_no)
@@ -174,3 +178,22 @@ COMMENT ON COLUMN chats.room_no IS '채팅이 발생한 방 번호';
 COMMENT ON COLUMN chats.user_uuid IS '메시지를 보낸 유저';
 COMMENT ON COLUMN chats.message IS '채팅 매시지 내용';
 COMMENT ON COLUMN chats.sent_at IS '메시지 전송 일시';
+
+-- 13. JWT 로그아웃 처리
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    token_no BIGSERIAL PRIMARY KEY,
+    user_uuid UUID NOT NULL,
+    token_hash VARCHAR(255) NOT NULL UNIQUE,
+
+    expiry_date TIMESTAMP NOT NULL,
+    revoked BOOLEAN NOT NULL DEFAULT FALSE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_refresh_tokens_user
+        FOREIGN KEY (user_uuid)
+        REFERENCES users(user_uuid)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_uuid ON refresh_tokens(user_uuid);

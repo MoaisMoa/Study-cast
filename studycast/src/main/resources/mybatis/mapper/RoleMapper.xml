@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.younghee.studycast.dao.RoleMapper">
+    <!-- 회원가입 시 기본 권한 부여 -->
+    <insert id="insertDefaultRole">
+        INSERT INTO roles (
+            user_uuid,
+            role
+        )
+        VALUES (
+            #{userUuid},
+            'ROLE_USER'
+        )
+    </insert>
+
+    <!-- 사용자 권한 조회 -->
+    <select id="findRolesByUserUuid" resultType="string">
+        SELECT role
+        FROM roles
+        WHERE user_uuid = #{userUuid}
+    </select>
+</mapper>
