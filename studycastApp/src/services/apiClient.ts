@@ -63,10 +63,35 @@ export const apiClient = axios.create({
     "Content-Type": "application/json",
   },
 });
-// 요청마다 accessToken 자동 첨부
-apiClient.interceptors.request.use((config) => {
-  const accessToken = localStorage.getItem("sc_access_token");
 
+// ** accessToken 자동으로 붙이는 Axios 공통 설정
+// Axios 요청 보내기 전에 accessToken 자동으로 붙일지 말지 결정하는 코드
+// 1. 공개 API 목록: Authorization: Bearer -> X
+const PUBLIC_AUTH_URLS = [
+  "/api/auth/signup",
+  "/api/auth/login",
+  "/api/auth/refresh"
+];
+
+// 2. Axios 요청 인터셉터
+// : apiClient로 요청을 보내기 직전에(서버) 이 함수 먼저 실행
+apiClient.interceptors.request.use((config) => {
+  // 1) 현재 요청하려는 주소
+  const url = config.url ?? "";
+  // 2) 공개 API 여부 확인
+  // : 하나라도 맞으면 some()은 true 반환
+  const isPublicAuthUrl = PUBLIC_AUTH_URLS.some((publicUrl) => 
+    url.includes(publicUrl)
+  );
+  // 3) 공개 API면 토큰 안 붙이고 바로 반환
+  if (isPublicAuthUrl) {
+    return config;
+  };
+  // ** 401 원인
+  // 4) 브라우저 localStorage에 저장된 accessToken 가져옴
+  const accessToken = localStorage.getItem("sc_access_token");
+  // 5) accessToken 있으면 Authorization 헤더 추가
+  // : JwtAuthenticationFilter 검증
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
