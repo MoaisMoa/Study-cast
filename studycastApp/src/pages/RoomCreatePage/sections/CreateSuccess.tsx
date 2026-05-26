@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useRT } from "@/theme";
 import { Icon } from "@/components/ui/Icon";
+import { RoomNoticeModal } from "./RoomNoticeModal";
 
 export interface CreateSuccessProps {
   thumbnail: string | null;
@@ -11,22 +13,26 @@ export interface CreateSuccessProps {
   camOn: boolean;
   micOn: boolean;
   notice: string;
+  roomId: number;
   isMobile: boolean;
   onEnter: () => void;
 }
 
 export function CreateSuccess({
-  thumbnail, name, visibility, count, startDate, endDate, camOn, micOn, notice, isMobile, onEnter,
+  thumbnail, name, visibility, count, startDate, endDate, camOn, micOn, notice, roomId, isMobile, onEnter,
 }: CreateSuccessProps) {
   const T = useRT();
+  const [currentNotice, setCurrentNotice] = useState(notice);
+  const [noticeModalOpen, setNoticeModalOpen] = useState(false);
+
   return (
-    <div style={{
-      background: T.surface,
-      borderRadius: 14,
-      border: `1px solid ${T.border}`,
-      padding: isMobile ? "1.5rem 1rem" : "2.5rem",
-      textAlign: "center",
-    }}>
+      <div style={{
+        background: T.surface,
+        borderRadius: 14,
+        border: `1px solid ${T.border}`,
+        padding: isMobile ? "1.5rem 1rem" : "2.5rem",
+        textAlign: "center",
+      }}>
       {thumbnail && (
         <div style={{
           position: "relative",
@@ -103,29 +109,54 @@ export function CreateSuccess({
             <Icon name="mic" size={14} color={T.muted} style={{ marginLeft: 4 }} />
             마이크 {micOn ? "ON" : "OFF"}
           </div>
-          {notice && (
+          {currentNotice && (
             <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
               <Icon name="bell" size={14} color={T.muted} />
-              <span>{notice}</span>
+              <span>{currentNotice}</span>
             </div>
           )}
         </div>
-        <button
-          onClick={onEnter}
-          style={{
-            padding: "10px 28px",
-            fontSize: 13,
-            fontWeight: 600,
-            borderRadius: 8,
-            background: T.red,
-            border: "none",
-            color: "#fff",
-            cursor: "pointer",
-          }}
-        >
-          입장하기
-        </button>
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+          <button
+            onClick={() => setNoticeModalOpen(true)}
+            style={{
+              padding: "10px 22px",
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 8,
+              background: "transparent",
+              border: `1px solid ${T.border}`,
+              color: T.text,
+              cursor: "pointer",
+            }}
+          >
+            공지사항 관리
+          </button>
+          <button
+            onClick={onEnter}
+            style={{
+              padding: "10px 28px",
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 8,
+              background: T.red,
+              border: "none",
+              color: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            입장하기
+          </button>
+        </div>
       </div>
-    </div>
+      <RoomNoticeModal
+        open={noticeModalOpen}
+        onClose={() => setNoticeModalOpen(false)}
+        roomId={roomId}
+        initialNotice={currentNotice}
+        isHost
+        onUpdate={(updatedNotice) => setCurrentNotice(updatedNotice ?? "")}
+      />
+      </div>
   );
 }

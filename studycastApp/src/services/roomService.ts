@@ -6,7 +6,7 @@
 import type { CreateRoomPayload, CreateRoomResponse, Room, MyRoom } from "@/types";
 import { MY_ROOMS_RAW, REC_ROOMS, ROOM_POOL } from "@/data/rooms";
 import { USER_INTEREST_CATS } from "@/data/categories";
-import { mockRequest } from "./apiClient";
+import { mockRequest, apiClient } from "./apiClient";
 
 /** 라이브 스터디 풀 (Browse 그리드용 — 동일 데이터를 4배로 늘려 페이지네이션 테스트) */
 export async function listRooms(): Promise<Room[]> {
@@ -64,8 +64,35 @@ export async function checkJoinCodeDuplicate(_code: string): Promise<boolean> {
 
 /** 방 생성 */
 export async function createRoom(
-  _payload: CreateRoomPayload
+  payload: CreateRoomPayload
 ): Promise<CreateRoomResponse> {
-  // TODO(API 연결): const res = await request<CreateRoomResponse>("/rooms", { method: "POST", body: JSON.stringify(_payload) });
-  return mockRequest({ roomId: Math.floor(Math.random() * 100000) }, { latency: 800 });
+  const requestBody = {
+    categoryNo: 1,
+    roomTitle: payload.name,
+    roomDescription: "",
+    maxUsers: payload.count,
+    roomPassword: payload.visibility === "private" ? payload.code : null,
+    roomNotice: payload.notice,
+    roomPrivate: payload.visibility === "private",
+    roomPremium: false,
+    roomThumbnail: payload.thumbnail,
+    expiredAt: payload.endDate,
+  };
+
+  const response = await apiClient.post("/api/rooms", requestBody);
+  return { roomId: response.data.roomNo };
+}
+
+export async function updateRoomNotice(
+  roomId: number,
+  notice: string | null
+): Promise<{ notice: string | null }> {
+  const response = await apiClient.patch(`/api/rooms/${roomId}/notice`, {
+    notice,
+  });
+  return response.data;
+}
+
+export async function deleteRoomNotice(roomId: number): Promise<void> {
+  await apiClient.delete(`/api/rooms/${roomId}/notice`);
 }

@@ -197,6 +197,7 @@ export default function RoomCreatePage() {
             camOn={camOn}
             micOn={micOn}
             notice={notice}
+            roomId={createdRoomId ?? 0}
             isMobile={isMobile}
             onEnter={enterCreatedRoom}
           />

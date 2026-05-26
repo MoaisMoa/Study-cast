@@ -19,6 +19,15 @@ CASCADE;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+CREATE TABLE refresh_tokens (
+    token_id SERIAL PRIMARY KEY,
+    user_uuid UUID NOT NULL,
+    token_hash VARCHAR(255) NOT NULL,
+    expiry_date TIMESTAMP NOT NULL,
+    revoked BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 1. 회원 정보 테이블
 CREATE TABLE IF NOT EXISTS users (
     user_uuid UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
