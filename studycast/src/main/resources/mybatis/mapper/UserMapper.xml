@@ -68,10 +68,19 @@
     </insert>
 
     <!-- 사용자 상태 변경 -->
-    <update id="updatedUserStatus">
+    <update id="updateUserStatus">
         UPDATE users
         SET
             user_status = #{userStatus},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_uuid = #{userUuid}
+    </update>
+
+    <!-- 비밀번호 변경 -->
+    <update id="updatePassword">
+        UPDATE users
+        SET
+            user_password = #{userPassword},
             updated_at = CURRENT_TIMESTAMP
         WHERE user_uuid = #{userUuid}
     </update>

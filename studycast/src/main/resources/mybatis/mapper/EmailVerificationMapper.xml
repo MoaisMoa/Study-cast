@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.younghee.studycast.dao.EmailVerificationMapper">
+
+    <resultMap id="EmailVerificationResultMap" type="com.younghee.studycast.dto.EmailVerificationDTO">
+        <id property="verificationNo" column="verification_no"/>
+        <result property="userUuid" column="user_uuid"/>
+        <result property="userEmail" column="user_email"/>
+        <result property="verificationCode" column="verification_code"/>
+        <result property="purpose" column="purpose"/>
+        <result property="verified" column="verified"/>
+        <result property="used" column="used"/>
+        <result property="attemptCount" column="attempt_count"/>
+        <result property="expiryDate" column="expiry_date"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="verifiedAt" column="verified_at"/>
+        <result property="usedAt" column="used_at"/>
+    </resultMap>
+
+    <!-- 인증번호 저장 -->
+    <insert id="insert" parameterType="EmailVerificationDTO">
+        INSERT INTO email_verifications (
+            user_uuid,
+            user_email,
+            verification_code,
+            purpose,
+            verified,
+            used,
+            attempt_count,
+            expiry_date
+        )
+        VALUES (
+            #{userUuid},
+            #{userEmail},
+            #{verificationCode},
+            COALESCE(#{purpose}, 'PASSWORD_RESET'),
+            #{verified},
+            #{used},
+            #{attemptCount},
+            #{expiryDate}
+        )
+    </insert>
+
+    <!-- 해당 이메일의 최신 비밀번호 재설정 인증번호 조회 -->
+    <select id="findLatestPasswordResetCode" resultMap="EmailVerificationResultMap">
+        SELECT *
+        FROM email_verifications
+        WHERE user_email = #{userEmail}
+            AND purpose = 'PASSWORD_RESET'
+            AND used = FALSE
+        ORDER BY verification_no DESC
+        LIMIT 1
+    </select>
+
+    <!-- 인증 실패 횟수 증가 -->
+    <update id="increaseAttemptCount">
+        UPDATE email_verifications
+        SET attempt_count = attempt_count + 1
+        WHERE verification_no = #{verificationNo}
+    </update>
+
+    <!-- 인증 성공 처리 -->
+    <update id="markVerified">
+        UPDATE email_verifications
+        SET
+            verified = TRUE,
+            verified_at = CURRENT_TIMESTAMP
+        WHERE verification_no = #{verificationNo}
+    </update>
+
+    <!-- 비밀번호 변경 완료 후 인증번호 사용 처리 -->
+    <update id="markUsed">
+        UPDATE email_verifications
+        SET
+            used = TRUE,
+            used_at = CURRENT_TIMESTAMP
+        WHERE verification_no = #{verificationNo}
+    </update>
+
+    <!-- 기존 미사용 인증번호 폐기 처리 -->
+    <update id="markUnusedCodesAsUsed">
+        UPDATE email_verifications
+        SET
+            used = TRUE,
+            used_at = CURRENT_TIMESTAMP
+        WHERE user_uuid = #{userUuid}
+            AND purpose = #{purpose}
+            AND used = FALSE
+    </update>
+
+</mapper>

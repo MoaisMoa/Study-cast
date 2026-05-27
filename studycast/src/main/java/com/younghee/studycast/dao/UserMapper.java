@@ -17,8 +17,13 @@ public interface UserMapper {
     // 회원가입
     int insertUser(UserDTO user);
     // 사용자 상태 변경
-    int updatedUserStatus(
+    int updateUserStatus(
         @Param("userUuid") UUID userUuid,
         @Param("userStatus") String userStatus
+    );
+    // 비밀번호 변경
+    int updatePassword(
+        @Param("userUuid") UUID userUuid,
+        @Param("userPassword") String userPassword
     );
 }
