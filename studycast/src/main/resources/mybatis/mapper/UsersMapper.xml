@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.younghee.dao.UsersMapper">
+
+    <select id="selectUserByUuid" parameterType="java.util.UUID" resultType="com.younghee.studycast.dto.UserDTO">
+        SELECT
+            user_uuid             AS "userUuid",
+            user_email            AS "userEmail",
+            user_password         AS "userPassword",
+            user_name             AS "userName",
+            user_profile_image    AS "userProfileImage",
+            user_gender           AS "userGender",
+            user_birth_date       AS "userBirthDate",
+            user_bio              AS "userBio",
+            user_status           AS "userStatus",
+            created_at            AS "createdAt",
+            updated_at            AS "updatedAt",
+            deleted_at            AS "deletedAt"
+        FROM users
+        WHERE user_uuid = #{userUuid}::uuid
+    </select>
+
+    <update id="updateUserProfile" parameterType="com.younghee.studycast.dto.UserDTO">
+        UPDATE users
+        SET
+            user_name = #{userName},
+            user_profile_image = #{userProfileImage},
+            user_gender = #{userGender},
+            user_birth_date = #{userBirthDate},
+            user_bio = #{userBio},
+            user_password = #{userPassword},
+            user_status = #{userStatus},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_uuid = #{userUuid}::uuid
+    </update>
+
+    <select id="selectUserByEmail" parameterType="string" resultType="com.younghee.studycast.dto.UserDTO">
+        SELECT
+            user_uuid             AS "userUuid",
+            user_email            AS "userEmail",
+            user_password         AS "userPassword",
+            user_name             AS "userName",
+            user_profile_image    AS "userProfileImage",
+            user_gender           AS "userGender",
+            user_birth_date       AS "userBirthDate",
+            user_bio              AS "userBio",
+            user_status           AS "userStatus",
+            created_at            AS "createdAt",
+            updated_at            AS "updatedAt",
+            deleted_at            AS "deletedAt"
+        FROM users
+        WHERE user_email = #{userEmail}
+    </select>
+
+    <update id="deactivateUser" parameterType="java.util.UUID">
+        UPDATE users
+        SET
+            user_status = 'INACTIVE',
+            deleted_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_uuid = #{userUuid}::uuid
+    </update>
+
+</mapper>
