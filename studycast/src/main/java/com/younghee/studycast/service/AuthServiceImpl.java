@@ -52,6 +52,8 @@ public class AuthServiceImpl implements AuthService {
         // 5. Access Token / Refresh Token 생성
         String accessToken = jwtProvider.createAccessToken(user.getUserUuid());
         String refreshToken = jwtProvider.createRefreshToken(user.getUserUuid());
+        // 추가. 기존 Refresh Token 전체 폐기
+        refreshTokenMapper.revokeAllByUserUuid(user.getUserUuid());
         // 6. Refresh Token 해시 저장
         saveRefreshToken(user.getUserUuid(), refreshToken);
         log.info("로그인 성공: userUuid={}", user.getUserUuid());
