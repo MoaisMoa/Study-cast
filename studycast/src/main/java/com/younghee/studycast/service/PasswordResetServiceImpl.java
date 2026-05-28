@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.younghee.studycast.dao.EmailVerificationMapper;
+import com.younghee.studycast.dao.RefreshTokenMapper;
 import com.younghee.studycast.dao.UserMapper;
 import com.younghee.studycast.dto.EmailVerificationDTO;
 import com.younghee.studycast.dto.PasswordResetRequest;
@@ -24,11 +25,17 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     private static final String PURPOSE_PASSWORD_RESET = "PASSWORD_RESET";
     private static final int CODE_EXPIRY_MINUTES = 5;
     private static final int MAX_ATTEMPT_COUNT = 3;
+    // 확장1) 인증번호 발송 제한 1분
+    private static final int RESEND_LIMIT_SECONDS = 60;
 
     private final UserMapper userMapper;
     private final EmailVerificationMapper emailVerificationMapper;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    // 확장3) 비밀번호 변경 후 기존 Refresh Token 폐기
+    private final RefreshTokenMapper refreshTokenMapper;
+    // 수정) 개별 트랜잭션
+    private final EmailVerificationAttemptService emailVerificationAttemptService;
 
     @Override
     @Transactional
@@ -44,6 +51,15 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
         if (!"ACTIVE".equals(user.getUserStatus())) {
             throw new RuntimeException("사용할 수 없는 계정입니다.");
+        }
+        // 확장1) 인증번호 재발송 제한 확인
+        EmailVerificationDTO latestCode =
+            emailVerificationMapper.findLatestByEmailAndPurpose(userEmail, PURPOSE_PASSWORD_RESET);
+        
+        if (latestCode != null &&
+            latestCode.getCreatedAt().plusSeconds(RESEND_LIMIT_SECONDS).isAfter(LocalDateTime.now())
+        ) {
+            throw new RuntimeException("인증번호는 1분 후 다시 요청할 수 있습니다.");
         }
 
         // 3. 기존 미사용 인증번호 재사용 불가 (used=true)
@@ -92,9 +108,9 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         if (savedCode.getAttemptCount() >= MAX_ATTEMPT_COUNT) {
             throw new RuntimeException("인증번호 입력 횟수를 초과했습니다.");
         }        
-        // 5. BCrypt matches로 비교
+        // 5. BCrypt matches로 비교 (개별 트랜잭션)
         if (!passwordEncoder.matches(verificationCode, savedCode.getVerificationCode())) {
-            emailVerificationMapper.increaseAttemptCount(savedCode.getVerificationNo());
+            emailVerificationAttemptService.increaseAttemptCount(savedCode.getVerificationNo());
             throw new RuntimeException("인증번호가 올바르지 않습니다.");
         }
         // 6. 성공 시 verified=true 처리
@@ -134,7 +150,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
         // 6. reset 단계에서도 인증번호 재확인
         if (!passwordEncoder.matches(request.getVerificationCode(), savedCode.getVerificationCode())) {
-            emailVerificationMapper.increaseAttemptCount(savedCode.getVerificationNo());
+            emailVerificationAttemptService.increaseAttemptCount(savedCode.getVerificationNo());
             throw new RuntimeException("인증번호가 올바르지 않습니다.");
         }
 
@@ -150,6 +166,9 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         if (result != 1) {
             throw new RuntimeException("비밀번호 변경에 실패했습니다.");
         }
+        // 확장2) 비밀번호 변경 후 기존 Refresh Token 전체 폐기
+        refreshTokenMapper.revokeAllByUserUuid(user.getUserUuid());
+        
         // 10. 비밀번호 변경에 사용된 인증번호 used=true 처리
         emailVerificationMapper.markUsed(savedCode.getVerificationNo());
 

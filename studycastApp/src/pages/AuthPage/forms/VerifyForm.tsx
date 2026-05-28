@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { AuthNavigate } from "@/types";
 import { useAT } from "@/theme";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
-import { verifyResetCode } from "@/services/authService";
+import { sendResetCode, verifyResetCode } from "@/services/authService";
 import { StepBar } from "../components/StepBar";
 
 interface VerifyFormProps {
@@ -44,7 +44,7 @@ export function VerifyForm({ email, onNavigate }: VerifyFormProps) {
     if (!code) { setError("인증번호를 입력해주세요."); return; }
     if (secs <= 0) { setError("인증번호 입력 시간이 만료되었습니다."); return; }
     if (verifyCount >= MAX_VERIFY) {
-      setError("인증 시도 횟수를 초과했습니다. 인증번호를 다시 발급받아주세요.");
+      setError("인증 시도 3회를 초과했습니다. 인증번호를 다시 발급받아주세요.");
       return;
     }
     if (code.length < 6) { setError("인증번호 6자리를 입력해주세요."); return; }
@@ -53,15 +53,23 @@ export function VerifyForm({ email, onNavigate }: VerifyFormProps) {
     if (!result.ok) {
       const next = verifyCount + 1;
       setVerifyCount(next);
-      if (next >= MAX_VERIFY) setError("인증 시도 횟수를 초과했습니다. 인증번호를 다시 발급받아주세요.");
+      if (next >= MAX_VERIFY) setError("인증 시도 3회를 초과했습니다. 인증번호를 다시 발급받아주세요.");
       else setError(result.message ?? "인증번호가 올바르지 않습니다.");
       return;
     }
-    onNavigate("reset", { email });
+    onNavigate("reset", { email, verificationCode: code });
   }
 
-  function handleResend() {
+  async function handleResend() {
     if (resendCount >= MAX_RESEND) return;
+
+    const result = await sendResetCode({ email });
+
+    if (!result.ok) {
+      setError(result.message ?? "인증번호 재전송에 실패했습니다.");
+      return;
+    }
+
     const next = resendCount + 1;
     setResendCount(next);
     setSecs(300);
@@ -69,7 +77,10 @@ export function VerifyForm({ email, onNavigate }: VerifyFormProps) {
     setError("");
     setCode("");
     setVerifyCount(0);
-    if (next < MAX_RESEND) window.setTimeout(() => setCanResend(true), 30000);
+
+    if (next < MAX_RESEND) {
+      window.setTimeout(() => setCanResend(true), 60000);
+    }
   }
 
   const resendDisabled = !canResend || resendCount >= MAX_RESEND;

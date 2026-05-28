@@ -3,18 +3,19 @@ import type { AuthNavigate } from "@/types";
 import { useAT } from "@/theme";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
-import { isPwValidLoose } from "@/utils/validators";
+import { isPwValidStrict } from "@/utils/validators";
 import { resetPassword } from "@/services/authService";
 import { StepBar } from "../components/StepBar";
 
 interface ResetPwFormProps {
   email: string;
+  verificationCode: string;
   onNavigate: AuthNavigate;
 }
 
 type ResetErrors = { pw?: string; pw2?: string };
 
-export function ResetPwForm({ email, onNavigate }: ResetPwFormProps) {
+export function ResetPwForm({ email, verificationCode, onNavigate }: ResetPwFormProps) {
   const T = useAT();
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
@@ -29,7 +30,7 @@ export function ResetPwForm({ email, onNavigate }: ResetPwFormProps) {
     setSuccessMsg("");
     const e: ResetErrors = {};
     if (!pw) e.pw = "비밀번호를 입력해주세요.";
-    else if (!isPwValidLoose(pw)) e.pw = "비밀번호는 영문자와 숫자를 포함한 8~16자리여야 합니다.";
+    else if (!isPwValidStrict(pw)) e.pw = "영문자 + 숫자 + 특수문자 포함 8~16자리";
     if (!pw2) e.pw2 = "비밀번호 확인을 입력해주세요.";
     else if (pw !== pw2) e.pw2 = "비밀번호가 일치하지 않습니다.";
     setErrors(e);
@@ -38,7 +39,13 @@ export function ResetPwForm({ email, onNavigate }: ResetPwFormProps) {
 
     setLoading(true);
     try {
-      const result = await resetPassword({ email, password: pw });
+      const result = await resetPassword({ 
+        email,
+        verificationCode,
+        newPassword: pw,
+        newPasswordConfirm: pw2 
+      });
+
       if (!result.ok) {
         if (result.message?.includes("이전 비밀번호")) {
           setErrors({ pw: result.message });
@@ -66,7 +73,7 @@ export function ResetPwForm({ email, onNavigate }: ResetPwFormProps) {
       <PasswordField
         label="새 비밀번호"
         id="reset-pw"
-        placeholder="영문자 + 숫자 포함 8~16자리"
+        placeholder="영문자 + 숫자 + 특수문자 포함 8~16자리"
         value={pw}
         onChange={(v) => {
           setPw(v);

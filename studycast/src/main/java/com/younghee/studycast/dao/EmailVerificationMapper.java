@@ -30,4 +30,13 @@ public interface EmailVerificationMapper {
         @Param("userUuid") UUID userUuid,
         @Param("purpose") String purpose
     );
+
+    // 확장1) 해당 이메일의 가장 최근 인증번호 요청 기록 조회
+    EmailVerificationDTO findLatestByEmailAndPurpose (
+        @Param("userEmail") String userEmail,
+        @Param("purpose") String purpose
+    );
+
+    // 확장2) 사용 완료 또는 만료일 지난 인증번호 30일 보관 후 삭제
+    int deleteExpriedOrUsedCodes();
 }
