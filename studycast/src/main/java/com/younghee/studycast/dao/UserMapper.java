@@ -24,7 +24,7 @@ public interface UserMapper {
     // 프로필 정보 업데이트
     int updateProfile(UserDTO userDTO);
 
-    // 기존 유저의 관심 카테고리 내역 지우기
+    // 카테고리 초기화
     int deleteUserInterests(@Param("userUuid") UUID userUuid);
 
     // 카테고리 추가

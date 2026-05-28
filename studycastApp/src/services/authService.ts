@@ -12,13 +12,8 @@ import type {
   SignupPayload,
   VerifyCodePayload,
 } from "@/types";
-import {
-  PREV_PW_MAP,
-  REGISTERED_EMAILS,
-  TAKEN_EMAILS,
-  VALID_USERS,
-} from "@/data/auth";
-import { apiClient, mockRequest } from "./apiClient";
+
+import { apiClient } from "./apiClient";
 
 const SAVED_EMAIL_KEY = "sc_saved_email";
 const ACCESS_TOKEN_KEY = "sc_access_token";
@@ -159,44 +154,58 @@ export function getCurrentUser(): AuthUser | null {
 
 /** 비밀번호 찾기 — 인증번호 발송 */
 export async function sendResetCode(payload: FindPwPayload): Promise<AuthResult> {
-  if (!REGISTERED_EMAILS.includes(payload.email.trim().toLowerCase())) {
-    return { ok: false, message: "가입된 이력이 없습니다." };
-  }
   try {
-    await mockRequest(null, {
-      latency: 700,
-      failRate: 0.1,
-      failMessage: "인증번호 발송에 실패했습니다. 다시 시도해주세요.",
+    await apiClient.post("/api/auth/password/send-code", {
+      userEmail: payload.email
     });
+
     return { ok: true };
-  } catch (e) {
-    return { ok: false, message: (e as Error).message };
+  } catch (e: any) {
+    return {
+      ok:  false,
+      message:
+        e.response?.data?.message ||
+        "인증번호 발송에 실패했습니다. 다시 시도해주세요."
+    }
   }
 }
 
-/** 인증번호 검증 — mock: "123456" 만 통과 */
+/** 인증번호 검증 */
 export async function verifyResetCode(payload: VerifyCodePayload): Promise<AuthResult> {
-  await mockRequest(null, { latency: 300 });
-  if (payload.code !== "123456") {
-    return { ok: false, message: "인증번호가 올바르지 않습니다." };
+  try {
+    await apiClient.post("/api/auth/password/verify-code", {
+      userEmail: payload.email,
+      verificationCode: payload.code
+    });
+
+    return { ok: true };
+  } catch (e: any) {
+    return {
+      ok: false,
+      message:
+        e.response?.data?.message ||
+        "인증번호가 올바르지 않습니다."
+    };
   }
-  return { ok: true };
 }
 
 /** 비밀번호 재설정 */
 export async function resetPassword(payload: ResetPwPayload): Promise<AuthResult> {
-  const prev = PREV_PW_MAP[payload.email.trim().toLowerCase()];
-  if (prev && prev === payload.password) {
-    return { ok: false, message: "이전 비밀번호와 동일한 비밀번호는 사용할 수 없습니다." };
-  }
   try {
-    await mockRequest(null, {
-      latency: 800,
-      failRate: 0.1,
-      failMessage: "비밀번호 변경 처리 중 오류가 발생했습니다.",
+    await apiClient.post("/api/auth/password/reset", {
+      userEmail: payload.email,
+      verificationCode: payload.verificationCode,
+      newPassword: payload.newPassword,
+      newPasswordConfirm: payload.newPasswordConfirm
     });
+
     return { ok: true };
-  } catch (e) {
-    return { ok: false, message: (e as Error).message };
+  } catch (e: any) {
+    return {
+      ok: false,
+      message:
+        e.response?.data?.message ||
+        "비밀번호 변경 처리 중 오류가 발생했습니다."
+    }
   }
 }

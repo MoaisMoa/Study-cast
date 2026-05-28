@@ -2,6 +2,7 @@ export type AuthScreen = "login" | "signup" | "find-pw" | "verify" | "reset";
 
 export interface AuthNavigateMeta {
   email?: string;
+  verificationCode?: string
 }
 
 export type AuthNavigate = (screen: AuthScreen, meta?: AuthNavigateMeta) => void;
@@ -29,7 +30,9 @@ export interface VerifyCodePayload {
 
 export interface ResetPwPayload {
   email: string;
-  password: string;
+  verificationCode: string;
+  newPassword: string;
+  newPasswordConfirm: string;
 }
 
 export interface AuthResult {
