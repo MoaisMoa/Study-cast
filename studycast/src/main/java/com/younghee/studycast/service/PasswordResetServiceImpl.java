@@ -28,6 +28,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     private final UserMapper userMapper;
     private final EmailVerificationMapper emailVerificationMapper;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -70,9 +71,10 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         // 6. 인증번호 정보 저장
         emailVerificationMapper.insert(verification);
 
-        // 7. 실제 메일 발송 전까지 개발용으로 콘솔 출력
-        log.info("비밀번호 재설정 인증번호 발송 대상: email={}", userEmail);
-        log.info("개발용 인증번호: {}", rawCode);
+        // 7. 이메일로 인증번호 발송
+        emailService.sendPasswordResetCode(userEmail, rawCode);
+
+        log.info("비밀번호 재설정 인증번호 발송 완료: email={}", userEmail);
     }
 
     @Override
