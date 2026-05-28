@@ -8,7 +8,7 @@ import { useT } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
-import { INITIAL_PROFILE, MAX_CATEGORIES, PROFILE_READONLY } from "@/data/profile";
+import { INITIAL_PROFILE, MAX_CATEGORIES } from "@/data/profile";
 import { fetchProfile, updateProfile } from "@/services/profileService";
 import { AvatarSection } from "./sections/AvatarSection";
 import { GenderSelector } from "./sections/GenderSelector";
@@ -30,7 +30,7 @@ export default function ProfilePage() {
   const ff = "'Noto Sans KR', sans-serif";
 
   // 읽기 전용 (회원가입 등록 정보)
-  const [readonly, setReadonly] = useState<ProfileReadOnly>(PROFILE_READONLY);
+  const [readonly, setReadonly] = useState<ProfileReadOnly>({ name: "", email: "" });
 
   // 저장된 상태(서버 기준값) + 편집 중인 draft 상태
   const [saved, setSaved] = useState<ProfileDraft>(INITIAL_PROFILE);
@@ -50,14 +50,22 @@ export default function ProfilePage() {
   // 회원 탈퇴 모달
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
-  // 초기 데이터 로드 (mock)
   useEffect(() => {
     let alive = true;
-    fetchProfile().then((res) => {
+
+    fetchProfile()
+    .then((res) => {
       if (!alive) return;
-      setReadonly(res.readonly);
+      setReadonly({
+        name: res.readonly.name,
+        email: res.readonly.email
+      });
       setSaved(res.draft);
       setDraft(res.draft);
+    })
+    .catch((err) => {
+      console.error("프로필 데이터를 불러오는 중 실패..", err);
+      setSaveApiError("사용자 정보를 불러올 수 없습니다. 로그인을 확인해 주세요.");
     });
     return () => {
       alive = false;

@@ -1,11 +1,11 @@
--- 1. 회원 정보 테이블
 CREATE TABLE IF NOT EXISTS users (
     user_uuid UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     user_email VARCHAR(255) NOT NULL UNIQUE,
     user_password VARCHAR(255) NOT NULL,
     user_name VARCHAR(255) NOT NULL,
-    user_gender VARCHAR(50) NOT NULL DEFAULT '선택안함' CHECK (user_gender IN ('남성', '여성', '선택안함')),
-    user_profile_image VARCHAR(255),
+    user_gender VARCHAR(50) NOT NULL DEFAULT '설정 안 함' CHECK (user_gender IN ('남자', '여자', '설정 안 함')),
+    user_profile_image TEXT,
+    user_motto VARCHAR(255),
     user_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE' CHECK (user_status IN ('ACTIVE', 'WITHDRAWN')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -17,6 +17,7 @@ COMMENT ON COLUMN users.user_password IS '회원 비밀번호';
 COMMENT ON COLUMN users.user_name IS '회원 이름';
 COMMENT ON COLUMN users.user_gender IS '회원 성별 (남성, 여성, 선택안함)';
 COMMENT ON COLUMN users.user_profile_image IS '회원 프로필 이미지 URL';
+COMMENT ON COLUMN users.user_motto IS '회원 한 줄 각오';
 COMMENT ON COLUMN users.user_status IS '회원 상태 (ACTIVE, WITHDRAWN)';
 COMMENT ON COLUMN users.created_at IS '회원 가입 일시';
 COMMENT ON COLUMN users.updated_at IS '회원 정보 수정 일시';

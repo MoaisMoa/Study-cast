@@ -9,6 +9,7 @@
         <result property="userPassword" column="user_password"/>
         <result property="userName" column="user_name"/>
         <result property="userProfileImage" column="user_profile_image"/>
+        <result property="userGender" column="user_gender"/>
         <result property="userStatus" column="user_status"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -23,6 +24,7 @@
             user_password,
             user_name,
             user_profile_image,
+            user_gender,
             user_status,
             created_at,
             updated_at,
@@ -39,6 +41,7 @@
             user_password,
             user_name,
             user_profile_image,
+            user_gender,
             user_status,
             created_at,
             updated_at,

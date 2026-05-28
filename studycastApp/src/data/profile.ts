@@ -35,8 +35,8 @@ export const DAYS: string[] = Array.from({ length: 31 }, (_, i) =>
 
 /** 회원가입에서 받은 등록 정보 — mock */
 export const PROFILE_READONLY: ProfileReadOnly = {
-  name: "김지원",
-  email: "aya70713@gmail.com",
+  name: "",
+  email: "",
 };
 
 /** 프로필 초기값 — mock */
