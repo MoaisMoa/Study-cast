@@ -70,7 +70,10 @@ export const apiClient = axios.create({
 const PUBLIC_AUTH_URLS = [
   "/api/auth/signup",
   "/api/auth/login",
-  "/api/auth/refresh"
+  "/api/auth/refresh",
+  "/api/auth/password/send-code",
+  "/api/auth/password/verify-code",
+  "/api/auth/password/reset"
 ];
 
 // 2. Axios 요청 인터셉터

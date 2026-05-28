@@ -111,7 +111,13 @@ export function AuthPage({ mode }: AuthPageProps) {
             {screen === "signup" && <SignupForm onNavigate={navigateAuth} />}
             {screen === "find-pw" && <FindPwForm onNavigate={navigateAuth} />}
             {screen === "verify" && <VerifyForm email={meta.email ?? ""} onNavigate={navigateAuth} />}
-            {screen === "reset" && <ResetPwForm email={meta.email ?? ""} onNavigate={navigateAuth} />}
+            {screen === "reset" && 
+              <ResetPwForm 
+                email={meta.email ?? ""} 
+                verificationCode={meta.verificationCode ?? ""} 
+                onNavigate={navigateAuth} 
+              />
+            }
           </div>
         </div>
       </div>

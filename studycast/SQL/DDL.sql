@@ -2,6 +2,7 @@
 -- Active: 1779245779408@@localhost@5432@studycast_db@public
 -- 테이블 삭제 (CASCADE로 제약조건까지 깔끔하게 제거)
 DROP TABLE IF EXISTS
+    email_verifications,
     refresh_tokens,
     users,
     user_auths,
@@ -204,5 +205,35 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
         REFERENCES users(user_uuid)
         ON DELETE CASCADE
 );
-
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_uuid ON refresh_tokens(user_uuid);
+
+-- 14. 이메일 인증 (비밀번호 찾기)
+CREATE TABLE IF NOT EXISTS email_verifications (
+    verification_no BIGSERIAL PRIMARY KEY,
+    user_uuid UUID NOT NULL,
+    user_email VARCHAR(255) NOT NULL,
+    verification_code VARCHAR(255) NOT NULL,
+    purpose VARCHAR(50) NOT NULL DEFAULT 'PASSWORD_RESET',
+    verified BOOLEAN NOT NULL DEFAULT FALSE,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+    attempt_count INT NOT NULL DEFAULT 0,
+    expiry_date TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    verified_at TIMESTAMP,
+    used_at TIMESTAMP,
+
+    CONSTRAINT fk_email_verifications_user
+        FOREIGN KEY (user_uuid)
+        REFERENCES users(user_uuid)
+        ON DELETE CASCADE,
+    
+    CONSTRAINT chk_email_verifications_purpose
+        CHECK (purpose IN ('PASSWORD_RESET')),
+    
+    CONSTRAINT chk_email_verifications_attempt_count
+        CHECK (attempt_count >= 0)
+);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_user_uuid
+ON email_verifications(user_uuid);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_email_purpose
+ON email_verifications(user_email, purpose);
