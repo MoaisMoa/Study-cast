@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 public class EmailVerificationAttemptServiceImpl implements EmailVerificationAttemptService{
     
     private final EmailVerificationMapper emailVerificationMapper;
-
+    // 실패횟수 롤백 별도 처리
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void increaseAttemptCount(Long verificationNo) {

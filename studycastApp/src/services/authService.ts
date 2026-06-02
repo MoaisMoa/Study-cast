@@ -46,8 +46,8 @@ export async function login(
 
     const { accessToken, refreshToken } = response.data;
 
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    sessionStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 
     if (remember) {
       localStorage.setItem(SAVED_EMAIL_KEY, payload.email);
@@ -62,7 +62,7 @@ export async function login(
       name: meResponse.data.userName,
     };
 
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    sessionStorage.setItem(USER_KEY, JSON.stringify(user));
 
     return { ok: true, user };
   } catch (e: any) {
@@ -112,7 +112,7 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
       name: response.data.userName,
     };
 
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    sessionStorage.setItem(USER_KEY, JSON.stringify(user));
 
     return user;
   } catch {
@@ -122,7 +122,7 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
 
 /** 로그아웃 */
 export async function logout(): Promise<void> {
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  const refreshToken = sessionStorage.getItem(REFRESH_TOKEN_KEY);
 
   try {
     if (refreshToken) {
@@ -131,9 +131,9 @@ export async function logout(): Promise<void> {
       });
     }
   } finally {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+    sessionStorage.removeItem(USER_KEY);
   }
 }
 
@@ -143,7 +143,7 @@ export function getSavedEmail(): string | null {
 }
 
 export function getCurrentUser(): AuthUser | null {
-  const raw = localStorage.getItem(USER_KEY);
+  const raw = sessionStorage.getItem(USER_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as AuthUser;
