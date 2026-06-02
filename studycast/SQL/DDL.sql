@@ -3,18 +3,18 @@
 DROP TABLE IF EXISTS
     email_verifications,
     refresh_tokens,
-    users,
     user_auths,
     roles,
     user_interests,
-    rooms,
-    categories,
     room_participants,
     room_visit_histories,
     study_logs,
     study_sessions,
     ddays,
-    chats
+    chats,
+    rooms,
+    categories,
+    users
 CASCADE;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
