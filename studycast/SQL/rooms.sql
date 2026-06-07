@@ -12,6 +12,7 @@ CREATE TABLE rooms (
     room_premium BOOLEAN NOT NULL DEFAULT FALSE,
     room_thumbnail VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expired_at TIMESTAMP NOT NULL, 
 
     CONSTRAINT fk_rooms_user FOREIGN KEY (user_uuid)
@@ -34,3 +35,4 @@ COMMENT ON COLUMN rooms.room_premium IS '방 프리미엄 여부';
 COMMENT ON COLUMN rooms.now_users IS '현재 방 참가 인원';
 COMMENT ON COLUMN rooms.room_thumbnail IS '썸네일';
 COMMENT ON COLUMN rooms.expired_at IS '룸 만료 날짜';
+COMMENT ON COLUMN rooms.updated_at IS '방 수정 시간';

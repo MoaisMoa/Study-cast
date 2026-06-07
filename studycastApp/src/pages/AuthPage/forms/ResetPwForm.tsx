@@ -3,6 +3,7 @@ import type { AuthNavigate } from "@/types";
 import { useAT } from "@/theme";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { PwStrengthBar } from "../components/PwStrengthBar";
 import { isPwValidStrict } from "@/utils/validators";
 import { resetPassword } from "@/services/authService";
 import { StepBar } from "../components/StepBar";
@@ -81,6 +82,7 @@ export function ResetPwForm({ email, verificationCode, onNavigate }: ResetPwForm
         }}
         error={errors.pw}
       />
+      <PwStrengthBar pw={pw} />
       <PasswordField
         label="새 비밀번호 확인"
         id="reset-pw2"

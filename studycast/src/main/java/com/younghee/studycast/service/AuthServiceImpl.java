@@ -1,6 +1,7 @@
 package com.younghee.studycast.service;
 
 import java.time.LocalDateTime;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,17 +38,17 @@ public class AuthServiceImpl implements AuthService {
         log.info("로그인 요청: email={}", request.getUserEmail());
         // 2. 이메일로 사용자 조회
         UserDTO user = userMapper.findByEmail(request.getUserEmail());
-
+        // 이메일/비밀번호 불일치는 사용자의 입력 오류이기도 하지만 인증 실패에 더 가까우므로 SecurityException
         if (user == null) {
-            throw new RuntimeException("이메일 또는 비밀번호가 올바르지 않습니다.");
+            throw new SecurityException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
         // 3. 사용자 상태 확인
         if (!"ACTIVE".equals(user.getUserStatus())) {
-            throw new RuntimeException("사용할 수 없는 계정입니다.");
+            throw new IllegalStateException("사용할 수 없는 계정입니다.");
         }
         // 4. 비밀번호 비교
         if (!passwordEncoder.matches(request.getUserPassword(), user.getUserPassword())) {
-            throw new RuntimeException("이메일 또는 비밀번호가 올바르지 않습니다.");
+            throw new SecurityException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
         // 5. Access Token / Refresh Token 생성
         String accessToken = jwtProvider.createAccessToken(user.getUserUuid());
@@ -69,42 +70,45 @@ public class AuthServiceImpl implements AuthService {
 
         // 1. Refresh Token 존재 확인
         if (refreshToken == null || refreshToken.isBlank()) {
-            throw new RuntimeException("Refresh Token이 없습니다.");
+            throw new IllegalArgumentException("Refresh Token이 없습니다.");
         }
         // 2. JWT 자체 검증
         if (!jwtProvider.validateToken(refreshToken)) {
-            throw new RuntimeException("Refresh Token이 유효하지 않습니다.");
+            throw new SecurityException("Refresh Token이 유효하지 않습니다.");
         }
         // 3. 토큰 타입
         if (!"REFRESH".equals(jwtProvider.getTokenType(refreshToken))) {
-            throw new RuntimeException("Refresh Token 형식이 아닙니다.");
+            throw new SecurityException("Refresh Token 형식이 아닙니다.");
         }
         // 4. Refresh Token 해시 조회
         String tokenHash = TokenHashUtil.sha256(refreshToken);
         RefreshTokenDTO savedToken = refreshTokenMapper.findByTokenHash(tokenHash);
 
         if (savedToken == null) {
-            throw new RuntimeException("Refresh Token이 존재하지 않습니다.");
+            throw new NoSuchElementException("Refresh Token이 존재하지 않습니다.");
         }
         // 5. 폐기 여부 확인
         if (savedToken.isRevoked()) {
-            throw new RuntimeException("폐기된 Refresh Token입니다.");
+            throw new SecurityException("폐기된 Refresh Token입니다.");
         }
         // 6. DB 만료 시간 확인
         if (savedToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Refresh Token이 만료되었습니다.");
+            throw new IllegalStateException("Refresh Token이 만료되었습니다.");
         }
         // 7. 토큰 안의 userUuid와 DB userUuid
         UUID userUuid = jwtProvider.getUserUuid(refreshToken);
 
         if (!savedToken.getUserUuid().equals(userUuid)) {
-            throw new RuntimeException("Refresh Token 사용자 정보가 일치하지 않습니다.");
+            throw new SecurityException("Refresh Token 사용자 정보가 일치하지 않습니다.");
         }
         // 8. 사용자 상태 확인 
         UserDTO user = userMapper.findByUuid(userUuid);
         
-        if (user == null || !"ACTIVE".equals(user.getUserStatus())) {
-            throw new RuntimeException("사용할 수 없는 계정입니다.");
+        if (user == null) {
+            throw new NoSuchElementException("사용자를 찾을 수 없습니다.");
+        }
+        if (!"ACTIVE".equals(user.getUserStatus())) {
+            throw new IllegalStateException("사용할 수 없는 계정입니다.");
         }
         // 9. 새 Access Token 발급
         String newAccessToken = jwtProvider.createAccessToken(userUuid);
@@ -122,24 +126,24 @@ public class AuthServiceImpl implements AuthService {
 
         // 1. Refresh Token 존재 확인
         if (refreshToken == null || refreshToken.isBlank()) {
-            throw new RuntimeException("refresh Token이 없습니다.");
+            throw new IllegalArgumentException("refresh Token이 없습니다.");
         }
         // 2. Refresh Token 해시 조회
         String tokenHash = TokenHashUtil.sha256(refreshToken);
         RefreshTokenDTO savedToken = refreshTokenMapper.findByTokenHash(tokenHash);
 
         if (savedToken == null) {
-            throw new RuntimeException("Refresh Token이 존재하지 않습니다.");
+            throw new NoSuchElementException("Refresh Token이 존재하지 않습니다.");
         }
         // 3. 본인 토큰인지 확인
         if (!savedToken.getUserUuid().equals(userUuid)) {
-            throw new RuntimeException("본인의 Refresh Token만 로그아웃할 수 있습니다.");
+            throw new SecurityException("본인의 Refresh Token만 로그아웃할 수 있습니다.");
         }
         // 4. Refresh Token 폐기
         int result = refreshTokenMapper.revokeByTokenHash(tokenHash);
 
         if (result != 1) {
-            throw new RuntimeException("로그아웃 처리에 실패했습니다.");
+            throw new IllegalStateException("로그아웃 처리에 실패했습니다.");
         }
 
         log.info("로그아웃 성공: userUuid={}", userUuid);
@@ -151,11 +155,11 @@ public class AuthServiceImpl implements AuthService {
         UserDTO user = userMapper.findByUuid(userUuid);
 
         if (user == null) {
-            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+            throw new NoSuchElementException("사용자를 찾을 수 없습니다.");
         }
 
         if (!"ACTIVE".equals(user.getUserStatus())) {
-            throw new RuntimeException("사용할 수 없는 계정입니다.");
+            throw new IllegalStateException("사용할 수 없는 계정입니다.");
         }
 
         // 비밀번호는 응답에 포함되면 안되므로 제거
@@ -182,15 +186,15 @@ public class AuthServiceImpl implements AuthService {
     private void validateLogin(UserDTO request) {
 
         if (request == null) {
-            throw new RuntimeException("로그인 정보가 없습니다.");
+            throw new IllegalArgumentException("로그인 정보가 없습니다.");
         }
 
         if (request.getUserEmail() == null || request.getUserEmail().isBlank()) {
-            throw new RuntimeException("이메일을 입력하세요.");
+            throw new IllegalArgumentException("이메일을 입력하세요.");
         }
 
         if (request.getUserPassword() == null || request.getUserPassword().isBlank()) {
-            throw new RuntimeException("비밀번호를 입력하세요.");
+            throw new IllegalArgumentException("비밀번호를 입력하세요.");
         }
     }
     

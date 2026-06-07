@@ -33,10 +33,10 @@ export const DAYS: string[] = Array.from({ length: 31 }, (_, i) =>
   String(i + 1).padStart(2, "0")
 );
 
-/** 회원가입에서 받은 등록 정보 — mock */
+/** 회원가입에서 받은 등록 정보 — mock (로그인 더미 계정과 동일) */
 export const PROFILE_READONLY: ProfileReadOnly = {
-  name: "김지원",
-  email: "aya70713@gmail.com",
+  name: "test",
+  email: "test@test.com",
 };
 
 /** 프로필 초기값 — mock */

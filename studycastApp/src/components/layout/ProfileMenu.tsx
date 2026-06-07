@@ -27,6 +27,14 @@ export function ProfileMenu({ avatarSize = 36, caretSize = 16 }: ProfileMenuProp
       navigate("/profile");
       return;
     }
+    if (item === "내 스터디") {
+      navigate("/my-study");
+      return;
+    }
+    if (item === "방문한 방") {
+      navigate("/visited-rooms");
+      return;
+    }
     // "내 스터디"는 화면 설계 코드가 아직 없으므로 라우트 미연결 (TODO)
     if (item === "로그아웃") {
       logout();

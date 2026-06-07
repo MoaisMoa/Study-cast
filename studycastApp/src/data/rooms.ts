@@ -35,9 +35,37 @@ export const REC_ROOMS: Room[] = [
   { id: 10, title: "JLPT N1 독해 집중반",            cat: "어학",     time: "3h 10m", members: 2, max: 4, img: IMGS[0], live: false, type: "FREE" },
 ];
 
-/** 내 스터디 슬롯 더미 */
+/** 내 스터디 슬롯 더미 (정렬 전) */
 export const MY_ROOMS_RAW: MyRoom[] = [
   { id: 1, title: "CS 코딩테스트 준비 2주차", members: 4, max: 4, img: IMGS[0], live: true,  createdAt: 1,    visitedAt: 1 },
   { id: 6, title: "JLPT N2 일본어 집중반",    members: 4, max: 4, img: IMGS[9], live: true,  createdAt: null, visitedAt: 2 },
   { id: 3, title: "삼성·카카오 기술면접 준비",members: 1, max: 4, img: IMGS[6], live: false, createdAt: null, visitedAt: 3 },
 ];
+
+/**
+ * 내 스터디 (정렬 후, 최대 3개) — 생성방 1순위 → 최근 접속순.
+ * 동기 접근이 필요한 모바일 대시보드에서 직접 사용한다.
+ */
+export const MY_ROOMS: MyRoom[] = [...MY_ROOMS_RAW]
+  .sort((a, b) => {
+    if (a.createdAt && !b.createdAt) return -1;
+    if (!a.createdAt && b.createdAt) return 1;
+    return (a.visitedAt || 99) - (b.visitedAt || 99);
+  })
+  .slice(0, 3);
+
+/** "방문한 방" 페이지의 최근 방문 id 목록 */
+export const RECENT_IDS: number[] = [1, 6, 3, 8];
+
+/** "방문한 방" 페이지의 자주 방문 id 목록 */
+export const FREQUENT_IDS: number[] = [1, 6, 3, 8];
+
+/** 방 id별 방문 횟수 */
+export const VISIT_COUNT: Record<number, number> = {
+  1: 42, 6: 38, 3: 21, 8: 19,
+};
+
+/** 방 id별 마지막 방문 시점 라벨 */
+export const VISIT_DATE: Record<number, string> = {
+  1: "방금 전", 6: "1시간 전", 3: "2일 전", 8: "3일 전",
+};

@@ -17,6 +17,8 @@ export interface SubmitConfirmModalProps {
   endDate: string;
   camOn: boolean;
   micOn: boolean;
+  /** 관심 카테고리 — 비어있으면 행 자체를 숨김 */
+  categories: string[];
 }
 
 export function SubmitConfirmModal(props: SubmitConfirmModalProps) {
@@ -24,6 +26,7 @@ export function SubmitConfirmModal(props: SubmitConfirmModalProps) {
   const {
     open, onClose, onConfirm, isCreating, createError,
     thumbnail, name, visibility, count, startDate, endDate, camOn, micOn,
+    categories,
   } = props;
 
   const days = calcDays(startDate, endDate);
@@ -34,6 +37,9 @@ export function SubmitConfirmModal(props: SubmitConfirmModalProps) {
     ["기간", `${startDate} ~ ${endDate}`],
     ["총 기간", `${days ?? 0}일`],
     ["카메라 / 마이크", `${camOn ? "ON" : "OFF"} / ${micOn ? "ON" : "OFF"}`],
+    ...(categories.length > 0
+      ? ([["카테고리", categories.join(", ")]] as Array<[string, string]>)
+      : []),
   ];
 
   return (

@@ -84,31 +84,7 @@ export function LiveStudyCard({ room: r }: { room: Room }) {
             }}>
               마감
             </span>
-          ) : r.type === "PREMIUM" ? (
-            <span style={{
-              background: "#E65100",
-              color: "#fff",
-              fontSize: 11,
-              fontWeight: 700,
-              padding: "4px 9px",
-              borderRadius: 6,
-              display: "inline-block",
-            }}>
-              PREMIUM
-            </span>
-          ) : (
-            <span style={{
-              background: "#424242",
-              color: "#fff",
-              fontSize: 11,
-              fontWeight: 700,
-              padding: "4px 9px",
-              borderRadius: 6,
-              display: "inline-block",
-            }}>
-              FREE
-            </span>
-          )}
+          ) : null}
         </div>
         <div style={{
           position: "absolute",
@@ -128,6 +104,11 @@ export function LiveStudyCard({ room: r }: { room: Room }) {
           }}>
             <Icon name="users" size={13} color="#fff" strokeWidth={1.8} />
             {r.members} / {r.max} 명
+            {r.type === "PREMIUM" && (
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="#FFD54F" style={{ display: "inline-block", verticalAlign: "middle", marginLeft: 4, flexShrink: 0 }}>
+                <path d="M5 16L3 5l5.5 5L12 2l3.5 8L21 5l-2 11H5zm0 2h14v2H5v-2z" />
+              </svg>
+            )}
           </div>
         </div>
       </div>
