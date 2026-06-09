@@ -51,8 +51,7 @@ export function DropdownButton({
           display: "flex",
           alignItems: "center",
           gap: 4,
-          padding: "4px 12px 4px 0",
-          minWidth: 120,
+          padding: "4px 0",
           border: "none",
           background: "none",
           color: accent ? T.red : T.text2,
@@ -60,7 +59,6 @@ export function DropdownButton({
           fontWeight: isActive ? 700 : 500,
           cursor: "pointer",
           fontFamily: "'Noto Sans KR',sans-serif",
-          whiteSpace: "nowrap",
         }}
       >
         {text}
@@ -69,8 +67,7 @@ export function DropdownButton({
       {open && (
         <div style={{
           position: "absolute",
-          left: align === "left" ? 0 : "auto",
-          right: align === "right" ? 0 : "auto",
+          [align]: 0,
           top: "calc(100% + 6px)",
           background: T.surface,
           border: `1px solid ${T.border}`,
@@ -102,7 +99,6 @@ export function DropdownButton({
                     alignItems: "center",
                     gap: 6,
                     fontFamily: "'Noto Sans KR',sans-serif",
-                    whiteSpace: "nowrap",
                   }}
                   onMouseEnter={(e) => { if (!sel) e.currentTarget.style.background = T.bg; }}
                   onMouseLeave={(e) => { if (!sel) e.currentTarget.style.background = "none"; }}

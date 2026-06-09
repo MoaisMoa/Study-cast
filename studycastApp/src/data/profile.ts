@@ -1,22 +1,14 @@
 import type {
   Gender,
-  ProfileCategory,
   ProfileDraft,
   ProfileReadOnly,
 } from "@/types/profile";
+import { CATS_FILTER } from "@/data/categories";
 
 export const GENDERS: Gender[] = ["남자", "여자", "설정 안 함"];
 
-export const PROFILE_CATEGORIES: ProfileCategory[] = [
-  "공무원",
-  "대학생",
-  "IT · 개발",
-  "고시 · 사법",
-  "어학 · 외국어",
-  "취업 · 면접",
-  "자격증",
-  "기타",
-];
+/** 관심 카테고리 — 메인 필터(CATS_FILTER)와 동일한 6개 RoomCategory를 그대로 사용 */
+export const PROFILE_CATEGORIES = CATS_FILTER;
 
 /** 최근 80년치 연도 (내림차순) */
 export const YEARS: string[] = Array.from({ length: 80 }, (_, i) =>

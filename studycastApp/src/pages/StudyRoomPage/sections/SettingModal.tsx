@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useT } from "@/theme";
+import type { RoomCategory } from "@/types";
+import { CATS_FILTER } from "@/data/categories";
 import { XIc, PlusIc } from "../components/RoomIcons";
 
 export interface SettingModalProps {
@@ -15,7 +17,6 @@ export interface SettingModalProps {
   setMaxMembers: (v: number) => void;
 }
 
-const CATS = ["어학", "공무원", "개발·IT", "자격증", "취업·면접", "대학생"];
 const GREEN = "#2e7d32";
 
 function Toggle({ on, set, color }: { on: boolean; set: (v: boolean) => void; color: string }) {
@@ -36,7 +37,7 @@ export function SettingModal(props: SettingModalProps) {
   const [title, setTitle] = useState(roomTitle);
   const [endDate2, setEndDate2] = useState("2026-08-01");
   const [maxM, setMaxM] = useState(maxMembers);
-  const [selCats, setSelCats] = useState<string[]>(["개발·IT"]);
+  const [selCats, setSelCats] = useState<RoomCategory[]>(["개발·IT"]);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [imgName, setImgName] = useState("");
   const [imgErr, setImgErr] = useState("");
@@ -173,7 +174,7 @@ export function SettingModal(props: SettingModalProps) {
               <span style={{ fontSize: 10, color: T.text3, background: T.surface2, padding: "2px 8px", borderRadius: 5 }}>1개 선택</span>
             </div>
             <div style={{ display: "flex", flexWrap: "nowrap", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
-              {CATS.map((c) => {
+              {CATS_FILTER.map((c) => {
                 const seld = selCats.includes(c);
                 return (
                   <button key={c} onClick={() => { if (isHost) setSelCats(seld ? [] : [c]); }}

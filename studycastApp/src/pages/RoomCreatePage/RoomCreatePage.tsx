@@ -235,7 +235,7 @@ export default function RoomCreatePage() {
 
       <div style={{ maxWidth: bodyMax, margin: "0 auto", padding: bodyPad }}>
         {/* 대표 이미지 */}
-        <Row label="대표 이미지" hint="16:9 비율 권장" isMobile={isMobile}>
+        <Row label="대표 이미지" hint="4:3 비율 권장" isMobile={isMobile}>
           {isMobile ? (
             <ThumbnailUploader value={thumbnail} onChange={setThumbnail} isMobile />
           ) : (

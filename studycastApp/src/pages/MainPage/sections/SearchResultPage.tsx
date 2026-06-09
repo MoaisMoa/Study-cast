@@ -5,7 +5,6 @@ import { usePage } from "@/contexts/PageContext";
 import { useSearch } from "@/contexts/SearchContext";
 import { REC_ROOMS, ROOM_POOL } from "@/data/rooms";
 import { Icon } from "@/components/ui/Icon";
-import { PremiumCrown } from "@/components/ui/PremiumCrown";
 
 export function SearchResultPage() {
   const T = useT();
@@ -36,18 +35,6 @@ export function SearchResultPage() {
   return (
     <section style={{ paddingBottom: 48 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
-        <button
-          onClick={() => setPage("home")}
-          style={{
-            display: "flex", alignItems: "center", gap: 5,
-            background: "none", border: "none",
-            cursor: "pointer", color: T.text3, fontSize: 13, padding: 0,
-          }}
-        >
-          <Icon name="chevLeft" size={15} color={T.text3} />
-          홈으로
-        </button>
-        <div style={{ height: 16, width: 1, background: T.border }} />
         <h1 style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
           "{query}" 검색 결과
         </h1>
@@ -57,8 +44,10 @@ export function SearchResultPage() {
       </div>
 
       {sorted.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "80px 0" }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", minHeight: "calc(100vh - 360px)", padding: "40px 0" }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+            <Icon name="search" size={44} color={T.text3} strokeWidth={1.5} />
+          </div>
           <div style={{ fontSize: 16, fontWeight: 600, color: T.text, marginBottom: 8 }}>
             검색하신 조건과 일치하는 스터디 그룹이 없습니다.
           </div>
@@ -68,7 +57,7 @@ export function SearchResultPage() {
         </div>
       ) : (
         <>
-          <style>{`.srch-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px 16px;}@media(max-width:1100px){.srch-grid{grid-template-columns:repeat(4,1fr);}}@media(max-width:1000px){.srch-grid{grid-template-columns:repeat(3,1fr);}}@media(max-width:768px){.srch-grid{grid-template-columns:repeat(2,1fr);gap:16px 14px;}}@media(max-width:600px){.srch-grid{grid-template-columns:1fr;gap:16px;}}`}</style>
+          <style>{`.srch-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px 16px;}@media(max-width:1100px){.srch-grid{grid-template-columns:repeat(4,1fr);}}@media(max-width:820px){.srch-grid{grid-template-columns:repeat(3,1fr);}}`}</style>
           <div className="srch-grid">
             {sorted.map((r) => {
               const full = !r.overCapacity && r.members >= r.max;
@@ -151,7 +140,19 @@ export function SearchResultPage() {
                           fontSize: 11, fontWeight: 700,
                           padding: "4px 9px", borderRadius: 6,
                         }}>마감</span>
-                      ) : null}
+                      ) : r.type === "PREMIUM" ? (
+                        <span style={{
+                          background: "#E65100", color: "#fff",
+                          fontSize: 11, fontWeight: 700,
+                          padding: "4px 9px", borderRadius: 6,
+                        }}>PREMIUM</span>
+                      ) : (
+                        <span style={{
+                          background: "#424242", color: "#fff",
+                          fontSize: 11, fontWeight: 700,
+                          padding: "4px 9px", borderRadius: 6,
+                        }}>FREE</span>
+                      )}
                     </div>
                     <div style={{
                       position: "absolute",

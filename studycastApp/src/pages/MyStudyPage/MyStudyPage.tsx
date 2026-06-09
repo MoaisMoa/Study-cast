@@ -81,7 +81,13 @@ export default function MyStudyPage() {
   const hasAnyRoom = rooms.length > 0;
   const isFilterActive = statusFilter !== "전체" || visibilityFilter !== "전체";
 
+  /** 라이브 진행 중인 방 — 선택/삭제 불가 */
+  const isRoomLive = (r: MyStudyRoom) =>
+    calcRoomStatus(r) !== "종료" && r.isLive && r.members >= 1;
+
   const toggleSelect = (id: string) => {
+    const room = rooms.find((r) => r.id === id);
+    if (room && isRoomLive(room)) return; // 라이브 방은 선택 불가
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -259,6 +265,7 @@ export default function MyStudyPage() {
                   selectMode={selectMode}
                   selected={selectedIds.has(room.id)}
                   onToggle={toggleSelect}
+                  disabled={isRoomLive(room)}
                 />
               ) : (
                 <MyStudyCard
@@ -268,6 +275,7 @@ export default function MyStudyPage() {
                   selectMode={selectMode}
                   selected={selectedIds.has(room.id)}
                   onToggle={toggleSelect}
+                  disabled={isRoomLive(room)}
                 />
               )
             )}
@@ -291,13 +299,17 @@ export default function MyStudyPage() {
         {/* 선택 모드 하단 액션바 (sticky) — 화면 설계 기준 */}
         {selectMode && (
           <div style={{
-            position: "sticky", bottom: isMobile ? 56 : 0, left: 0, right: 0, zIndex: 90,
-            background: T.surface, borderTop: `1.5px solid ${T.border}`,
-            padding: "14px 28px", display: "flex", alignItems: "center", gap: 12,
-            boxShadow: "0 -4px 16px rgba(0,0,0,.08)", margin: isMobile ? "16px -16px 0" : "16px -28px 0",
+            position: "sticky", bottom: isMobile ? 70 : 16, left: 0, right: 0, zIndex: 90,
+            background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 12,
+            padding: "14px 20px", display: "flex", alignItems: "center", gap: 12,
+            boxShadow: "0 4px 20px rgba(0,0,0,.12)", marginTop: 16,
           }}>
-            <span style={{ fontSize: 14, color: T.text2, flex: 1 }}>
+            <span style={{ fontSize: 14, color: T.text2 }}>
               {selectedIds.size > 0 ? <strong style={{ color: T.red }}>{selectedIds.size}개</strong> : "0개"} 선택됨
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: T.text3, flex: 1 }}>
+              <Icon name="alertCircle" size={14} color={T.text3} strokeWidth={1.8} />
+              라이브 중인 스터디는 삭제할 수 없습니다.
             </span>
             <button
               onClick={() => setConfirm({ type: "delete", rooms: selectedRooms })}

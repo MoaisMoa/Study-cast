@@ -115,13 +115,25 @@ export default function VisitedRoomsPage() {
           <EmptyState type="all" />
         ) : (
           <>
-            <div style={{ marginBottom: 28 }}>
-              <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, color: T.text, marginBottom: 6, lineHeight: 1.2 }}>
-                방문한 방
-              </h1>
-              <p style={{ fontSize: isMobile ? 13 : 14, color: T.text3, lineHeight: 1.6 }}>
-                최근 접속했거나 자주 방문한 스터디방을 다시 확인해보세요.
-              </p>
+            <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
+              <div>
+                <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, color: T.text, marginBottom: 6, lineHeight: 1.2 }}>
+                  방문한 방
+                </h1>
+                <p style={{ fontSize: isMobile ? 13 : 14, color: T.text3, lineHeight: 1.6 }}>
+                  최근 접속했거나 자주 방문한 스터디방을 다시 확인해보세요.
+                </p>
+              </div>
+              {!isMobile && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: T.text3, whiteSpace: "nowrap", paddingBottom: 2 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  재방문 없이 3개월 경과 시 자동 삭제됩니다
+                </div>
+              )}
             </div>
 
             <FilterRow

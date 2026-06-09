@@ -11,6 +11,7 @@ import type {
   WithdrawPayload,
 } from "@/types/profile";
 import { INITIAL_PROFILE, PROFILE_READONLY } from "@/data/profile";
+import { getUserInterestCats, saveUserInterestCats } from "@/data/interestStore";
 import { mockRequest } from "./apiClient";
 
 /** 초기 프로필 데이터 (읽기 전용 정보 + 편집 가능한 draft) 조회 */
@@ -18,8 +19,13 @@ export async function fetchProfile(): Promise<{
   readonly: ProfileReadOnly;
   draft: ProfileDraft;
 }> {
+  // 저장된 관심 카테고리를 반영해 draft 구성 (백엔드 연동 전 임시)
+  const draft: ProfileDraft = {
+    ...INITIAL_PROFILE,
+    categories: getUserInterestCats(),
+  };
   return mockRequest(
-    { readonly: PROFILE_READONLY, draft: INITIAL_PROFILE },
+    { readonly: PROFILE_READONLY, draft },
     { latency: 200 }
   );
 }
@@ -30,6 +36,8 @@ export async function updateProfile(
 ): Promise<ProfileServiceResult> {
   try {
     // TODO(API 연결): await request("/profile", { method: "PUT", body: JSON.stringify(_draft) });
+    // 관심 카테고리는 클라이언트 저장소에 영속화 → 메인 추천에 즉시 반영
+    saveUserInterestCats(_draft.categories);
     await mockRequest(null, { latency: 600 });
     return { ok: true };
   } catch {

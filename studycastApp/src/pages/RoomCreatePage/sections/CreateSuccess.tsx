@@ -41,7 +41,7 @@ export function CreateSuccess({
           <img
             src={thumbnail}
             alt="thumbnail"
-            style={{ width: "100%", aspectRatio: "16/7", objectFit: "cover" }}
+            style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover" }}
           />
           <div style={{
             position: "absolute",

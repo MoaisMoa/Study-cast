@@ -63,7 +63,7 @@ export function SubmitConfirmModal(props: SubmitConfirmModalProps) {
           borderRadius: 8,
           overflow: "hidden",
           marginBottom: 14,
-          aspectRatio: "16/9",
+          aspectRatio: "4/3",
         }}>
           {thumbnail ? (
             <>
