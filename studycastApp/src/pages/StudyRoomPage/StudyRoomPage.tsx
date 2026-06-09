@@ -1,0 +1,445 @@
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import type { ChatMessage, RoomMember, RoomModal, TimerState } from "@/types/studyRoom";
+import { sendMessage as sendRoomMessage, subscribeChat } from "@/services/studyRoomService";
+import { useT, useThemeCtx } from "@/theme";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import {
+  ALL_INIT, INITIAL_MESSAGES, ROOM_MAX_MEMBERS, ROOM_TITLE_DEFAULT, SELF,
+  fmtT, nowDate, nowT,
+} from "@/data/studyRoom";
+import { LearningPlannerModal } from "@/pages/MainPage/sections/planner/LearningPlannerModal";
+import {
+  Av, BellIc, CalIc, CamOff, CamOn, ChatIc, CogIc, ExitIc, ExpandIc, MenuIc, MicOff, MicOn, MoonIc, PauseIc, PlayIc, SendIc, ShrinkIc, SunIc, UsersIc, XIc,
+} from "./components/RoomIcons";
+import { KickConfirm, ExitConfirm } from "./components/Confirms";
+import { CamGrid } from "./sections/CamGrid";
+import { MobileCamGrid } from "./sections/MobileCamGrid";
+import { RightPanel } from "./sections/RightPanel";
+import { MobileChatDrawer, MobileMemberDrawer } from "./sections/MobileDrawers";
+import { MemberModal } from "./sections/MemberModal";
+import { SettingModal } from "./sections/SettingModal";
+import { NoticeModal } from "./sections/NoticeModal";
+
+export default function StudyRoomPage() {
+  const T = useT();
+  const { mode, toggle } = useThemeCtx();
+  const navigate = useNavigate();
+  const { roomId } = useParams();
+  const isMobile = useIsMobile(768);
+
+  // 멤버/시간
+  const [members, setMembers] = useState<RoomMember[]>(ALL_INIT);
+  const [elapsed] = useState<Record<number, number>>(() => Object.fromEntries(ALL_INIT.map((m) => [m.id, m.sec])));
+  const [totalSec, setTotalSec] = useState(8073);
+  const [timerSec, setTimerSec] = useState(0);
+  const [timerState, setTimerState] = useState<TimerState>("idle");
+
+  // 장치
+  const [mic, setMic] = useState(true);
+  const [cam, setCam] = useState(true);
+  const [camWarn, setCamWarn] = useState(false);
+  // 장치 권한/가용 오류 (null | "denied" | "unavailable")
+  const [micError, setMicError] = useState<null | "denied" | "unavailable">(null);
+  const [camError, setCamError] = useState<null | "denied" | "unavailable">(null);
+
+  // 시계
+  const [clk, setClk] = useState(nowT());
+  const [dateStr, setDateStr] = useState(nowDate());
+
+  // 레이아웃/모달
+  const [full, setFull] = useState(false);
+  const [sideHover, setSideHover] = useState(false);
+  const sideHoverTimer = useRef<number | null>(null);
+  const [modal, setModal] = useState<RoomModal>(null);
+  const [kickTarget, setKickTarget] = useState<RoomMember | null>(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [focusedId, setFocusedId] = useState<number | null>(null);
+  const [drawer, setDrawer] = useState<null | "menu" | "chat" | "members">(null);
+
+  // 방 정보
+  const [roomTitle, setRoomTitle] = useState(ROOM_TITLE_DEFAULT);
+  const [maxMembers, setMaxMembers] = useState(ROOM_MAX_MEMBERS);
+  const [noticeMsg, setNoticeMsg] = useState<string | null>(null);
+  const [settingCamOn, setSettingCamOn] = useState(true);
+  const [settingMicOn, setSettingMicOn] = useState(true);
+  const [kickedMsg, setKickedMsg] = useState<string | null>(null);
+
+  // 채팅
+  const [chatTab, setChatTab] = useState<"채팅" | "멤버">("채팅");
+  const [inp, setInp] = useState("");
+  const [msgs, setMsgs] = useState<ChatMessage[]>([]);
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  // 시계 + 타이머
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      setClk(nowT());
+      setDateStr(nowDate());
+      if (timerState === "running") {
+        setTimerSec((v) => v + 1);
+        setTotalSec((v) => v + 1);
+      }
+    }, 1000);
+    return () => window.clearInterval(t);
+  }, [timerState]);
+
+  // 카메라 OFF 시 자동 일시정지
+  useEffect(() => {
+    if (!cam && timerState === "running") setTimerState("paused");
+  }, [cam, timerState]);
+
+  // 입장 시 마이크 권한 요청 (mock 단계 — 실패 시 배너로 안내)
+  useEffect(() => {
+    if (!mic) return;
+    let cancelled = false;
+    navigator.mediaDevices?.getUserMedia({ audio: true })
+      .then((s) => { s.getTracks().forEach((t) => t.stop()); if (!cancelled) setMicError(null); })
+      .catch((err: DOMException) => {
+        if (cancelled) return;
+        setMicError(err.name === "NotAllowedError" || err.name === "PermissionDeniedError" ? "denied" : "unavailable");
+      });
+    return () => { cancelled = true; };
+  }, [mic]);
+
+  // 입장/토글 시 카메라 권한 요청 — 실패 시 배너 + 아바타 폴백(camError)
+  useEffect(() => {
+    if (!cam) { setCamError(null); return; }
+    let cancelled = false;
+    navigator.mediaDevices?.getUserMedia({ video: true })
+      .then((s) => { s.getTracks().forEach((t) => t.stop()); if (!cancelled) setCamError(null); })
+      .catch((err: DOMException) => {
+        if (cancelled) return;
+        setCamError(err.name === "NotAllowedError" || err.name === "PermissionDeniedError" ? "denied" : "unavailable");
+      });
+    return () => { cancelled = true; };
+  }, [cam]);
+
+  useEffect(() => {
+    if (!roomId) return;
+    const unsubscribe = subscribeChat(roomId, (msg) => {
+      setMsgs((prev) => [...prev, msg]);
+    });
+    return unsubscribe;
+  }, [roomId]);
+
+  const handleTimerStart = () => { if (!cam) { setCamWarn(true); setTimeout(() => setCamWarn(false), 3000); return; } setTimerState("running"); };
+  const handleTimerPause = () => setTimerState("paused");
+  const handleTimerResume = () => { if (!cam) { setCamWarn(true); setTimeout(() => setCamWarn(false), 3000); return; } setTimerState("running"); };
+  const handleTimerReset = () => { setTimerSec(0); setTimerState("idle"); };
+
+  const send = () => {
+    if (!inp.trim()) { setSendError("메시지를 입력해주세요."); return; }
+    if (inp.length > 50) { setSendError("메시지는 최대 50자까지 입력할 수 있습니다."); return; }
+    if (isSending) return;
+    setIsSending(true);
+    setSendError(null);
+    const payload = inp.trim();
+    sendRoomMessage(roomId ?? "", payload)
+      .then(() => {
+        setInp("");
+      })
+      .catch((error) => {
+        console.error(error);
+        setSendError("채팅 전송에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      })
+      .finally(() => {
+        setIsSending(false);
+      });
+  };
+
+  const doKick = () => {
+    if (!kickTarget) return;
+    setMembers((m) => m.filter((x) => x.id !== kickTarget.id));
+    setKickedMsg(kickTarget.name);
+    setTimeout(() => setKickedMsg(null), 3000);
+    setMsgs((m) => [...m, { id: Date.now(), type: "system", text: `${kickTarget.name} 님이 퇴장했습니다.`, time: nowT() }]);
+    setKickTarget(null);
+  };
+
+  const doExit = () => {
+    setTimerState("idle");
+    setShowExitConfirm(false);
+    navigate("/");
+  };
+
+  const handleSideEnter = () => { if (sideHoverTimer.current) window.clearTimeout(sideHoverTimer.current); setSideHover(true); };
+  const handleSideLeave = () => { sideHoverTimer.current = window.setTimeout(() => setSideHover(false), 300); };
+
+  const open = (key: RoomModal) => setModal((p) => (p === key ? null : key));
+  // 모바일 드로우: "menu" | "chat" | "members" | null
+  const timerAction = () => {
+    if (!cam) return;
+    if (timerState === "idle") handleTimerStart();
+    else if (timerState === "running") handleTimerPause();
+    else handleTimerResume();
+  };
+  const rightPanelProps = { chatTab, setChatTab, msgs, inp, setInp, send, isSending, sendError, setSendError, members, elapsed: { ...elapsed, [SELF.id]: totalSec }, totalSec, timerState, noticeMsg, mic, cam, maxMembers, setNoticeMsg };
+
+  // ── 공통 모달 묶음 ──
+  const modals = (
+    <>
+      {modal === "cal" && <LearningPlannerModal open onClose={() => setModal(null)} />}
+      {modal === "members" && <MemberModal members={members} elapsed={{ ...elapsed, [SELF.id]: totalSec }} mic={mic} cam={cam} joinElapsed={timerSec} isHost onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
+      {modal === "settings" && <SettingModal onClose={() => setModal(null)} isHost roomTitle={roomTitle} setRoomTitle={setRoomTitle} settingCamOn={settingCamOn} setSettingCamOn={setSettingCamOn} settingMicOn={settingMicOn} setSettingMicOn={setSettingMicOn} maxMembers={maxMembers} setMaxMembers={setMaxMembers} />}
+      {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={setNoticeMsg} noticeMsg={noticeMsg} isHost />}
+      {kickTarget && <KickConfirm member={kickTarget} onConfirm={doKick} onCancel={() => setKickTarget(null)} />}
+      {showExitConfirm && <ExitConfirm onConfirm={doExit} onCancel={() => setShowExitConfirm(false)} />}
+    </>
+  );
+
+  const camGridEl = (
+    <CamGrid members={members} elapsed={elapsed} totalSec={totalSec} timerSec={timerSec} timerState={timerState}
+      cam={cam} camError={!!camError} focusedId={focusedId} setFocusedId={setFocusedId}
+      onTimerStart={handleTimerStart} onTimerPause={handleTimerPause} onTimerResume={handleTimerResume} onTimerReset={handleTimerReset} />
+  );
+
+  // 장치 오류 배너 (데스크탑/모바일 공용)
+  const deviceBanners = (
+    <>
+      {micError && (
+        <div style={{ flexShrink: 0, background: T.surface2, borderBottom: `1px solid ${T.border}`, padding: "6px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+          <MicOff s={14} c={T.text3} />
+          <span style={{ fontSize: 12, color: T.text2, fontWeight: 500 }}>
+            {micError === "unavailable" ? "마이크 장치를 확인해 주세요." : "마이크 접근 권한이 거부되었습니다. 브라우저 설정에서 허용해 주세요."}
+          </span>
+          <button onClick={() => setMicError(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", display: "flex" }}><XIc s={13} c={T.text3} /></button>
+        </div>
+      )}
+      {camError && (
+        <div style={{ flexShrink: 0, background: T.surface2, borderBottom: `1px solid ${T.border}`, padding: "6px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+          <CamOff s={14} c={T.text3} />
+          <span style={{ fontSize: 12, color: T.text2, fontWeight: 500 }}>
+            {camError === "unavailable" ? "카메라 장치를 확인해 주세요." : "카메라 접근 권한이 거부되었습니다. 브라우저 설정에서 허용해 주세요."}
+          </span>
+          <button onClick={() => setCamError(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", display: "flex" }}><XIc s={13} c={T.text3} /></button>
+        </div>
+      )}
+    </>
+  );
+
+  // ════════════════ 모바일 (드로어 방식 — 원본) ════════════════
+  if (isMobile) {
+    const chatBadge = msgs.filter((m) => m.type !== "system").length > 0;
+    const cbtn: React.CSSProperties = { width: 48, height: 48, borderRadius: "50%", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
+    return (
+      <div style={{ height: "100dvh", display: "flex", flexDirection: "column", background: T.bg, color: T.text, position: "relative", overflow: "hidden", padding: 8, gap: 6 }}>
+        {/* 헤더 — 둥근 카드 (햄버거 / 중앙 ON STUDY+타이머 / 우측 벽시계+나가기) */}
+        <header style={{ flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: "10px 14px", zIndex: 10 }}>
+          <button onClick={() => setDrawer((d) => (d === "menu" ? null : "menu"))}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", flexDirection: "column", gap: 4, justifyContent: "center", zIndex: 1 }}>
+            <span style={{ width: 18, height: 2, borderRadius: 1, background: drawer === "menu" ? T.red : T.text2, display: "block", transition: "all 200ms" }} />
+            <span style={{ width: 14, height: 2, borderRadius: 1, background: drawer === "menu" ? T.red : T.text2, display: "block", transition: "all 200ms" }} />
+            <span style={{ width: 18, height: 2, borderRadius: 1, background: drawer === "menu" ? T.red : T.text2, display: "block", transition: "all 200ms" }} />
+          </button>
+          {/* 중앙 — absolute 완전 가운데 */}
+          <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", textAlign: "center", pointerEvents: "none" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.red, display: "inline-block", animation: "blink 1.2s ease-in-out infinite" }} />
+              <span style={{ color: T.text, fontWeight: 700, fontSize: 12, letterSpacing: ".04em" }}>ON STUDY</span>
+            </div>
+            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 700, color: T.red, marginTop: 1 }}>{fmtT(timerSec)}</div>
+          </div>
+          {/* 우측 — 벽시계 + 나가기(텍스트) */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", zIndex: 1 }}>
+            <span style={{ color: T.text3, fontSize: 11, fontFamily: "'JetBrains Mono',monospace" }}>{clk}</span>
+            <button onClick={toggle} title={mode === "dark" ? "라이트 모드" : "다크 모드"}
+              style={{ width: 30, height: 30, borderRadius: "50%", border: `1px solid ${T.border}`, background: T.surface, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+              {mode === "dark" ? <SunIc s={15} c={T.text2} /> : <MoonIc s={15} c={T.text2} />}
+            </button>
+            <button onClick={() => setShowExitConfirm(true)}
+              style={{ background: T.redLight, border: `1px solid ${T.dark ? "rgba(239,83,80,.4)" : "#FFCDD2"}`, borderRadius: 14, padding: "4px 10px", color: T.red, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 4 }}>
+              <ExitIc s={12} c={T.red} />나가기
+            </button>
+          </div>
+        </header>
+        {deviceBanners}
+
+        {/* 캠 그리드 (모바일 전용 4분할 확대/축소) */}
+        <MobileCamGrid
+          members={members} elapsed={{ ...elapsed, [SELF.id]: totalSec }} totalSec={totalSec}
+          timerState={timerState} cam={cam} mic={mic} focused={focusedId}
+          setFocused={setFocusedId}
+          onTimerToggle={timerAction} onTimerReset={handleTimerReset}
+        />
+
+        {/* 하단 컨트롤 바: 마이크 · 채팅 · 중앙 타이머 · 멤버 · 카메라 */}
+        <div style={{ flexShrink: 0, padding: "12px 24px 14px", display: "flex", alignItems: "center", justifyContent: "space-around", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20 }}>
+          <button onClick={() => setMic((v) => !v)} style={{ ...cbtn, background: mic ? T.redLight : T.surface2, position: "relative" }}>
+            {mic ? <MicOn s={22} c={T.red} /> : <MicOff s={22} c={T.text3} />}
+            {micError && <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: T.red, border: `2px solid ${T.surface}` }} />}
+          </button>
+          <button onClick={() => setDrawer((d) => (d === "chat" ? null : "chat"))} style={{ ...cbtn, background: T.surface2, position: "relative" }}>
+            <ChatIc s={22} c={drawer === "chat" ? T.red : T.text2} />
+            {chatBadge && <span style={{ position: "absolute", top: 8, right: 8, width: 7, height: 7, borderRadius: "50%", background: T.red }} />}
+          </button>
+          {/* 중앙 타이머 — 카메라 OFF 시 비활성 */}
+          {/* 중앙 타이머 — 카메라 OFF 시 비활성. 일시정지 시 위에 초기화 버튼 */}
+          <div style={{ position: "relative", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {timerState === "paused" && (
+              <button onClick={handleTimerReset}
+                style={{ position: "absolute", bottom: "calc(100% + 10px)", left: "50%", transform: "translateX(-50%)", zIndex: 60, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "9px 16px", color: T.text2, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 4px 12px rgba(0,0,0,.15)" }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={T.text2} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" /></svg>
+                초기화
+              </button>
+            )}
+            <button onClick={timerAction} style={{ width: 56, height: 56, borderRadius: "50%", border: "none", cursor: cam ? "pointer" : "not-allowed", background: !cam ? T.surface2 : timerState === "running" ? T.red : timerState === "paused" ? "#FF7043" : T.red, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 150ms", opacity: cam ? 1 : 0.35 }}>
+              {timerState === "running" ? <PauseIc s={24} /> : <PlayIc s={24} />}
+            </button>
+          </div>
+          <button onClick={() => setDrawer((d) => (d === "members" ? null : "members"))} style={{ ...cbtn, background: T.surface2 }}>
+            <UsersIc s={22} c={drawer === "members" ? T.red : T.text2} />
+          </button>
+          <button onClick={() => setCam((v) => !v)} style={{ ...cbtn, background: cam ? T.redLight : T.surface2, position: "relative" }}>
+            {cam ? <CamOn s={22} c={T.red} /> : <CamOff s={22} c={T.text3} />}
+            {camError && <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: T.red, border: `2px solid ${T.surface}` }} />}
+          </button>
+        </div>
+
+        {/* 드로어 오버레이 */}
+        {drawer && <div onClick={() => setDrawer(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 40 }} />}
+
+        {/* 메뉴 드로어 */}
+        {drawer === "menu" && (
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 50, background: T.surface, borderRadius: "18px 18px 0 0", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", maxHeight: "70dvh", animation: "slideUp 240ms ease forwards" }}>
+            <div onClick={() => setDrawer(null)} style={{ width: 36, height: 3, borderRadius: 2, background: T.borderStrong, margin: "10px auto 0", flexShrink: 0, cursor: "pointer" }} />
+            <div style={{ padding: "10px 16px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <span style={{ color: T.text, fontWeight: 700, fontSize: 15 }}>메뉴</span>
+              <button onClick={() => setDrawer(null)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}><XIc s={18} c={T.text3} /></button>
+            </div>
+            <div style={{ padding: "0 14px 20px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {([
+                ["members", "멤버 관리", <UsersIc s={20} c={T.red} />],
+                ["cal", "캘린더", <CalIc s={20} c={T.red} />],
+                ["notice", "공지사항", <BellIc s={20} c={T.red} />],
+                ["settings", "설정", <CogIc s={20} c={T.red} />],
+              ] as const).map(([key, label, icon]) => (
+                <button key={key} onClick={() => { setDrawer(null); setModal(key as RoomModal); }}
+                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: T.surface2, borderRadius: 12, border: `1px solid ${T.border}`, cursor: "pointer", width: "100%", textAlign: "left" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: T.redLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{icon}</div>
+                  <span style={{ color: T.text, fontSize: 15, fontWeight: 500 }}>{label}</span>
+                  <span style={{ marginLeft: "auto", color: T.text3, fontSize: 18 }}>›</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 채팅 드로어 */}
+        {drawer === "chat" && (
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 50, background: T.surface, borderRadius: "18px 18px 0 0", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", height: "58dvh", animation: "slideUp 240ms ease forwards" }}>
+            <div onClick={() => setDrawer(null)} style={{ width: 36, height: 3, borderRadius: 2, background: T.borderStrong, margin: "10px auto 0", flexShrink: 0, cursor: "pointer" }} />
+            <div style={{ padding: "10px 16px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <span style={{ color: T.text, fontWeight: 700, fontSize: 15 }}>채팅</span>
+              <button onClick={() => setDrawer(null)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}><XIc s={18} c={T.text3} /></button>
+            </div>
+            <MobileChatDrawer msgs={msgs} inp={inp} setInp={setInp} send={send} />
+          </div>
+        )}
+
+        {/* 멤버 드로어 */}
+        {drawer === "members" && (
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 50, background: T.surface, borderRadius: "18px 18px 0 0", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", maxHeight: "60dvh", animation: "slideUp 240ms ease forwards" }}>
+            <div onClick={() => setDrawer(null)} style={{ width: 36, height: 3, borderRadius: 2, background: T.borderStrong, margin: "10px auto 0", flexShrink: 0, cursor: "pointer" }} />
+            <div style={{ padding: "10px 16px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <span style={{ color: T.text, fontWeight: 700, fontSize: 15 }}>멤버 <span style={{ color: T.text3, fontWeight: 400, fontSize: 13 }}>{members.length}명</span></span>
+              <button onClick={() => setDrawer(null)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}><XIc s={18} c={T.text3} /></button>
+            </div>
+            <MobileMemberDrawer members={members} elapsed={{ ...elapsed, [SELF.id]: totalSec }} totalSec={totalSec} timerState={timerState} mic={mic} cam={cam} />
+          </div>
+        )}
+
+        {modals}
+      </div>
+    );
+  }
+
+  // ════════════════ 데스크탑 ════════════════
+  const navBtn = (active: boolean): React.CSSProperties => ({
+    width: 36, height: 36, borderRadius: 8, border: "none", cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    background: active ? T.redLight : "none", position: "relative",
+  });
+
+  return (
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: T.bg, color: T.text }}>
+      {/* 헤더 */}
+      <header style={{ height: 48, flexShrink: 0, display: "flex", alignItems: "center", background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "0 14px", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, background: T.red, color: "#fff", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 6, letterSpacing: ".06em", flexShrink: 0 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff", animation: "blink 1.2s ease-in-out infinite" }} />ON STUDY
+        </div>
+        <span style={{ fontSize: 13, color: T.text2, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 4 }}>{roomTitle}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <button onClick={toggle} title={mode === "dark" ? "라이트 모드" : "다크 모드"}
+            style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.border}`, background: T.surface, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+            {mode === "dark" ? <SunIc s={16} c={T.text2} /> : <MoonIc s={16} c={T.text2} />}
+          </button>
+          <span style={{ fontSize: 12, color: T.text2 }}>{dateStr}</span>
+          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: T.text3 }}>{clk}</span>
+          <div style={{ width: 1, height: 20, background: T.border }} />
+          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: T.red, fontWeight: 600 }}>{fmtT(timerSec)}</span>
+          <Av name="나" color={T.red} size={30} />
+        </div>
+      </header>
+
+      {/* 경고 배너 */}
+      {camWarn && (
+        <div style={{ flexShrink: 0, background: T.surface2, borderBottom: `1px solid ${T.border}`, padding: "6px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+          <CamOff s={14} c={T.text3} /><span style={{ fontSize: 12, color: T.text2, fontWeight: 500 }}>카메라를 켠 후 공부 타이머를 시작할 수 있습니다.</span>
+        </div>
+      )}
+      {deviceBanners}
+      {kickedMsg && (
+        <div style={{ flexShrink: 0, background: T.redLight, borderBottom: `1px solid ${T.border}`, padding: "6px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 12, color: T.red, fontWeight: 500 }}><b>{kickedMsg}</b> 님이 추방되었습니다.</span>
+        </div>
+      )}
+
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
+        {/* 좌측 네비 */}
+        <div style={{ width: 44, flexShrink: 0, background: T.surface, borderRight: `1px solid ${T.border}`, display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0", gap: 2 }}>
+          <button style={navBtn(modal === "members")} title="멤버 관리" onClick={() => open("members")}><UsersIc s={18} c={modal === "members" ? T.red : T.text2} /></button>
+          <button style={navBtn(modal === "cal")} title="캘린더" onClick={() => open("cal")}><CalIc s={18} c={modal === "cal" ? T.red : T.text2} /></button>
+          <button style={navBtn(modal === "notice")} title="공지사항" onClick={() => open("notice")}><BellIc s={18} c={modal === "notice" ? T.red : T.text2} /></button>
+          <button style={navBtn(modal === "settings")} title="설정" onClick={() => open("settings")}><CogIc s={18} c={modal === "settings" ? T.red : T.text2} /></button>
+          <div style={{ flex: 1 }} />
+          <div style={{ width: 20, height: 1, background: T.border, margin: "4px 0" }} />
+          <button style={navBtn(false)} onClick={() => setMic((v) => !v)} title={mic ? "마이크 끄기" : "마이크 켜기"}>{mic ? <MicOn s={19} c={T.text2} /> : <MicOff s={19} c={T.text3} />}{micError && <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: T.red, border: "2px solid " + T.surface }} />}</button>
+          <button style={navBtn(false)} onClick={() => setCam((v) => !v)} title={cam ? "카메라 끄기" : "카메라 켜기"}>{cam ? <CamOn s={19} c={T.text2} /> : <CamOff s={19} c={T.text3} />}{camError && <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: T.red, border: "2px solid " + T.surface }} />}</button>
+          <button style={navBtn(false)} onClick={() => setFull((v) => !v)} title={full ? "축소" : "확대"}>{full ? <ShrinkIc s={19} c={T.text2} /> : <ExpandIc s={19} c={T.text2} />}</button>
+          <div style={{ width: 20, height: 1, background: T.border, margin: "4px 0" }} />
+          <button style={navBtn(false)} onClick={() => setShowExitConfirm(true)} title="나가기"><ExitIc s={18} c={T.red} /></button>
+        </div>
+
+        {/* 중앙 캠 */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: T.bg, position: "relative" }}>
+          {camGridEl}
+        </div>
+
+        {/* 우측 패널 (축소 모드일 때만 고정) */}
+        {!full && (
+          <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", background: T.surface, borderLeft: `1px solid ${T.border}` }}>
+            <RightPanel {...rightPanelProps} />
+          </div>
+        )}
+
+        {/* 확대 모드: 우측 끝 hover → 슬라이드 패널 */}
+        {full && (
+          <>
+            <div onMouseEnter={handleSideEnter} onMouseLeave={handleSideLeave}
+              style={{ position: "fixed", top: 48, right: 0, width: 20, bottom: 0, zIndex: 200, cursor: "pointer" }} />
+            {sideHover && (
+              <div onMouseEnter={handleSideEnter} onMouseLeave={handleSideLeave}
+                style={{ position: "fixed", top: 48, right: 0, bottom: 0, width: 280, zIndex: 201, boxShadow: "-4px 0 20px rgba(0,0,0,.18)", display: "flex", flexDirection: "column", background: T.surface, borderLeft: `1px solid ${T.border}`, animation: "slideInRight 200ms ease forwards" }}>
+                <RightPanel {...rightPanelProps} />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {modals}
+    </div>
+  );
+}

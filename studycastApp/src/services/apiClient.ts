@@ -91,8 +91,8 @@ apiClient.interceptors.request.use((config) => {
     return config;
   };
   // ** 401 원인
-  // 4) 브라우저 localStorage에 저장된 accessToken 가져옴
-  const accessToken = localStorage.getItem("sc_access_token");
+  // 4) 브라우저 sessionStorage 저장된 accessToken 가져옴
+  const accessToken = sessionStorage.getItem("sc_access_token");
   // 5) accessToken 있으면 Authorization 헤더 추가
   // : JwtAuthenticationFilter 검증
   if (accessToken) {

@@ -24,6 +24,11 @@ public interface UserMapper {
     // 프로필 정보 업데이트
     int updateProfile(UserDTO userDTO);
 
+    int updatePassword(UserDTO userDTO);
+
+    // 회원 관심 카테고리 조회
+    java.util.List<String> selectCategoryNamesByUserUuid(@Param("userUuid") UUID userUuid);
+
     // 카테고리 초기화
     int deleteUserInterests(@Param("userUuid") UUID userUuid);
 

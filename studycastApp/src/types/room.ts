@@ -51,6 +51,8 @@ export interface CreateRoomPayload {
   camOn: boolean;
   micOn: boolean;
   notice: string;
+  /** 관심 카테고리 — 메인 페이지 필터(CATS_FILTER) 값과 동일한 RoomCategory 사용 */
+  categories: RoomCategory[];
 }
 
 export interface CreateRoomResponse {

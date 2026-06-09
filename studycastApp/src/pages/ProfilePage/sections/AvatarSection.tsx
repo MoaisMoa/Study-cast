@@ -69,7 +69,7 @@ export function AvatarSection({
             width: 80,
             height: 80,
             borderRadius: "50%",
-            background: T.border,
+            background: avatarUrl ? T.border : T.red,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -83,10 +83,9 @@ export function AvatarSection({
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
           ) : (
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-              <circle cx="24" cy="18" r="10" fill={T.text2} />
-              <ellipse cx="24" cy="40" rx="16" ry="10" fill={T.text2} />
-            </svg>
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: 33, fontFamily: ff, lineHeight: 1 }}>
+              {name.charAt(0)}
+            </span>
           )}
         </div>
         <button

@@ -1,18 +1,18 @@
 DROP TABLE IF EXISTS
     email_verifications,
     refresh_tokens,
-    users,
     user_auths,
     roles,
     user_interests,
-    rooms,
-    categories,
     room_participants,
     room_visit_histories,
     study_logs,
     study_sessions,
     ddays,
-    chats
+    chats,
+    rooms,
+    categories,
+    users
 CASCADE;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
     user_password VARCHAR(255) NOT NULL,
     user_name VARCHAR(255) NOT NULL,
     user_gender VARCHAR(50) NOT NULL DEFAULT '설정 안 함' CHECK (user_gender IN ('남자', '여자', '설정 안 함')),
+    user_birth_date DATE,
     user_profile_image TEXT,
     user_motto VARCHAR(255),
     user_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE' CHECK (user_status IN ('ACTIVE', 'WITHDRAWN')),
@@ -108,6 +109,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     room_premium BOOLEAN NOT NULL DEFAULT FALSE,
     room_thumbnail VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expired_at TIMESTAMP NOT NULL, 
 
     CONSTRAINT fk_rooms_user FOREIGN KEY (user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE,

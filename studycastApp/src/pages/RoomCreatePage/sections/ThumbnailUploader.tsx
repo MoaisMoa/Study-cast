@@ -37,7 +37,7 @@ export function ThumbnailUploader({ value, onChange, isMobile }: ThumbnailUpload
   };
 
   const thumbW: string | number = isMobile ? "100%" : 240;
-  const thumbH: number | undefined = isMobile ? undefined : 135;
+  const thumbH: number | undefined = isMobile ? undefined : 180;
 
   return (
     <div>
@@ -57,7 +57,7 @@ export function ThumbnailUploader({ value, onChange, isMobile }: ThumbnailUpload
           position: "relative",
           width: thumbW,
           height: thumbH,
-          aspectRatio: "16 / 9",
+          aspectRatio: "4 / 3",
           flexShrink: 0,
           borderRadius: 10,
           overflow: "hidden",

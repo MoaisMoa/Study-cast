@@ -14,16 +14,25 @@ export interface ProfileMenuProps {
 
 export function ProfileMenu({ avatarSize = 36, caretSize = 16 }: ProfileMenuProps) {
   const T = useT();
-  const { logout } = useAuth();
+  const { user, isLoggedIn, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
   useClickOutside(ref, () => setOpen(false), open);
 
-  const handleClick = (item: string) => {
+  const handleClick = async (item: string) => {
     setOpen(false);
     if (item === "내 프로필") {
       navigate("/profile");
+      return;
+    }
+    if (item === "내 스터디") {
+      navigate("/my-study");
+      return;
+    }
+    if (item === "방문한 방") {
+      navigate("/visited-rooms");
       return;
     }
     // "내 스터디"는 화면 설계 코드가 아직 없으므로 라우트 미연결 (TODO)
@@ -32,6 +41,29 @@ export function ProfileMenu({ avatarSize = 36, caretSize = 16 }: ProfileMenuProp
       navigate("/login");
     }
   };
+
+  if (!isLoggedIn) {
+    return (
+      <button
+        onClick={() => navigate("/login")}
+        style={{
+          border: `1px solid ${T.border}`,
+          background: T.surface,
+          color: T.text,
+          borderRadius: 8,
+          padding: "8px 14px",
+          cursor: "pointer",
+          fontWeight: 600,
+          fontSize: 14,
+          flexShrink: 0
+        }}
+      >
+        로그인
+      </button>
+    )
+  }
+
+  const avatarText = user?.name?.trim()?.charAt(0) || "나";
 
   return (
     <div ref={ref} style={{ position: "relative", flexShrink: 0 }}>
@@ -64,7 +96,7 @@ export function ProfileMenu({ avatarSize = 36, caretSize = 16 }: ProfileMenuProp
           fontSize: avatarSize >= 36 ? 15 : 13,
           flexShrink: 0,
         }}>
-          나
+          {avatarText}
         </div>
         <Icon name="chevDown" size={caretSize} color={T.text3} />
       </button>

@@ -33,8 +33,9 @@ public class UserServiceImpl implements UserService{
         log.info("회원가입 요청: email={}", request.getUserEmail());
         // 이메일 중복 확인
         UserDTO existingUser = userMapper.findByEmail(request.getUserEmail());
+        // 예외처리: 이메일 중복은 DB 상태와 충돌
         if (existingUser != null) {
-            throw new RuntimeException("이미 사용 중인 이메일입니다.");
+            throw new IllegalStateException("이미 사용 중인 이메일입니다.");
         }
         // UserDTO 생성
         UserDTO user = new UserDTO();
@@ -79,31 +80,31 @@ public class UserServiceImpl implements UserService{
 
     private void validateSignup(SignupRequest request) {
         if (request == null) {
-            throw new RuntimeException("회원 정보가 없습니다.");
+            throw new IllegalArgumentException("회원 정보가 없습니다.");
         }
         if (request.getUserEmail() == null || request.getUserEmail().isBlank()) {
-            throw new RuntimeException("이메일을 입력하세요.");
+            throw new IllegalArgumentException("이메일을 입력하세요.");
         }
         if (!request.getUserEmail().matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
-            throw new RuntimeException("이메일 형식이 올바르지 않습니다.");
+            throw new IllegalArgumentException("이메일 형식이 올바르지 않습니다.");
         }
         if (request.getUserPassword() == null || request.getUserPassword().isBlank()) {
-            throw new RuntimeException("비밀번호를 입력하세요.");
+            throw new IllegalArgumentException("비밀번호를 입력하세요.");
         }
         if (!request.getUserPassword().matches("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()]).{8,16}$")) {
-            throw new RuntimeException("비밀번호는 영문자, 숫자, 특수문자를 포함한 8~16자리여야 합니다.");
+            throw new IllegalArgumentException("비밀번호는 영문자, 숫자, 특수문자를 포함한 8~16자리여야 합니다.");
         }
         if (request.getUserPasswordConfirm() == null || request.getUserPasswordConfirm().isBlank()) {
-            throw new RuntimeException("비밀번호 확인을 입력하세요.");
+            throw new IllegalArgumentException("비밀번호 확인을 입력하세요.");
         }
         if (!request.getUserPassword().equals(request.getUserPasswordConfirm())) {
-            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
         if (request.getUserName() == null || request.getUserName().isBlank()) {
-            throw new RuntimeException("이름을 입력하세요.");
+            throw new IllegalArgumentException("이름을 입력하세요.");
         }
         if (!request.getUserName().matches("^[가-힣]{2,5}$")) {
-            throw new RuntimeException("이름을 입력해주세요.");
+            throw new IllegalArgumentException("이름을 입력해주세요.");
         }
     }
 

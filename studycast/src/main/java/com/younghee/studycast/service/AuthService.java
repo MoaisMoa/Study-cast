@@ -14,4 +14,8 @@ public interface AuthService {
     void logout(String refreshToken, UUID userUuid);
     // 인증 사용자 정보 조회
     UserDTO getMe(UUID userUuid);
+    // 비밀번호 변경
+    void changePassword(UUID userUuid, String currentPassword, String newPassword);
+    // 회원 탈퇴
+    void withdraw(UUID userUuid, String password);
 }

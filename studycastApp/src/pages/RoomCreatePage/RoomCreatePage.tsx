@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { RoomVisibility, CreateRoomPayload } from "@/types";
+import type { CreateRoomPayload, RoomCategory, RoomVisibility } from "@/types";
 import { useRT } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useWindowWidth } from "@/hooks/useWindowWidth";
@@ -17,6 +17,7 @@ import { CapacityStepper } from "./sections/CapacityStepper";
 import { PeriodPicker } from "./sections/PeriodPicker";
 import { DeviceToggles } from "./sections/DeviceToggles";
 import { NoticeField } from "./sections/NoticeField";
+import { CategoryPicker } from "./sections/CategoryPicker";
 import { ResetConfirmModal } from "./sections/ResetConfirmModal";
 import { SubmitConfirmModal } from "./sections/SubmitConfirmModal";
 import { CreateSuccess } from "./sections/CreateSuccess";
@@ -48,6 +49,8 @@ export default function RoomCreatePage() {
   const [camOn, setCamOn] = useState(true);
   const [micOn, setMicOn] = useState(false);
   const [notice, setNotice] = useState("");
+  /** 관심 카테고리 — 메인 페이지 필터(CATS_FILTER)와 동일한 값 */
+  const [selectedCats, setSelectedCats] = useState<RoomCategory[]>([]);
 
   // ── 모달/플로우 상태 ─────────────────────────────
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -112,6 +115,7 @@ export default function RoomCreatePage() {
         thumbnail, name, visibility, code,
         count: typeof count === "number" ? count : 1,
         startDate, endDate, camOn, micOn, notice,
+        categories: selectedCats,
       };
       const res = await createRoom(payload);
       setCreatedRoomId(res.roomId);
@@ -137,6 +141,7 @@ export default function RoomCreatePage() {
     setCamOn(true);
     setMicOn(false);
     setNotice("");
+    setSelectedCats([]);
     setErrors({});
     setShowResetConfirm(false);
     setCreateError("");
@@ -144,8 +149,7 @@ export default function RoomCreatePage() {
 
   const enterCreatedRoom = () => {
     if (createdRoomId != null) {
-      // TODO(API 연결): 실제 라우터에서 `/rooms/${createdRoomId}`로 이동
-      navigate("/");
+      navigate(`/rooms/${createdRoomId}`);
     } else {
       navigate("/");
     }
@@ -231,7 +235,7 @@ export default function RoomCreatePage() {
 
       <div style={{ maxWidth: bodyMax, margin: "0 auto", padding: bodyPad }}>
         {/* 대표 이미지 */}
-        <Row label="대표 이미지" hint="16:9 비율 권장" isMobile={isMobile}>
+        <Row label="대표 이미지" hint="4:3 비율 권장" isMobile={isMobile}>
           {isMobile ? (
             <ThumbnailUploader value={thumbnail} onChange={setThumbnail} isMobile />
           ) : (
@@ -242,6 +246,14 @@ export default function RoomCreatePage() {
                   스터디 방을 대표하는 이미지를 업로드하세요.<br />
                   이미지가 없으면 기본 이미지가 사용됩니다.
                 </p>
+                <button
+                  onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement | null)?.click()}
+                  style={{ padding: "7px 16px", fontSize: 13, fontWeight: 600, borderRadius: 7, border: `1px solid ${T.border}`, background: T.surface3, color: T.text2, cursor: "pointer", transition: "all 0.15s" }}
+                  onMouseOver={(e) => { e.currentTarget.style.borderColor = T.red; e.currentTarget.style.color = T.red; }}
+                  onMouseOut={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.text2; }}
+                >
+                  파일 선택
+                </button>
               </div>
             </div>
           )}
@@ -331,6 +343,15 @@ export default function RoomCreatePage() {
           />
         </Row>
 
+        {/* 관심 카테고리 — 메인페이지 필터와 동일한 카테고리 값 사용 */}
+        <Row label="관심 카테고리" hint="선택 입력 · 1개 선택" isMobile={isMobile}>
+          <CategoryPicker
+            value={selectedCats}
+            onChange={setSelectedCats}
+            isMobile={isMobile}
+          />
+        </Row>
+
         {/* 장치 설정 */}
         <Row label="장치 설정" hint="입장 시 기본 상태" isMobile={isMobile}>
           <DeviceToggles
@@ -379,6 +400,7 @@ export default function RoomCreatePage() {
             endDate={endDate}
             camOn={camOn}
             micOn={micOn}
+            categories={selectedCats}
           />
           <button
             onClick={() => setShowResetConfirm(true)}

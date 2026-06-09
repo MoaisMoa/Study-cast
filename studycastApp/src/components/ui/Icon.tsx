@@ -16,6 +16,14 @@ const PATHS_24: Record<string, string> = {
   person:    `<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>`,
   sun:       `<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M18.66 5.34l1.41-1.41"/>`,
   moon:      `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`,
+  sortAsc:   `<path d="M11 11h4"/><path d="M11 15h7"/><path d="M11 19h10"/><path d="M9 7 6 4 3 7"/><path d="M6 4v16"/>`,
+  filter:    `<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>`,
+  history:   `<path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/>`,
+  alertCircle:`<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>`,
+  bookOpen:  `<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>`,
+  alertTri:  `<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>`,
+  trash:     `<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>`,
+  tag:       `<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>`,
 };
 
 /** RoomCreate 전용 16-viewBox 아이콘들 */
@@ -32,6 +40,7 @@ const PATHS_16: Record<string, string> = {
 export type IconName =
   | "search" | "chevDown" | "chevLeft" | "chevRight" | "edit" | "check" | "plus"
   | "users" | "x" | "home" | "heart" | "person" | "sun" | "moon"
+  | "sortAsc" | "filter" | "bookOpen" | "alertTri" | "trash" | "tag" | "history" | "alertCircle"
   | "camera" | "mic" | "lock" | "globe" | "image" | "calendar" | "bell";
 
 export interface IconProps {

@@ -81,29 +81,7 @@ export function StudyCard({ room }: { room: Room }) {
             }}>
               마감
             </div>
-          ) : room.type === "PREMIUM" ? (
-            <div style={{
-              background: "rgba(180,100,0,.9)",
-              color: "#FFD54F",
-              fontSize: 9,
-              fontWeight: 700,
-              padding: "2px 6px",
-              borderRadius: 4,
-            }}>
-              PREMIUM
-            </div>
-          ) : (
-            <div style={{
-              background: "rgba(0,0,0,.5)",
-              color: "#fff",
-              fontSize: 9,
-              fontWeight: 700,
-              padding: "2px 6px",
-              borderRadius: 4,
-            }}>
-              FREE
-            </div>
-          )}
+          ) : null}
         </div>
         <div style={{
           position: "absolute",
@@ -118,6 +96,11 @@ export function StudyCard({ room }: { room: Room }) {
         }}>
           <Icon name="users" size={12} color="#fff" />
           {room.members}/{room.max}명
+          {room.type === "PREMIUM" && (
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="#FFD54F" style={{ display: "inline-block", verticalAlign: "middle", marginLeft: 4, flexShrink: 0 }}>
+              <path d="M5 16L3 5l5.5 5L12 2l3.5 8L21 5l-2 11H5zm0 2h14v2H5v-2z" />
+            </svg>
+          )}
         </div>
       </div>
       <div style={{ padding: "10px 12px 12px", background: T.surface }}>

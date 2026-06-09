@@ -2,6 +2,7 @@ import type { Room } from "@/types";
 import { useT } from "@/theme";
 import { useModal } from "@/contexts/ModalContext";
 import { Icon } from "@/components/ui/Icon";
+import { PremiumCrown } from "@/components/ui/PremiumCrown";
 
 /** 모바일 가로형 카드 */
 export function StudyCardRow({ room }: { room: Room }) {
@@ -79,6 +80,7 @@ export function StudyCardRow({ room }: { room: Room }) {
           <span style={{ fontSize: 10, color: T.text3, display: "flex", alignItems: "center", gap: 2 }}>
             <Icon name="users" size={10} color={T.text3} />
             {room.members}/{room.max}명
+            {room.type === "PREMIUM" && <PremiumCrown />}
           </span>
           <span style={{ fontSize: 10, color: T.text3 }}>· 평균 {room.time}</span>
         </div>
@@ -94,29 +96,7 @@ export function StudyCardRow({ room }: { room: Room }) {
             }}>
               마감
             </span>
-          ) : room.type === "PREMIUM" ? (
-            <span style={{
-              fontSize: 9,
-              fontWeight: 700,
-              background: "rgba(180,100,0,.9)",
-              color: "#FFD54F",
-              padding: "1px 6px",
-              borderRadius: 3,
-            }}>
-              PREMIUM
-            </span>
-          ) : (
-            <span style={{
-              fontSize: 9,
-              fontWeight: 700,
-              background: T.surface2,
-              color: T.text2,
-              padding: "1px 6px",
-              borderRadius: 3,
-            }}>
-              FREE
-            </span>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

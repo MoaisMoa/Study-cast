@@ -10,6 +10,8 @@
         <result property="userName" column="user_name"/>
         <result property="userProfileImage" column="user_profile_image"/>
         <result property="userGender" column="user_gender"/>
+        <result property="userBirthDate" column="user_birth_date"/>
+        <result property="userMotto" column="user_motto"/>
         <result property="userStatus" column="user_status"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -25,6 +27,8 @@
             user_name,
             user_profile_image,
             user_gender,
+            user_birth_date,
+            user_motto,
             user_status,
             created_at,
             updated_at,
@@ -42,6 +46,8 @@
             user_name,
             user_profile_image,
             user_gender,
+            user_birth_date,
+            user_motto,
             user_status,
             created_at,
             updated_at,
@@ -78,6 +84,42 @@
             updated_at = CURRENT_TIMESTAMP
         WHERE user_uuid = #{userUuid}
     </update>
+
+    <!-- 프로필 정보 업데이트 -->
+    <update id="updateProfile" parameterType="UserDTO">
+        UPDATE users
+        SET
+            user_profile_image = #{userProfileImage},
+            user_gender = #{userGender},
+            user_birth_date = #{userBirthDate},
+            user_motto = #{userMotto},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_uuid = #{userUuid}
+    </update>
+
+    <!-- 관심 카테고리 조회 -->
+    <select id="selectCategoryNamesByUserUuid" parameterType="java.util.UUID" resultType="string">
+        SELECT c.category_name
+        FROM user_interests ui
+        JOIN categories c ON ui.category_no = c.category_no
+        WHERE ui.user_uuid = #{userUuid}
+        ORDER BY ui.interest_no ASC
+    </select>
+
+    <!-- 카테고리 초기화 -->
+    <delete id="deleteUserInterests" parameterType="java.util.UUID">
+        DELETE FROM user_interests
+        WHERE user_uuid = #{userUuid}
+    </delete>
+
+    <!-- 카테고리 추가 -->
+    <insert id="insertUserInterest" parameterType="map">
+        INSERT INTO user_interests (user_uuid, category_no)
+        VALUES (
+            #{userUuid},
+            (SELECT category_no FROM categories WHERE category_name = #{categoryName})
+        )
+    </insert>
 
     <!-- 비밀번호 변경 -->
     <update id="updatePassword">

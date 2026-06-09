@@ -31,9 +31,10 @@ export async function listRecommended(): Promise<Room[]> {
   });
   // 마감 제외
   list = list.filter((r) => r.members < r.max);
-  // 관심 카테고리 적용
-  if (USER_INTEREST_CATS.length > 0) {
-    list = list.filter((r) => USER_INTEREST_CATS.includes(r.cat));
+  // 관심 카테고리 적용 (프로필에서 선택한 값 — 비어 있으면 전체)
+  const interestCats = getUserInterestCats();
+  if (interestCats.length > 0) {
+    list = list.filter((r) => interestCats.includes(r.cat));
   }
   // 정렬: live > recent > else → 동순위 제목 오름차순
   list.sort((a, b) => {

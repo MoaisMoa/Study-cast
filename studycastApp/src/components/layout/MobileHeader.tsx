@@ -6,10 +6,14 @@ import { useSearch } from "@/contexts/SearchContext";
 import { Icon } from "@/components/ui/Icon";
 import { ProfileMenu } from "./ProfileMenu";
 
+/**
+ * 모바일 헤더 — 상단 1행 (로고 + 검색 + 테마 + 프로필).
+ * 하단 "홈 / 방문한 방" 탭 행은 제거됨 (MobileTabBar에서 페이지 전환 담당).
+ */
 export function MobileHeader() {
   const T = useT();
   const { mode, toggle } = useThemeCtx();
-  const { page, setPage } = usePage();
+  const { setPage } = usePage();
   const { setQuery } = useSearch();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -41,17 +45,9 @@ export function MobileHeader() {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0 }}>
           <div style={{
-            width: 28,
-            height: 28,
-            background: T.red,
-            borderRadius: 6,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            fontWeight: 800,
-            fontSize: 12,
-            flexShrink: 0,
+            width: 28, height: 28, background: T.red, borderRadius: 6,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", fontWeight: 800, fontSize: 12, flexShrink: 0,
           }}>
             SC
           </div>
@@ -65,21 +61,14 @@ export function MobileHeader() {
               autoFocus
               value={searchVal}
               onChange={(e) => setSearchVal(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") doSearch();
-              }}
+              onKeyDown={(e) => { if (e.key === "Enter") doSearch(); }}
               placeholder="스터디 검색"
               style={{
-                flex: 1,
-                height: 32,
-                paddingLeft: 10,
-                paddingRight: 10,
+                flex: 1, height: 32,
+                paddingLeft: 10, paddingRight: 10,
                 border: `1.5px solid ${T.red}`,
-                borderRadius: 7,
-                fontSize: 14,
-                outline: "none",
-                background: T.bg,
-                color: T.text,
+                borderRadius: 7, fontSize: 14, outline: "none",
+                background: T.bg, color: T.text,
                 fontFamily: "'Noto Sans KR',sans-serif",
               }}
             />
@@ -88,45 +77,29 @@ export function MobileHeader() {
         <button
           onClick={() => {
             if (searchOpen) doSearch();
-            else {
-              setSearchOpen(true);
-              setSearchVal("");
-            }
+            else { setSearchOpen(true); setSearchVal(""); }
           }}
           aria-label="검색"
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: 7,
+            width: 32, height: 32, borderRadius: 7,
             border: `1px solid ${T.border}`,
             background: "none",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, cursor: "pointer",
           }}
         >
           <Icon name="search" size={16} color={T.text2} />
         </button>
         {searchOpen && (
           <button
-            onClick={() => {
-              setSearchOpen(false);
-              setSearchVal("");
-            }}
+            onClick={() => { setSearchOpen(false); setSearchVal(""); }}
             aria-label="검색 닫기"
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 7,
+              width: 32, height: 32, borderRadius: 7,
               border: `1px solid ${T.border}`,
               background: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0, cursor: "pointer",
             }}
           >
             <Icon name="x" size={16} color={T.text2} />
@@ -136,53 +109,16 @@ export function MobileHeader() {
           onClick={toggle}
           aria-label="테마 전환"
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: 7,
+            width: 32, height: 32, borderRadius: 7,
             border: `1px solid ${T.border}`,
             background: "none",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, cursor: "pointer",
           }}
         >
           <Icon name={mode === "dark" ? "sun" : "moon"} size={16} color={T.text2} />
         </button>
         <ProfileMenu avatarSize={32} caretSize={14} />
-      </div>
-
-      {/* 하단: 홈 / 방문한 방 탭 (데스크탑 헤더과 일치) */}
-      <div style={{ display: "flex", padding: "0 16px", borderTop: `1px solid ${T.border}` }}>
-        {([
-          ["홈", "home"],
-          ["방문한 방", "fav"],
-        ] as const).map(([label, key]) => {
-          const active = page === key;
-          return (
-            <button
-              key={key}
-              onClick={() => {
-                setPage(key);
-                navigate("/");
-              }}
-              style={{
-                padding: "8px 14px",
-                fontSize: 13,
-                fontWeight: active ? 700 : 400,
-                color: active ? T.red : T.text2,
-                background: "none",
-                border: "none",
-                borderBottom: `2px solid ${active ? T.red : "transparent"}`,
-                cursor: "pointer",
-                transition: "all 0.15s",
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
       </div>
     </header>
   );

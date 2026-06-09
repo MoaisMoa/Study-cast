@@ -16,6 +16,7 @@ import java.util.UUID;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -72,6 +73,53 @@ public class AuthController {
         return Map.of(
             "success", true,
             "message", "로그아웃되었습니다."
+        );
+    }
+
+    @PatchMapping("/api/auth/me")
+    public Map<String, Object> updateMe(
+        Authentication authentication,
+        @RequestBody UserDTO request
+    ) {
+        UUID userUuid = (UUID) authentication.getPrincipal();
+        userService.updateProfile(userUuid, request);
+
+        return Map.of(
+            "success", true,
+            "message", "프로필이 저장되었습니다."
+        );
+    }
+
+    @PostMapping("/api/auth/change-password")
+    public Map<String, Object> changePassword(
+        @RequestBody Map<String, String> request,
+        Authentication authentication
+    ) {
+        UUID userUuid = (UUID) authentication.getPrincipal();
+        String currentPassword = request.get("currentPassword");
+        String newPassword = request.get("newPassword");
+
+        authService.changePassword(userUuid, currentPassword, newPassword);
+
+        return Map.of(
+            "success", true,
+            "message", "비밀번호가 변경되었습니다."
+        );
+    }
+
+    @PostMapping("/api/auth/withdraw")
+    public Map<String, Object> withdraw(
+        @RequestBody Map<String, String> request,
+        Authentication authentication
+    ) {
+        UUID userUuid = (UUID) authentication.getPrincipal();
+        String password = request.get("password");
+
+        authService.withdraw(userUuid, password);
+
+        return Map.of(
+            "success", true,
+            "message", "탈퇴 처리되었습니다."
         );
     }
     

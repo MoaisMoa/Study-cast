@@ -63,8 +63,13 @@ export function LoginForm({ onNavigate }: LoginFormProps) {
     }
   }
 
+  function handleSubmit(e:React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    handleLogin();
+  }
+
   return (
-    <div>
+    <form onSubmit={handleSubmit}>
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.3px", marginBottom: 5, color: T.text }}>
           만나서 반가워요 👋
@@ -121,7 +126,7 @@ export function LoginForm({ onNavigate }: LoginFormProps) {
           {loginError}
         </div>
       )}
-      <PrimaryButton onClick={handleLogin} disabled={loading}>
+      <PrimaryButton type="submit" disabled={loading}>
         {loading ? "처리 중..." : "로그인"}
       </PrimaryButton>
       <Divider />
@@ -136,6 +141,6 @@ export function LoginForm({ onNavigate }: LoginFormProps) {
           회원가입
         </span>
       </div>
-    </div>
+    </form>
   );
 }

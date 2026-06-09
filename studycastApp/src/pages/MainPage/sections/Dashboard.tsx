@@ -1,17 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";import { useNavigate } from "react-router-dom";
 import type { MyRoom } from "@/types";
 import { useT } from "@/theme";
+import { useWindowWidth } from "@/hooks/useWindowWidth";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/contexts/ModalContext";
 import { Icon } from "@/components/ui/Icon";
 import { fmtTimer } from "@/utils/time";
 import { listMyRooms } from "@/services/roomService";
+import { openStudyRoom } from "@/utils/openStudyRoom";
+import { fetchNearestDday } from "@/services/plannerService";
+import type { DdayItem } from "@/services/plannerService";
+import { LearningPlannerModal } from "./planner/LearningPlannerModal";
 
 /** 내 스터디 + 스탯 (각오 / 디데이 / 타이머) */
 export function Dashboard() {
   const T = useT();
+  const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
   const setModalRoom = useModal();
+  const [plannerOpen, setPlannerOpen] = useState(false);
 
   const [rooms, setRooms] = useState<MyRoom[]>([]);
   useEffect(() => {
@@ -23,12 +30,12 @@ export function Dashboard() {
   const [editRes, setEditRes] = useState(false);
   const [res, setRes] = useState("오늘도 집중해서 목표 달성!");
   const [resDraft, setResDraft] = useState(res);
-  const [editDday, setEditDday] = useState(false);
-  const [ddayNum, setDdayNum] = useState(12);
-  const [ddayName, setDdayName] = useState("정보처리기사 실기");
-  const [ddayNumD, setDdayNumD] = useState(12);
-  const [ddayNameD, setDdayNameD] = useState("정보처리기사 실기");
   const [myIdx, setMyIdx] = useState(0);
+
+  // 디데이 — 플래너 서비스와 연동 (모달 닫힐 때 갱신)
+  const [nearest, setNearest] = useState<DdayItem | null>(null);
+  const refreshDday = () => { fetchNearestDday().then(setNearest); };
+  useEffect(() => { refreshDday(); }, []);
 
   const hasRooms = rooms.length > 0;
   const curRoom = hasRooms ? rooms[Math.min(myIdx, rooms.length - 1)] : null;
@@ -40,14 +47,20 @@ export function Dashboard() {
 
   const { h, m } = fmtTimer(elapsed);
   const pct = Math.min((elapsed / (8 * 3600)) * 100, 100);
+  const ww = useWindowWidth();
+  const stackDash = ww <= 768;
 
   const scrollToStudy = () =>
     document.getElementById("my-study-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
+    <>
+    <LearningPlannerModal open={plannerOpen} onClose={() => { setPlannerOpen(false); refreshDday(); }} />
     <section
       id="my-study-section"
-      style={{
+      style={stackDash ? {
+        marginBottom: 32,
+      } : {
         display: "grid",
         gridTemplateColumns: "1fr 1.7fr",
         gap: 20,
@@ -57,7 +70,7 @@ export function Dashboard() {
       {/* 왼쪽: 내 스터디 */}
       <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: T.text }}>내 스터디</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: T.text }}>내 스터디</h2>
           {isLoggedIn && hasRooms && (
             <div style={{ display: "flex", gap: 4 }}>
               <button
@@ -73,13 +86,13 @@ export function Dashboard() {
                 <Icon name="chevLeft" size={14} color={T.text3} />
               </button>
               <button
-                onClick={() => setMyIdx((i) => Math.min(rooms.length - 1, i + 1))}
+                onClick={() => setMyIdx((i) => Math.min(rooms.length, i + 1))}
                 style={{
                   width: 26, height: 26, borderRadius: 4,
                   border: `1px solid ${T.border}`,
                   background: T.surface,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", opacity: myIdx === rooms.length - 1 ? 0.35 : 1,
+                  cursor: "pointer", opacity: myIdx === rooms.length ? 0.35 : 1,
                 }}
               >
                 <Icon name="chevRight" size={14} color={T.text3} />
@@ -137,6 +150,43 @@ export function Dashboard() {
               <span style={{ fontSize: 12, color: T.text3, textAlign: "center", lineHeight: 1.5 }}>
                 스터디방<br />참여하기
               </span>
+            </div>
+          ) : myIdx === rooms.length ? (
+            <div
+              onClick={() => navigate("/rooms/new")}
+              style={{
+                width: "100%",
+                height: "100%",
+                background: T.surface2,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12,
+                border: `1.5px dashed ${T.border}`,
+                cursor: "pointer",
+                borderRadius: T.radius,
+                transition: "border-color 0.15s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.red; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; }}
+            >
+              <div style={{
+                width: 44, height: 44, borderRadius: "50%",
+                background: T.surface2,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: `1.5px solid ${T.border}`,
+              }}>
+                <Icon name="plus" size={22} color={T.text3} strokeWidth={2} />
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.text2, marginBottom: 2 }}>
+                  스터디 만들기
+                </div>
+                <div style={{ fontSize: 11, color: T.text3 }}>
+                  새 스터디방을 시작해보세요
+                </div>
+              </div>
             </div>
           ) : curRoom ? (
             <div
@@ -203,7 +253,7 @@ export function Dashboard() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    alert(`"${curRoom.title}" 스터디룸으로 이동합니다.`);
+                    openStudyRoom(curRoom.id);
                   }}
                   style={{
                     padding: "4px 12px",
@@ -241,24 +291,34 @@ export function Dashboard() {
       </div>
 
       {/* 오른쪽: 스탯 */}
-      <div style={{
+      <div style={stackDash ? { padding: "0 0 0 16px" } : {
         background: T.surface,
         borderRadius: T.radius,
         border: `1px solid ${T.border}`,
-        padding: "18px 20px 12px",
+        padding: "12px 16px 12px",
         boxShadow: T.shadow,
         transition: "background 0.25s,border-color 0.25s",
       }}>
         <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 11, color: T.text3, marginBottom: 3 }}>오늘 공부한 시간</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: T.text3 }}>오늘 공부한 시간</div>
+            <button
+              onClick={() => setPlannerOpen(true)}
+              style={{ display: "inline-flex", alignItems: "center", padding: "4px 10px", borderRadius: 6, border: `1.5px solid ${T.red}`, background: "none", color: T.red, fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = T.red; e.currentTarget.style.color = "#fff"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = T.red; }}
+            >
+              플래너 보기
+            </button>
+          </div>
           <div style={{
             fontFamily: "'JetBrains Mono',monospace",
-            fontSize: 26,
+            fontSize: 22,
             fontWeight: 600,
             color: T.red,
             letterSpacing: "-0.02em",
             lineHeight: 1,
-            marginBottom: 18,
+            marginBottom: 10,
           }}>
             {h}
             <span style={{ fontSize: 14, color: T.text3, fontWeight: 400, marginLeft: 2 }}>시간</span>{" "}
@@ -285,7 +345,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div style={{ height: 1, background: T.border, marginBottom: 10 }} />
+        <div style={{ height: 1, background: T.border, marginBottom: 16 }} />
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           {/* 내 각오 */}
@@ -293,11 +353,8 @@ export function Dashboard() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: T.text2 }}>내 각오</span>
               <button
-                onClick={() => {
-                  if (editRes) { setRes(resDraft); setEditRes(false); }
-                  else { setResDraft(res); setEditRes(true); }
-                  scrollToStudy();
-                }}
+                onClick={() => navigate("/profile")}
+                title="내 프로필에서 각오 수정"
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -311,8 +368,8 @@ export function Dashboard() {
                   cursor: "pointer",
                 }}
               >
-                <Icon name={editRes ? "check" : "edit"} size={11} color={T.text3} />
-                {editRes ? "저장" : "설정"}
+                <Icon name="edit" size={11} color={T.text3} />
+                설정
               </button>
             </div>
             {editRes ? (
@@ -336,97 +393,41 @@ export function Dashboard() {
             )}
           </div>
 
-          {/* 내 디데이 */}
+          {/* 내 디데이 — 플래너의 가장 빠른 D-day와 연동 (설정은 플래너에서) */}
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: T.text2 }}>내 디데이</span>
-              <button
-                onClick={() => {
-                  if (editDday) {
-                    setDdayNum(ddayNumD);
-                    setDdayName(ddayNameD);
-                    setEditDday(false);
-                  } else {
-                    setDdayNumD(ddayNum);
-                    setDdayNameD(ddayName);
-                    setEditDday(true);
-                  }
-                  scrollToStudy();
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 3,
-                  background: "none",
-                  border: `1px solid ${T.border}`,
-                  borderRadius: 4,
-                  padding: "2px 6px",
-                  fontSize: 11,
-                  color: T.text3,
-                  cursor: "pointer",
-                }}
-              >
-                <Icon name={editDday ? "check" : "edit"} size={11} color={T.text3} />
-                {editDday ? "저장" : "설정"}
-              </button>
             </div>
-            {editDday ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <input
-                  value={ddayNumD}
-                  onChange={(e) => setDdayNumD(Number(e.target.value))}
-                  type="number"
-                  placeholder="D-?"
-                  style={{
-                    width: "100%",
-                    border: `1.5px solid ${T.red}`,
-                    borderRadius: 5,
-                    padding: "5px 8px",
-                    fontSize: 12,
-                    outline: "none",
-                    background: T.surface,
-                    color: T.text,
-                    fontFamily: "'Noto Sans KR',sans-serif",
-                  }}
-                />
-                <input
-                  value={ddayNameD}
-                  onChange={(e) => setDdayNameD(e.target.value)}
-                  placeholder="시험 이름"
-                  style={{
-                    width: "100%",
-                    border: `1.5px solid ${T.red}`,
-                    borderRadius: 5,
-                    padding: "5px 8px",
-                    fontSize: 12,
-                    outline: "none",
-                    background: T.surface,
-                    color: T.text,
-                    fontFamily: "'Noto Sans KR',sans-serif",
-                  }}
-                />
-              </div>
-            ) : (
+            {nearest ? (
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{
-                  background: T.red,
-                  color: "#fff",
+                  background: "none",
+                  color: T.red,
+                  border: `1.5px solid ${T.red}`,
                   borderRadius: 6,
-                  padding: "5px 12px",
+                  padding: "4px 11px",
                   fontFamily: "'JetBrains Mono',monospace",
                   fontWeight: 700,
                   fontSize: 17,
                   flexShrink: 0,
                   lineHeight: 1.2,
                 }}>
-                  D-{ddayNum}
+                  {nearest.dday === 0 ? "D-day" : `D-${nearest.dday}`}
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: T.text, lineHeight: 1.4 }}>{ddayName}</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: T.text, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nearest.title}</div>
+              </div>
+            ) : (
+              <div
+                onClick={() => setPlannerOpen(true)}
+                style={{ fontSize: 13, color: T.text3, lineHeight: 1.4, cursor: "pointer" }}
+              >
+                등록된 일정이 없습니다.
               </div>
             )}
           </div>
         </div>
       </div>
     </section>
+    </>
   );
 }
