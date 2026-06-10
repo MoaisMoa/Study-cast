@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 public class RoomServiceImpl implements RoomService {
     
     // 제목, 공지사항, 기간 최대값
+    private static final int MIN_TITLE_LENGHT = 2;
     private static final int MAX_TITLE_LENGTH = 10;
     private static final int MAX_NOTICE_LENGTH = 500;
     private static final int MAX_PERIOD_DAYS = 90;
@@ -45,7 +46,7 @@ public class RoomServiceImpl implements RoomService {
         RoomCreateRequest request, 
         MultipartFile image
     ) {
-        // 1. 로그인 사용자 UUID 받기
+        // 1. 로그인 사용자 UUID 검증
         validateUserUuid(userUuid);
         // 2. 방 생성 요청값 검증
         validateCreateRequest(request);
@@ -133,7 +134,13 @@ public class RoomServiceImpl implements RoomService {
         if (roomTitle == null || roomTitle.trim().isEmpty()) {
             throw new IllegalArgumentException("스터디 이름은 필수입니다.");
         }
-        if (roomTitle.trim().length() > MAX_TITLE_LENGTH) {
+
+        int titleLength = roomTitle.trim().length();
+
+        if (titleLength < MIN_TITLE_LENGHT) {
+            throw new IllegalArgumentException("스터디 이름은 2자 이상 입력해야 합니다.");
+        }
+        if (titleLength > MAX_TITLE_LENGTH) {
             throw new IllegalArgumentException("스터디 이름은 10자 이하로 입력해야 합니다.");
         }
     }
@@ -185,7 +192,7 @@ public class RoomServiceImpl implements RoomService {
             throw new IllegalArgumentException("종료일은 오늘 이후 날짜로 설정해야 합니다.");
         }
 
-        long periodDays = ChronoUnit.DAYS.between(today, expiredAt);
+        long periodDays = ChronoUnit.DAYS.between(today, expiredAt) + 1;
 
         if (periodDays > MAX_PERIOD_DAYS) {
             throw new IllegalArgumentException("스터디 기간은 최대 90일까지 설정할 수 있습니다.");

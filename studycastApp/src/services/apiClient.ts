@@ -1,9 +1,6 @@
 /**
- * 추후 백엔드 연결을 위한 API 클라이언트 어댑터.
- *
- * 현재는 더미 데이터만 다루기 때문에 실제 fetch 호출 없이
- * `sleep` + 랜덤 실패 헬퍼만 노출한다.
- * 백엔드 연결 시 `request` 함수만 교체하면 된다.
+ * Spring Boot 백엔드 요청을 위한 Axios 공통 클라이언트
+ * 인증이 필요한 요청에는 Access Token을 자동으로 추가!
  */
 
 import axios from "axios";
@@ -56,12 +53,13 @@ export async function mockRequest<T>(
  * }
  */
 
-// axios (Spring API 호출)
+// axios (Spring API 공통 클라이언트)
 export const apiClient = axios.create({
   baseURL: "http://localhost:8080",
-  headers: {
-    "Content-Type": "application/json",
-  },
+  // 공통 Content-Type 삭제 -> 일반 객체(json)과 FormData(multipart) 같이 보내야함.
+  // headers: {
+  //   "Content-Type": "application/json",
+  // },
 });
 
 // ** accessToken 자동으로 붙이는 Axios 공통 설정

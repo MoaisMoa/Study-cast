@@ -49,11 +49,11 @@ export function PeriodPicker({
       )}
       <div style={{
         display: "flex",
-        flexDirection: isMobile ? "column" : "row",
-        alignItems: isMobile ? "stretch" : "center",
+        flexDirection: "row",
+        alignItems: "center",
         gap: isMobile ? 8 : 12,
       }}>
-        <div>
+        <div style={{ flex: isMobile ? 1 : "none", minWidth: 0 }}>
           <input
             type="date"
             value={startDate}
@@ -62,13 +62,13 @@ export function PeriodPicker({
           />
           <p style={hintStyle}>시작일 (오늘 자동 설정)</p>
         </div>
-        {!isMobile && <span style={{ color: T.muted, fontSize: 18, paddingBottom: 20 }}>→</span>}
-        <div>
+        <span style={{ color: T.muted, fontSize: 18, paddingBottom: 20, flexShrink: 0 }}>→</span>
+        <div style={{ flex: isMobile ? 1 : "none", minWidth: 0 }}>
           <input
             type="date"
             value={endDate}
             min={offsetDate(1)}
-            max={offsetDate(90)}
+            max={offsetDate(89)}
             onChange={(e) => {
               const val = e.target.value;
               onEndDateChange(val);

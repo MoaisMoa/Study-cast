@@ -44,15 +44,20 @@ export function MobileHeader() {
         gap: 10,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0 }}>
-          <div style={{
+          <div
+            onClick={() => { setPage("home"); navigate("/"); }}
+            style={{
             width: 28, height: 28, background: T.red, borderRadius: 6,
             display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#fff", fontWeight: 800, fontSize: 12, flexShrink: 0,
+            color: "#fff", fontWeight: 800, fontSize: 12, flexShrink: 0, cursor: "pointer",
           }}>
             SC
           </div>
           {!searchOpen && (
-            <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.02em", color: T.text }}>
+            <span
+              onClick={() => { setPage("home"); navigate("/"); }}
+              style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.02em", color: T.text, cursor: "pointer" }}
+            >
               스터디<span style={{ color: T.red }}>캐스트</span>
             </span>
           )}
