@@ -57,6 +57,7 @@ public class SecurityConfig {
                     "/api/auth/password/send-code",
                     "/api/auth/password/verify-code",
                     "/api/auth/password/reset",
+                    "/ws",
                     "/ws/**"
                 ).permitAll()
 

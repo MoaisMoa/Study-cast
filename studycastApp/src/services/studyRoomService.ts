@@ -15,7 +15,7 @@ import {
   ALL_INIT, INITIAL_MESSAGES, ROOM_MAX_MEMBERS, ROOM_TITLE_DEFAULT,
 } from "@/data/studyRoom";
 import { mockRequest } from "./apiClient";
-import SockJS from "sockjs-client";
+// import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
 
 /** 방 입장 시 한 번에 받아오는 초기 스냅샷 */
@@ -39,73 +39,75 @@ let stompClient: Client | null = null;
 let stompSubscription: any = null;
 let activeRoomId: string | null = null;
 
+function getAccessToken(): string | null {
+  return sessionStorage.getItem("sc_access_token");
+}
+
+function formatTime(date: Date): string {
+  return [date.getHours(), date.getMinutes(), date.getSeconds()]
+    .map((value) => String(value).padStart(2, "0"))
+    .join(":");
+}
+
+function buildStompClient(): Client {
+  const token = getAccessToken();
+  const wsUrl = `${WS_BASE_URL}${WS_ENDPOINT}`.replace(/^http/, "ws");
+  const client = new Client({
+    // webSocketFactory: () => new SockJS(`${WS_BASE_URL}${WS_ENDPOINT}`),
+    brokerURL: wsUrl,
+    connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+    reconnectDelay: 5000,
+    heartbeatIncoming: 0,
+    heartbeatOutgoing: 20000,
+    debug: () => {},
+  });
+  return client;
+}
+
+async function ensureStompConnected(): Promise<void> {
+  if (stompClient && stompClient.active && stompClient.connected) {
+    return;
+  }
+  if (stompClient) {
+    stompClient.deactivate();
+    stompClient = null;
+  }
+
+  const client = buildStompClient();
+  const ready = new Promise<void>((resolve, reject) => {
+    client.onConnect = () => {
+      stompClient = client;
+      resolve();
+    };
+    client.onStompError = (frame) => {
+      reject(new Error(frame?.body || "STOMP error"));
+    };
+    client.onWebSocketError = (event) => {
+      reject(new Error("WebSocket error"));
+    };
+  });
+  client.activate();
+  return ready;
+}
+
+function toChatMessage(payload: any): ChatMessage {
+  const sentAt = payload.sentAt ? new Date(payload.sentAt) : new Date();
+  return {
+    id: Number(payload.id ?? Date.now()),
+    name: payload.userName ?? "알 수 없음",
+    text: payload.message ?? String(payload.text ?? ""),
+    time: formatTime(sentAt),
+    mine: false,
+    isHost: false,
+  };
+}
+
 /** 방 입장 — 초기 스냅샷 조회 (GET /rooms/:id) */
 export async function fetchRoom(roomId: string): Promise<RoomSnapshot> {
   // TODO(API 연결): return request<RoomSnapshot>(`/rooms/${roomId}`);
   return mockRequest(
     {
       roomId,
-
-  function getAccessToken(): string | null {
-    return sessionStorage.getItem("sc_access_token");
-  }
-
-  function formatTime(date: Date): string {
-    return [date.getHours(), date.getMinutes(), date.getSeconds()]
-      .map((value) => String(value).padStart(2, "0"))
-      .join(":");
-  }
-
-  function buildStompClient(): Client {
-    const token = getAccessToken();
-    const client = new Client({
-      webSocketFactory: () => new SockJS(`${WS_BASE_URL}${WS_ENDPOINT}`),
-      connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
-      reconnectDelay: 5000,
-      heartbeatIncoming: 0,
-      heartbeatOutgoing: 20000,
-      debug: () => {},
-    });
-    return client;
-  }
-
-  async function ensureStompConnected(): Promise<void> {
-    if (stompClient && stompClient.active && stompClient.connected) {
-      return;
-    }
-    if (stompClient) {
-      stompClient.deactivate();
-      stompClient = null;
-    }
-
-    const client = buildStompClient();
-    const ready = new Promise<void>((resolve, reject) => {
-      client.onConnect = () => {
-        stompClient = client;
-        resolve();
-      };
-      client.onStompError = (frame) => {
-        reject(new Error(frame?.body || "STOMP error"));
-      };
-      client.onWebSocketError = (event) => {
-        reject(new Error("WebSocket error"));
-      };
-    });
-    client.activate();
-    return ready;
-  }
-
-  function toChatMessage(payload: any): ChatMessage {
-    const sentAt = payload.sentAt ? new Date(payload.sentAt) : new Date();
-    return {
-      id: Number(payload.id ?? Date.now()),
-      name: payload.userName ?? "알 수 없음",
-      text: payload.message ?? String(payload.text ?? ""),
-      time: formatTime(sentAt),
-      mine: false,
-      isHost: false,
-    };
-  }
       title: ROOM_TITLE_DEFAULT,
       maxMembers: ROOM_MAX_MEMBERS,
       members: ALL_INIT,

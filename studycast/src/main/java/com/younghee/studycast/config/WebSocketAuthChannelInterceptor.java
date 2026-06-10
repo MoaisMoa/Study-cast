@@ -20,9 +20,11 @@ import com.younghee.studycast.dto.UserDTO;
 import com.younghee.studycast.security.JwtProvider;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
 
     private final JwtProvider jwtProvider;
@@ -58,7 +60,11 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
             Principal principal = accessor.getUser();
             String destination = accessor.getDestination();
-            if (principal != null && destination != null && destination.startsWith("/sub/rooms/")) {
+            if (destination != null && destination.startsWith("/sub/rooms/")) {
+                if (principal == null) {
+                    log.warn("WebSocket 구독 거절! : 인증되지 않은 사용갖가 {} 경로 구독을 시도함!", destination);
+                    return null;
+                }
                 try {
                     Long roomNo = Long.valueOf(destination.substring("/sub/rooms/".length()));
                     UUID userUuid = UUID.fromString(principal.getName());
@@ -71,6 +77,15 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             }
         }
 
+        if (StompCommand.SEND.equals(accessor.getCommand())) {
+            Principal principal = accessor.getUser();
+            String destination = accessor.getDestination();
+            if (destination != null && destination.startsWith("/pub/") && principal == null) {
+                log.warn("WebSocket 전송 거절 : 인증되지 않은 사용자가 {} 경로로 메시지 발송 시도함!", destination);
+                return null;
+            }
+        }
+
         return message;
     }
 
@@ -79,10 +94,16 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         if (nativeHeaders == null) {
             return null;
         }
-        var values = nativeHeaders.get("Authorization");
-        if (values == null || values.isEmpty()) {
-            return null;
+
+        for (var entry : nativeHeaders.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().equalsIgnoreCase("Authorization")) {
+                var values = entry.getValue();
+                if (values != null && !values.isEmpty()) {
+                    return values.get(0);
+                }
+            }
         }
-        return values.get(0);
+
+        return null;
     }
 }
