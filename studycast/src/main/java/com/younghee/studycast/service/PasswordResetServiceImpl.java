@@ -12,8 +12,8 @@ import com.younghee.studycast.dao.EmailVerificationMapper;
 import com.younghee.studycast.dao.RefreshTokenMapper;
 import com.younghee.studycast.dao.UserMapper;
 import com.younghee.studycast.dto.EmailVerificationDTO;
-import com.younghee.studycast.dto.PasswordResetRequest;
 import com.younghee.studycast.dto.UserDTO;
+import com.younghee.studycast.dto.request.PasswordResetRequest;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

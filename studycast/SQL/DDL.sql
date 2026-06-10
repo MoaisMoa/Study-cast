@@ -90,6 +90,11 @@ CREATE TABLE IF NOT EXISTS rooms (
     CONSTRAINT fk_rooms_user FOREIGN KEY (user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE,
     CONSTRAINT fk_rooms_category FOREIGN KEY(category_no) REFERENCES categories(category_no) ON DELETE CASCADE
 );
+-- 6-1. 비공개 방 참여코드만 중복 금지 (동시 요청 포함)
+CREATE UNIQUE INDEX uq_rooms_private_password
+ON rooms (room_password)
+WHERE room_private = TRUE
+    AND room_password IS NOT NULL;
 
 -- 7. 룸 참여자 정보
 CREATE TABLE IF NOT EXISTS room_participants (

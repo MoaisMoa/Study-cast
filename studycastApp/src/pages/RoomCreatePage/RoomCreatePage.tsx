@@ -1,5 +1,5 @@
 /** 핵심! 기존의 "이미지 먼저 업로드 -> URL로 방 생성" 흐름 제거하고,
- * 방 저오와 이미지 파일 createRoom(payload, thumbnailFile)로 한 번에 보내기
+ * 방 정보와 이미지 파일 createRoom(payload, thumbnailFile)로 한 번에 보내기
  */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -24,6 +24,7 @@ import { ResetConfirmModal } from "./sections/ResetConfirmModal";
 import { SubmitConfirmModal } from "./sections/SubmitConfirmModal";
 import { CreateSuccess } from "./sections/CreateSuccess";
 import { ROOM_CATEGORY_NO } from "@/types";
+import axios from "axios";
 
 interface FormErrors {
   name?: string;
@@ -96,7 +97,7 @@ export default function RoomCreatePage() {
     else {
       const diffDays = Math.round(
         (new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000
-      );
+      ) + 1;
       if (diffDays > 90) e.date = "종료일은 시작일로부터 최대 90일 이내로 설정해주세요.";
     }
     /** 관심 카테고리 검증 */
@@ -123,6 +124,10 @@ export default function RoomCreatePage() {
   };
 
   const handleConfirmCreate = async () => {
+    if (isCreating) {
+      return;
+    }
+
     setIsCreating(true);
     setCreateError("");
     
@@ -159,10 +164,17 @@ export default function RoomCreatePage() {
       setCreatedRoomId(response.roomNo);
       setShowSubmitConfirm(false);
       setSubmitted(true);
-    } catch {
-      setCreateError(
-        "스터디 그룹 방 생성 중 오류가 발생했습니다."
-      );
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setCreateError(
+          error.response?.data?.message ??
+            "스터디 그룹 방 생성 중 오류가 발생했습니다."
+        );
+      } else {
+        setCreateError(
+          "스터디 그룹 방 생성 중 오류가 발생했습니다."
+        );
+      }
     } finally {
       setIsCreating(false);
     }
@@ -178,7 +190,7 @@ export default function RoomCreatePage() {
     setCodeCheck("idle");
     setVisibility("public");
     setCount(2);
-    /** 오늘 + 90일 (시작일 표함) */
+    /** 오늘 + 90일 (시작일 포함) */
     setEndDate(offsetDate(89));
     setCamOn(true);
     setMicOn(false);
@@ -217,7 +229,9 @@ export default function RoomCreatePage() {
     fontSize: 14,
     background: T.surface2,
     color: T.text,
-    border: `1px solid ${T.border}`,
+    borderStyle: "solid" as const,
+    borderWidth: 1,
+    borderColor: T.border,
     borderRadius: 8,
     outline: "none",
     transition: "border-color 0.15s",
@@ -337,7 +351,12 @@ export default function RoomCreatePage() {
             value={visibility}
             onChange={(v) => {
               setVisibility(v);
-              setErrors((p) => ({ ...p, visibility: "" }));
+              setErrors((p) => ({ ...p, visibility: "", code: "" }));
+
+              if (v === "public") {
+                setCode("");
+                setCodeCheck("idle");
+              }
             }}
             error={errors.visibility}
             isMobile={isMobile}
@@ -443,8 +462,8 @@ export default function RoomCreatePage() {
           <SubmitConfirmModal
             open={showSubmitConfirm}
             onClose={() => setShowSubmitConfirm(false)}
-            onConfirm={handleConfirmCreate}
             isCreating={isCreating}
+            onConfirm={handleConfirmCreate}
             createError={createError}
             thumbnail={thumbnail}
             name={name}

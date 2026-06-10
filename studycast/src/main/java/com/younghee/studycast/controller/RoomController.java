@@ -5,8 +5,9 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.younghee.studycast.dto.RoomCreateRequest;
-import com.younghee.studycast.dto.RoomCreateResponse;
+import com.younghee.studycast.dto.request.RoomCreateRequest;
+import com.younghee.studycast.dto.response.JoinCodeCheckResponse;
+import com.younghee.studycast.dto.response.RoomCreateResponse;
 import com.younghee.studycast.service.RoomService;
 
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 
 @RestController
@@ -43,6 +47,17 @@ public class RoomController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+    
+    // 참여 코드 조회
+    @GetMapping("/check-code")
+    public ResponseEntity<JoinCodeCheckResponse> checkJoinCodeDuplicate(
+        @RequestParam("code") String code
+    ) {
+        JoinCodeCheckResponse response =
+            roomService.checkJoinCodeDuplicate(code);
+
+        return ResponseEntity.ok(response);
     }
     
 }

@@ -77,11 +77,14 @@ export function PeriodPicker({
               } else if (val <= startDate) {
                 setError("종료일은 시작일 이후 날짜를 선택해주세요.");
               } else {
-                const diff = Math.round(
-                  (new Date(val).getTime() - new Date(startDate).getTime()) / 86400000
-                );
-                if (diff > 90) {
-                  setError("종료일은 최대 90일 이내로 설정해주세요.");
+                const totalDays =
+                  Math.round(
+                    (new Date(val).getTime() - new Date(startDate).getTime()) /
+                      86400000
+                  ) + 1;
+
+                if (totalDays > 90) {
+                  setError("스터디 기간은 최대 90일까지 설정할 수 있습니다.");
                 } else {
                   setError("");
                 }

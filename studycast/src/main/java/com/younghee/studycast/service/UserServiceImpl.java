@@ -8,8 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.younghee.studycast.dao.RoleMapper;
 import com.younghee.studycast.dao.UserMapper;
-import com.younghee.studycast.dto.SignupRequest;
 import com.younghee.studycast.dto.UserDTO;
+import com.younghee.studycast.dto.request.SignupRequest;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

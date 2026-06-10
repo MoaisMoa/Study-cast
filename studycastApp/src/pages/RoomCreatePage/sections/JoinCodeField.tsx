@@ -1,7 +1,7 @@
 import { useRT } from "@/theme";
 import { checkJoinCodeDuplicate } from "@/services/roomService";
 
-export type CodeCheckState = "idle" | "checking" | "ok" | "duplicate";
+export type CodeCheckState = "idle" | "checking" | "ok" | "duplicate" | "error";
 
 export interface JoinCodeFieldProps {
   code: string;
@@ -59,7 +59,7 @@ export function JoinCodeField({
         onErrorClear();
       }
     } catch {
-      setState("idle");
+      setState("error");
     }
   };
 
@@ -68,10 +68,12 @@ export function JoinCodeField({
       <div style={{
         display: "flex",
         gap: 8,
-        alignItems: "flex-start",
+        alignItems: isMobile ? "stretch" : "flex-start",   // ← 모바일은 stretch
         flexDirection: isMobile ? "column" : "row",
+        width: isMobile ? "100%" : undefined,              // ← 추가
+        maxWidth: isMobile ? 280 : undefined,              // ← 추가: 폭 제한
       }}>
-        <div style={{ flex: isMobile ? undefined : "none" }}>
+        <div style={{ flex: isMobile ? undefined : "none", width: isMobile ? "100%" : undefined }}>
           <input
             type="text"
             placeholder="숫자 4~6자리"
@@ -100,7 +102,7 @@ export function JoinCodeField({
             border: `1px solid ${T.border}`,
             background: code.length >= 4 && state !== "checking" ? T.surface3 : T.surface2,
             color: code.length < 4 || state === "checking" ? T.muted2 : T.text2,
-            cursor: code.length < 4 ? "not-allowed" : "pointer",
+            cursor: code.length < 4 || state === "checking" ? "not-allowed" : "pointer",
             whiteSpace: "nowrap",
             transition: "all 0.15s",
             flexShrink: 0,
@@ -123,6 +125,17 @@ export function JoinCodeField({
       {state === "idle" && !error && (
         <p style={{ fontSize: 12, color: T.muted, margin: "5px 0 0" }}>
           입력 후 중복 확인을 해주세요.
+        </p>
+      )}
+      {state === "error" && (
+        <p
+          style={{
+            fontSize: 12,
+            color: T.red,
+            margin: "5px 0 0",
+          }}
+        >
+          참여 코드 중복 확인 중 오류가 발생했습니다.
         </p>
       )}
       {error && state !== "duplicate" && (

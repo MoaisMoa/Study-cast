@@ -20,7 +20,11 @@ CREATE TABLE rooms (
     CONSTRAINT fk_rooms_category FOREIGN KEY(category_no)
     REFERENCES categories(category_no) ON DELETE CASCADE
 );
-
+CREATE UNIQUE INDEX uq_rooms_private_password
+ON rooms (room_password)
+WHERE room_private = TRUE
+    AND room_password IS NOT NULL;
+    
 COMMENT ON COLUMN rooms.room_no IS '방 고유 번호';
 COMMENT ON COLUMN rooms.user_uuid IS '회원 식별 번호';
 COMMENT ON COLUMN rooms.category_no IS '카테고리 식별 번호';

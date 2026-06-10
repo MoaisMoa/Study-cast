@@ -3,6 +3,7 @@ package com.younghee.studycast.handler;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -90,5 +91,40 @@ public class GlobalExceptionHandler {
                 "success", false,
                 "message", "서버 오류가 발생했습니다."
             ));
+    }
+
+    // DB 제약조건 오류 처리
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, String>> handleDataIntegrityViolation(
+        DataIntegrityViolationException e
+    ) {
+        String causeMessage = e.getMostSpecificCause().getMessage();
+
+        if (causeMessage != null && causeMessage.contains("uq_rooms_private_password")) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(Map.of(
+                        "message",
+                        "이미 사용 중인 참여 코드입니다."
+                    ));
+        }
+
+        if (causeMessage != null && causeMessage.contains("fk_rooms_category")) {
+            log.warn("DataIntegrityViolationException fk_rooms_category 발생: {}", causeMessage, e);
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                        "message",
+                        "존재하지 않는 카테고리입니다."
+                    ));
+        }
+
+        log.warn("DataIntegrityViolationException 발생: {}", causeMessage, e);
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                    "message",
+                    "데이터 저장 중 제약조건 오류가 발생했습니다."
+                ));
     }
 }

@@ -1,4 +1,4 @@
-package com.younghee.studycast.dto;
+package com.younghee.studycast.dto.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

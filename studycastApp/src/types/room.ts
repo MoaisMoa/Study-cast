@@ -68,3 +68,10 @@ export interface CreateRoomResponse {
   roomTitle: string;
   message: string;
 }
+
+/** 스터디방 비공개 참여코드 API 응답 */
+export interface JoinCodeCheckResponse {
+  code: string,
+  duplicate: boolean,
+  message: string
+}

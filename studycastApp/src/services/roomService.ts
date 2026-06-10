@@ -2,7 +2,7 @@
  * 스터디룸 관련 서비스
  */
 
-import type { CreateRoomPayload, CreateRoomResponse, Room, MyRoom } from "@/types";
+import type { CreateRoomPayload, CreateRoomResponse, JoinCodeCheckResponse, Room, MyRoom } from "@/types";
 import { MY_ROOMS_RAW, REC_ROOMS, ROOM_POOL } from "@/data/rooms";
 import { getUserInterestCats } from "@/data/interestStore";
 import { apiClient, mockRequest } from "./apiClient";
@@ -61,10 +61,18 @@ export async function listMyRooms(): Promise<MyRoom[]> {
  * Content-Type은 직접 지정하지 않고 브라우저가 boundary를 생성하도록 한다.
  */
 
-/** 참여 코드 중복 확인 — mock: 항상 사용 가능 */
-export async function checkJoinCodeDuplicate(_code: string): Promise<boolean> {
-  await mockRequest(null, { latency: 600 });
-  return false; // false = 중복 아님
+/** 참여 코드 중복 확인 */
+export async function checkJoinCodeDuplicate(code: string): Promise<boolean> {
+  // 1. 참여 코드 중복 확인 API 요청
+  const response =
+    await apiClient.get<JoinCodeCheckResponse>(
+      "/api/rooms/check-code",
+      {
+        params: { code },
+      }
+    );
+    // 2. 응답 DTO에서 중복 여부만 반환
+    return response.data.duplicate;
 }
 
 /** 방 생성 */

@@ -13,10 +13,11 @@ import com.younghee.studycast.config.StudyRoomPolicyProperties;
 import com.younghee.studycast.dao.RoomParticipantsMapper;
 import com.younghee.studycast.dao.RoomsMapper;
 import com.younghee.studycast.domain.RoomCategory;
-import com.younghee.studycast.dto.RoomCreateRequest;
-import com.younghee.studycast.dto.RoomCreateResponse;
 import com.younghee.studycast.dto.RoomParticipantDTO;
 import com.younghee.studycast.dto.RoomsDTO;
+import com.younghee.studycast.dto.request.RoomCreateRequest;
+import com.younghee.studycast.dto.response.JoinCodeCheckResponse;
+import com.younghee.studycast.dto.response.RoomCreateResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 public class RoomServiceImpl implements RoomService {
     
     // 제목, 공지사항, 기간 최대값
-    private static final int MIN_TITLE_LENGHT = 2;
+    private static final int MIN_TITLE_LENGTH = 2;
     private static final int MAX_TITLE_LENGTH = 10;
     private static final int MAX_NOTICE_LENGTH = 500;
     private static final int MAX_PERIOD_DAYS = 90;
@@ -108,6 +109,24 @@ public class RoomServiceImpl implements RoomService {
         
     }
 
+    @Override
+    public JoinCodeCheckResponse checkJoinCodeDuplicate(String code) {
+        // 1. 참여 코드의 필수 여부와 숫자 4~6자리 형식 검증하고,
+        // 앞뒤 공백 제거한 정규화된 참여 코드를 반환받음
+        String normalizedCode = validateAndNormalizeJoinCode(code);
+        // 2. DB에서 동일한 비공개 방 참여 코드가 존재하는지 확인
+        boolean duplicate =
+            roomsMapper.existsByRoomPassword(normalizedCode);
+        // 3. 확인한 코드, 중복 여부, 안내 메시지를 응답 DTO로 반환
+        return new JoinCodeCheckResponse(
+            normalizedCode,
+            duplicate,
+            duplicate
+                ? "이미 사용 중인 참여 코드입니다."
+                : "사용 가능한 참여 코드입니다."
+        );
+    }
+
     private void validateUserUuid(UUID userUuid) {
         if (userUuid == null) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
@@ -137,7 +156,7 @@ public class RoomServiceImpl implements RoomService {
 
         int titleLength = roomTitle.trim().length();
 
-        if (titleLength < MIN_TITLE_LENGHT) {
+        if (titleLength < MIN_TITLE_LENGTH) {
             throw new IllegalArgumentException("스터디 이름은 2자 이상 입력해야 합니다.");
         }
         if (titleLength > MAX_TITLE_LENGTH) {
@@ -152,18 +171,16 @@ public class RoomServiceImpl implements RoomService {
     }
 
     private void validateRoomPassword(Boolean roomPrivate, String roomPassword) {
-        if (roomPrivate == null) {
+        // 1. 공개 방이면 참여 코드 검증 없이 종료
+        if (!Boolean.TRUE.equals(roomPrivate)) {
             return;
         }
-
-        if (Boolean.TRUE.equals(roomPrivate)) {
-            if (roomPassword == null || roomPassword.trim().isEmpty()) {
-                throw new IllegalArgumentException("비공개 스터디는 참여 코드가 필수입니다.");
-            }
-
-            if (!roomPassword.trim().matches("^\\d{4,6}$")) {
-                throw new IllegalArgumentException("참여코드는 숫자 4~6자리로 입력해야 합니다.");
-            }
+        // 2. 비공개 방 참여 코드의 필수 여부와 형식을 검증하고 정규화
+        String normalizedCode =
+            validateAndNormalizeJoinCode(roomPassword);
+        // 3. 실제 방 생성 시 동일한 참여 코드가 이미 존재하는지 재검증
+        if (roomsMapper.existsByRoomPassword(normalizedCode)) {
+            throw new IllegalArgumentException("이미 사용 중인 참여 코드입니다.");
         }
     }
 
@@ -251,5 +268,21 @@ public class RoomServiceImpl implements RoomService {
                 deleteException
             );
         }
+    }
+
+    private String validateAndNormalizeJoinCode(String code) {
+        if (code == null || code.trim().isEmpty()) {
+            throw new IllegalArgumentException("참여 코드를 입력해주세요.");
+        }
+
+        String normalizedCode = code.trim();
+
+        if (!normalizedCode.matches("^\\d{4,6}$")) {
+            throw new IllegalArgumentException(
+                "참여 코드는 숫자 4~6자리로 입력해야 합니다."
+            );
+        }
+
+        return normalizedCode;
     }
 }

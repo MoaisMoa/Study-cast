@@ -73,4 +73,14 @@
         FROM rooms
         WHERE room_no = #{roomNo}
     </select>
+
+    <!-- 비공개 방 참여 코드 존재 여부 확인 -->
+    <select id="existsByRoomPassword" parameterType="string" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM rooms
+            WHERE room_private = TRUE
+            AND room_password = #{roomPassword}
+        )
+    </select>
 </mapper>

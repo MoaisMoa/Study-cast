@@ -25,6 +25,13 @@ interface BackendAuthResponse {
   refreshToken: string;
 }
 
+/** 세션 저장소 초기화 — 로그아웃 및 인증 재시도 시 사용 */
+export function clearAuthSession(): void {
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
+}
+
 interface BackendUser {
   userUuid: string;
   userEmail: string;
@@ -131,9 +138,7 @@ export async function logout(): Promise<void> {
       });
     }
   } finally {
-    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-    sessionStorage.removeItem(REFRESH_TOKEN_KEY);
-    sessionStorage.removeItem(USER_KEY);
+    clearAuthSession();
   }
 }
 
