@@ -40,7 +40,11 @@ let stompSubscription: any = null;
 let activeRoomId: string | null = null;
 
 function getAccessToken(): string | null {
-  return sessionStorage.getItem("sc_access_token");
+  const token = sessionStorage.getItem("sc_access_token");
+  if (!token) {
+    console.warn("studyRoomService: access token is missing for WebSocket authentication.");
+  }
+  return token;
 }
 
 function formatTime(date: Date): string {
@@ -52,6 +56,12 @@ function formatTime(date: Date): string {
 function buildStompClient(): Client {
   const token = getAccessToken();
   const wsUrl = `${WS_BASE_URL}${WS_ENDPOINT}`.replace(/^http/, "ws");
+  
+  console.log("[STOMP] buildStompClient: token present =", !!token);
+  if (token) {
+    console.log("[STOMP] Token header will be sent: Authorization: Bearer [token]");
+  }
+  
   const client = new Client({
     // webSocketFactory: () => new SockJS(`${WS_BASE_URL}${WS_ENDPOINT}`),
     brokerURL: wsUrl,
@@ -59,12 +69,30 @@ function buildStompClient(): Client {
     reconnectDelay: 5000,
     heartbeatIncoming: 0,
     heartbeatOutgoing: 20000,
-    debug: () => {},
+    debug: (msg: string) => {
+      console.log("[STOMP DEBUG]", msg);
+    },
   });
+  
+  client.onConnect = (frame) => {
+    console.log("[STOMP] Connected successfully");
+  };
+  
+  client.onStompError = (frame) => {
+    console.error("[STOMP] STOMP error:", frame?.body);
+  };
+  
+  client.onWebSocketError = (event) => {
+    console.error("[STOMP] WebSocket error:", event);
+  };
+  
   return client;
 }
 
 async function ensureStompConnected(): Promise<void> {
+  if (!getAccessToken()) {
+    throw new Error("로그인이 필요합니다.");
+  }
   if (stompClient && stompClient.active && stompClient.connected) {
     return;
   }
@@ -76,16 +104,20 @@ async function ensureStompConnected(): Promise<void> {
   const client = buildStompClient();
   const ready = new Promise<void>((resolve, reject) => {
     client.onConnect = () => {
+      console.log("[STOMP] onConnect fired - connection established");
       stompClient = client;
       resolve();
     };
     client.onStompError = (frame) => {
+      console.error("[STOMP] onStompError fired:", frame?.body);
       reject(new Error(frame?.body || "STOMP error"));
     };
     client.onWebSocketError = (event) => {
+      console.error("[STOMP] onWebSocketError fired");
       reject(new Error("WebSocket error"));
     };
   });
+  console.log("[STOMP] Calling client.activate()");
   client.activate();
   return ready;
 }

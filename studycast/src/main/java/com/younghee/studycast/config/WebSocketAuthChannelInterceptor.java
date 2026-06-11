@@ -35,54 +35,78 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
         if (accessor == null) {
+            log.warn("preSend: accessor is null");
             return message;
         }
 
-        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+        StompCommand command = accessor.getCommand();
+        log.info("STOMP {} received", command);
+
+        if (StompCommand.CONNECT.equals(command)) {
             String authHeader = getAuthorizationHeader(accessor);
+            log.info("CONNECT: authHeaderPresent={}, headerValue={}", authHeader != null, authHeader);
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
-                if (jwtProvider.validateToken(token)) {
-                    UUID userUuid = jwtProvider.getUserUuid(token);
-                    UserDTO user = userMapper.findByUuid(userUuid);
-                    if (user != null && "ACTIVE".equals(user.getUserStatus())) {
-                        Principal principal = new UsernamePasswordAuthenticationToken(
-                            userUuid.toString(),
-                            null,
-                            List.of(new SimpleGrantedAuthority("ROLE_USER"))
-                        );
-                        accessor.setUser(principal);
+                try {
+                    if (jwtProvider.validateToken(token)) {
+                        UUID userUuid = jwtProvider.getUserUuid(token);
+                        UserDTO user = userMapper.findByUuid(userUuid);
+                        if (user != null && "ACTIVE".equals(user.getUserStatus())) {
+                            Principal principal = new UsernamePasswordAuthenticationToken(
+                                userUuid.toString(),
+                                null,
+                                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                            );
+                            accessor.setUser(principal);
+                            log.info("CONNECT success: userUuid={}, email={}", userUuid, user.getUserEmail());
+                        } else {
+                            log.warn("CONNECT denied: user is null or inactive. userUuid={}", userUuid);
+                        }
+                    } else {
+                        log.warn("CONNECT denied: invalid JWT token");
                     }
+                } catch (Exception e) {
+                    log.error("CONNECT error: ", e);
                 }
+            } else {
+                log.warn("CONNECT denied: missing or malformed Authorization header");
             }
         }
 
-        if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+        if (StompCommand.SUBSCRIBE.equals(command)) {
             Principal principal = accessor.getUser();
             String destination = accessor.getDestination();
+            log.info("SUBSCRIBE: destination={}, principal={}", destination, principal == null ? null : principal.getName());
             if (destination != null && destination.startsWith("/sub/rooms/")) {
                 if (principal == null) {
-                    log.warn("WebSocket 구독 거절! : 인증되지 않은 사용갖가 {} 경로 구독을 시도함!", destination);
+                    log.warn("SUBSCRIBE denied: unauthenticated user");
                     return null;
                 }
                 try {
                     Long roomNo = Long.valueOf(destination.substring("/sub/rooms/".length()));
                     UUID userUuid = UUID.fromString(principal.getName());
                     if (!roomMapper.existsParticipant(userUuid, roomNo)) {
+                        log.warn("SUBSCRIBE denied: user is not participant. room={} userUuid={}", roomNo, userUuid);
                         return null;
                     }
-                } catch (NumberFormatException ignored) {
+                    log.info("SUBSCRIBE success: room={} userUuid={}", roomNo, userUuid);
+                } catch (NumberFormatException e) {
+                    log.warn("SUBSCRIBE: invalid room number");
                     return null;
                 }
             }
         }
 
-        if (StompCommand.SEND.equals(accessor.getCommand())) {
+        if (StompCommand.SEND.equals(command)) {
             Principal principal = accessor.getUser();
             String destination = accessor.getDestination();
-            if (destination != null && destination.startsWith("/pub/") && principal == null) {
-                log.warn("WebSocket 전송 거절 : 인증되지 않은 사용자가 {} 경로로 메시지 발송 시도함!", destination);
-                return null;
+            log.info("SEND: destination={}, principal={}", destination, principal == null ? null : principal.getName());
+            if (destination != null && destination.startsWith("/pub/")) {
+                if (principal == null) {
+                    log.warn("SEND denied: unauthenticated user. destination={}", destination);
+                    return null;
+                }
+                log.info("SEND success: destination={} userUuid={}", destination, principal.getName());
             }
         }
 

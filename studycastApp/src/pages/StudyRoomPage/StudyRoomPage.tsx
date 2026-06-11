@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import type { ChatMessage, RoomMember, RoomModal, TimerState } from "@/types/studyRoom";
 import { sendMessage as sendRoomMessage, subscribeChat } from "@/services/studyRoomService";
+import { useAuth } from "@/contexts/AuthContext";
 import { useT, useThemeCtx } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import {
@@ -71,6 +72,14 @@ export default function StudyRoomPage() {
   const [msgs, setMsgs] = useState<ChatMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+
+  const { isLoggedIn } = useAuth();
+
+  // 토큰이 없는 경우만 리다이렉트 (AuthContext 초기화와 무관하게 sessionStorage 직접 확인)
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem("sc_access_token") : null;
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
 
   // 시계 + 타이머
   useEffect(() => {
@@ -142,7 +151,11 @@ export default function StudyRoomPage() {
       })
       .catch((error) => {
         console.error(error);
-        setSendError("채팅 전송에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        if (error instanceof Error && error.message === "로그인이 필요합니다.") {
+          setSendError("로그인이 필요합니다. 로그인 후 이용해 주세요.");
+        } else {
+          setSendError("채팅 전송에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        }
       })
       .finally(() => {
         setIsSending(false);
