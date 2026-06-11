@@ -1,6 +1,6 @@
 package com.younghee.studycast.service;
 
-import com.younghee.studycast.dto.PasswordResetRequest;
+import com.younghee.studycast.dto.request.PasswordResetRequest;
 
 public interface PasswordResetService {
 

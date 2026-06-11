@@ -49,11 +49,11 @@ export function PeriodPicker({
       )}
       <div style={{
         display: "flex",
-        flexDirection: isMobile ? "column" : "row",
-        alignItems: isMobile ? "stretch" : "center",
+        flexDirection: "row",
+        alignItems: "center",
         gap: isMobile ? 8 : 12,
       }}>
-        <div>
+        <div style={{ flex: isMobile ? 1 : "none", minWidth: 0 }}>
           <input
             type="date"
             value={startDate}
@@ -62,13 +62,13 @@ export function PeriodPicker({
           />
           <p style={hintStyle}>시작일 (오늘 자동 설정)</p>
         </div>
-        {!isMobile && <span style={{ color: T.muted, fontSize: 18, paddingBottom: 20 }}>→</span>}
-        <div>
+        <span style={{ color: T.muted, fontSize: 18, paddingBottom: 20, flexShrink: 0 }}>→</span>
+        <div style={{ flex: isMobile ? 1 : "none", minWidth: 0 }}>
           <input
             type="date"
             value={endDate}
             min={offsetDate(1)}
-            max={offsetDate(90)}
+            max={offsetDate(89)}
             onChange={(e) => {
               const val = e.target.value;
               onEndDateChange(val);
@@ -77,11 +77,14 @@ export function PeriodPicker({
               } else if (val <= startDate) {
                 setError("종료일은 시작일 이후 날짜를 선택해주세요.");
               } else {
-                const diff = Math.round(
-                  (new Date(val).getTime() - new Date(startDate).getTime()) / 86400000
-                );
-                if (diff > 90) {
-                  setError("종료일은 최대 90일 이내로 설정해주세요.");
+                const totalDays =
+                  Math.round(
+                    (new Date(val).getTime() - new Date(startDate).getTime()) /
+                      86400000
+                  ) + 1;
+
+                if (totalDays > 90) {
+                  setError("스터디 기간은 최대 90일까지 설정할 수 있습니다.");
                 } else {
                   setError("");
                 }

@@ -2,7 +2,7 @@ package com.younghee.studycast.controller;
 
 import org.springframework.web.bind.annotation.RestController;
 
-import com.younghee.studycast.dto.PasswordResetRequest;
+import com.younghee.studycast.dto.request.PasswordResetRequest;
 import com.younghee.studycast.service.PasswordResetService;
 
 import lombok.RequiredArgsConstructor;

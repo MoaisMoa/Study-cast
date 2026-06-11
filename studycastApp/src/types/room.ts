@@ -8,6 +8,15 @@ export type RoomCategory =
   | "취업·면접"
   | "대학생";
 
+export const ROOM_CATEGORY_NO: Record<RoomCategory, number> = {
+  어학: 1,
+  공무원: 2,
+  "개발·IT": 3,
+  자격증: 4,
+  "취업·면접": 5,
+  대학생: 6,
+};
+
 /** 라이브/추천 카드용 공용 Room */
 export interface Room {
   id: number;
@@ -37,24 +46,32 @@ export interface MyRoom {
   visitedAt: number | null;
 }
 
-/** 방 생성 폼 페이로드 */
+/** 화면 상태용 공개 설정 */
 export type RoomVisibility = "public" | "private";
 
+/** 스터디방 생성 API 요청 */
 export interface CreateRoomPayload {
-  thumbnail: string | null;
-  name: string;
-  visibility: RoomVisibility;
-  code: string;
-  count: number;
-  startDate: string;
-  endDate: string;
-  camOn: boolean;
-  micOn: boolean;
-  notice: string;
-  /** 관심 카테고리 — 메인 페이지 필터(CATS_FILTER) 값과 동일한 RoomCategory 사용 */
-  categories: RoomCategory[];
+  roomTitle: string;
+  roomPrivate: boolean;
+  roomPassword: string | null;
+  maxUsers: number;
+  expiredAt: string;
+  cameraStatus: boolean;
+  micStatus: boolean;
+  categoryNo: number;
+  roomNotice: string | null;
 }
 
+/** 스터디방 생성 API 응답 */
 export interface CreateRoomResponse {
-  roomId: number;
+  roomNo: number;
+  roomTitle: string;
+  message: string;
+}
+
+/** 스터디방 비공개 참여코드 API 응답 */
+export interface JoinCodeCheckResponse {
+  code: string,
+  duplicate: boolean,
+  message: string
 }

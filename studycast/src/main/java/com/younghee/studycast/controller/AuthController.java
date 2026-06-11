@@ -3,8 +3,8 @@ package com.younghee.studycast.controller;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.younghee.studycast.dto.AuthResponse;
-import com.younghee.studycast.dto.SignupRequest;
 import com.younghee.studycast.dto.UserDTO;
+import com.younghee.studycast.dto.request.SignupRequest;
 import com.younghee.studycast.service.AuthService;
 import com.younghee.studycast.service.UserService;
 

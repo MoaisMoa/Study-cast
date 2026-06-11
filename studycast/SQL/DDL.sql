@@ -115,20 +115,11 @@ CREATE TABLE IF NOT EXISTS rooms (
     CONSTRAINT fk_rooms_user FOREIGN KEY (user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE,
     CONSTRAINT fk_rooms_category FOREIGN KEY(category_no) REFERENCES categories(category_no) ON DELETE CASCADE
 );
-COMMENT ON COLUMN rooms.room_no IS '방 고유 번호';
-COMMENT ON COLUMN rooms.user_uuid IS '회원 식별 번호';
-COMMENT ON COLUMN rooms.category_no IS '카테고리 식별 번호';
-COMMENT ON COLUMN rooms.room_title IS '목록에 표시될 방 제목';
-COMMENT ON COLUMN rooms.room_description IS '방 상세 소개 문구';
-COMMENT ON COLUMN rooms.max_users IS '입장 가능한 최대 인원 수';
-COMMENT ON COLUMN rooms.room_password IS '비공개 방 비밀번호';
-COMMENT ON COLUMN rooms.room_notice IS '방장이 설정한 공지';
-COMMENT ON COLUMN rooms.created_at IS '방 개설된 시간';
-COMMENT ON COLUMN rooms.room_private IS '방 비공개 여부';
-COMMENT ON COLUMN rooms.room_premium IS '방 프리미엄 여부';
-COMMENT ON COLUMN rooms.now_users IS '현재 방 참가 인원';
-COMMENT ON COLUMN rooms.room_thumbnail IS '썸네일';
-COMMENT ON COLUMN rooms.expired_at IS '룸 만료 날짜';
+-- 6-1. 비공개 방 참여코드만 중복 금지 (동시 요청 포함)
+CREATE UNIQUE INDEX uq_rooms_private_password
+ON rooms (room_password)
+WHERE room_private = TRUE
+    AND room_password IS NOT NULL;
 
 -- 7. 룸 참여자 정보
 CREATE TABLE IF NOT EXISTS room_participants (

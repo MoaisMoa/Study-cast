@@ -13,13 +13,15 @@ export interface CreateSuccessProps {
   camOn: boolean;
   micOn: boolean;
   notice: string;
-  roomId: number;
+  /** 관심 카테고리 — 비어있으면 행 자체를 숨김 */
+  categories: string[];
   isMobile: boolean;
   onEnter: () => void;
 }
 
 export function CreateSuccess({
-  thumbnail, name, visibility, count, startDate, endDate, camOn, micOn, notice, roomId, isMobile, onEnter,
+  thumbnail, name, visibility, count, startDate, endDate,
+  camOn, micOn, notice, categories, isMobile, onEnter,
 }: CreateSuccessProps) {
   const T = useRT();
   const [currentNotice, setCurrentNotice] = useState(notice);

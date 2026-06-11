@@ -140,6 +140,7 @@ export function SubmitConfirmModal(props: SubmitConfirmModalProps) {
 
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button
+            type="button"
             onClick={onClose}
             style={{
               padding: "9px 20px",
@@ -155,6 +156,7 @@ export function SubmitConfirmModal(props: SubmitConfirmModalProps) {
             취소
           </button>
           <button
+            type="button"
             onClick={onConfirm}
             disabled={isCreating}
             style={{

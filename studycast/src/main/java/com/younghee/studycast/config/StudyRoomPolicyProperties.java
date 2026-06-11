@@ -17,7 +17,7 @@ public class StudyRoomPolicyProperties {
     // 스터디방 최대 인원 제한
     private int maxUsersLimit = 4;
 
-    // 스터디방 대표 이미지 정책
+    // 스터디방 썸네일 이미지 정책
     private Image image = new Image();
 
     // properties와 매핑

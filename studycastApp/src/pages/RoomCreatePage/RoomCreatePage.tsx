@@ -1,9 +1,11 @@
+/** 핵심! 기존의 "이미지 먼저 업로드 -> URL로 방 생성" 흐름 제거하고,
+ * 방 정보와 이미지 파일 createRoom(payload, thumbnailFile)로 한 번에 보내기
+ */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { CreateRoomPayload, RoomCategory, RoomVisibility } from "@/types";
 import { useRT } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { useWindowWidth } from "@/hooks/useWindowWidth";
 import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Row } from "@/components/ui/Row";
@@ -21,6 +23,8 @@ import { CategoryPicker } from "./sections/CategoryPicker";
 import { ResetConfirmModal } from "./sections/ResetConfirmModal";
 import { SubmitConfirmModal } from "./sections/SubmitConfirmModal";
 import { CreateSuccess } from "./sections/CreateSuccess";
+import { ROOM_CATEGORY_NO } from "@/types";
+import axios from "axios";
 
 interface FormErrors {
   name?: string;
@@ -28,24 +32,26 @@ interface FormErrors {
   code?: string;
   count?: string;
   date?: string;
+  category?: string;
   notice?: string;
 }
 
 export default function RoomCreatePage() {
   const T = useRT();
   const navigate = useNavigate();
-  const width = useWindowWidth();
-  const isMobile = useIsMobile(640) || width < 640;
+  const isMobile = useIsMobile(768); // 헤더/레이아웃 전환 기준 — 다른 페이지와 통일
 
   // ── 폼 상태 ──────────────────────────────────────
   const [thumbnail, setThumbnail] = useState<string | null>(null);
+  /** 업로드할 실제 파일 (서버 전송용) — 미리보기 thumbnail과 별도 보관 */
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [visibility, setVisibility] = useState<RoomVisibility>("public");
   const [code, setCode] = useState("");
   const [codeCheck, setCodeCheck] = useState<CodeCheckState>("idle");
   const [count, setCount] = useState<number | "">(2);
   const [startDate] = useState<string>(todayStr());
-  const [endDate, setEndDate] = useState<string>(offsetDate(90));
+  const [endDate, setEndDate] = useState<string>(offsetDate(89));
   const [camOn, setCamOn] = useState(true);
   const [micOn, setMicOn] = useState(false);
   const [notice, setNotice] = useState("");
@@ -67,30 +73,40 @@ export default function RoomCreatePage() {
 
     if (!name.trim()) e.name = "스터디 이름을 입력해주세요.";
     else if (name.trim().length < 2) e.name = "스터디 이름은 2자 이상 입력해주세요.";
-    else if (name.length > 10) e.name = "스터디 이름은 10자 이하로 입력해주세요.";
+    else if (name.trim().length > 10) e.name = "스터디 이름은 10자 이하로 입력해주세요.";
 
     if (!visibility) e.visibility = "공개 여부를 선택해주세요.";
 
     if (visibility === "private") {
       if (!code.trim()) e.code = "참여 코드를 입력해주세요.";
-      else if (code.length < 4) e.code = "참여 코드는 4자리 이상 입력해주세요.";
-      else if (code.length > 6) e.code = "참여 코드는 6자리 이하로 입력해주세요.";
-      else if (codeCheck === "idle") e.code = "참여 코드 중복 확인을 해주세요.";
-      else if (codeCheck === "duplicate") e.code = "이미 사용 중인 참여 코드입니다.";
+      else if (!/^\d{4,6}$/.test(code.trim())) e.code = "참여 코드는 숫자 4~6자리로 입력해주세요.";
+      else if (codeCheck !== "ok") e.code = 
+                                        codeCheck === "duplicate"
+                                        ? "이미 사용 중인 참여 코드입니다."
+                                        : "참여 코드 중복 확인을 완료해주세요.";
     }
 
     const countNum = typeof count === "number" ? count : NaN;
+    const MAX_ROOM_USERS = 4;
     if (count === "" || isNaN(countNum)) e.count = "인원 수를 입력해주세요.";
     else if (countNum < 1) e.count = "최소 1명 이상 입력해주세요.";
-    else if (countNum > 4) e.count = "최대 인원은 4명까지 입력 가능합니다.";
+    else if (countNum > MAX_ROOM_USERS) e.count = "최대 인원은 4명까지 입력 가능합니다.";
 
     if (!endDate) e.date = "종료일을 선택해주세요.";
     else if (endDate <= startDate) e.date = "종료일은 시작일 이후 날짜를 선택해주세요.";
     else {
       const diffDays = Math.round(
         (new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000
-      );
+      ) + 1;
       if (diffDays > 90) e.date = "종료일은 시작일로부터 최대 90일 이내로 설정해주세요.";
+    }
+    /** 관심 카테고리 검증 */
+    if (selectedCats.length !== 1) {
+      e.category = "관심 카테고리를 1개 선택해주세요.";
+    }
+    /** 공지사항 검증 */
+    if (notice.trim().length > 500) {
+      e.notice = "공지사항은 500자 이하로 입력해주세요.";
     }
 
     return e;
@@ -108,21 +124,57 @@ export default function RoomCreatePage() {
   };
 
   const handleConfirmCreate = async () => {
+    if (isCreating) {
+      return;
+    }
+
     setIsCreating(true);
     setCreateError("");
+    
     try {
+      const selectedCategory = selectedCats[0];
+
+      if (!selectedCategory) {
+        throw new Error("카테고리가 선택되지 않았습니다.");
+      }
+
       const payload: CreateRoomPayload = {
-        thumbnail, name, visibility, code,
-        count: typeof count === "number" ? count : 1,
-        startDate, endDate, camOn, micOn, notice,
-        categories: selectedCats,
+        roomTitle: name.trim(),
+        roomPrivate: visibility === "private",
+        roomPassword:
+          visibility === "private"
+            ? code.trim()
+            : null,
+        maxUsers:
+          typeof count === "number"
+            ? count
+            : 1,
+        expiredAt: endDate,
+        cameraStatus: camOn,
+        micStatus: micOn,
+        categoryNo: ROOM_CATEGORY_NO[selectedCategory],
+        roomNotice: notice.trim() || null,
       };
-      const res = await createRoom(payload);
-      setCreatedRoomId(res.roomId);
+
+      const response = await createRoom(
+        payload,
+        thumbnailFile
+      );
+
+      setCreatedRoomId(response.roomNo);
       setShowSubmitConfirm(false);
       setSubmitted(true);
-    } catch {
-      setCreateError("스터디 그룹 방 생성 중 오류가 발생했습니다.");
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setCreateError(
+          error.response?.data?.message ??
+            "스터디 그룹 방 생성 중 오류가 발생했습니다."
+        );
+      } else {
+        setCreateError(
+          "스터디 그룹 방 생성 중 오류가 발생했습니다."
+        );
+      }
     } finally {
       setIsCreating(false);
     }
@@ -132,12 +184,14 @@ export default function RoomCreatePage() {
     setSubmitted(false);
     setCreatedRoomId(null);
     setThumbnail(null);
+    setThumbnailFile(null);
     setName("");
     setCode("");
     setCodeCheck("idle");
     setVisibility("public");
     setCount(2);
-    setEndDate(offsetDate(90));
+    /** 오늘 + 90일 (시작일 포함) */
+    setEndDate(offsetDate(89));
     setCamOn(true);
     setMicOn(false);
     setNotice("");
@@ -148,12 +202,14 @@ export default function RoomCreatePage() {
   };
 
   const enterCreatedRoom = () => {
-    if (createdRoomId != null) {
-      navigate(`/rooms/${createdRoomId}`);
-    } else {
-      navigate("/");
-    }
-  };
+  if (createdRoomId != null) {
+    // 스터디방 상세는 새 창(탭)으로 — 생성 페이지는 그대로 유지
+    const url = `${window.location.origin}/rooms/${createdRoomId}`;
+    window.open(url, "_blank", "noopener,noreferrer");   // ← 새 탭으로 열기
+  } else {
+    navigate("/");
+  }
+};
 
   // ── 스타일 ──────────────────────────────────────
   const page = {
@@ -173,7 +229,9 @@ export default function RoomCreatePage() {
     fontSize: 14,
     background: T.surface2,
     color: T.text,
-    border: `1px solid ${T.border}`,
+    borderStyle: "solid" as const,
+    borderWidth: 1,
+    borderColor: T.border,
     borderRadius: 8,
     outline: "none",
     transition: "border-color 0.15s",
@@ -237,16 +295,17 @@ export default function RoomCreatePage() {
         {/* 대표 이미지 */}
         <Row label="대표 이미지" hint="4:3 비율 권장" isMobile={isMobile}>
           {isMobile ? (
-            <ThumbnailUploader value={thumbnail} onChange={setThumbnail} isMobile />
+            <ThumbnailUploader value={thumbnail} onChange={setThumbnail} onFileChange={setThumbnailFile} isMobile />
           ) : (
             <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
-              <ThumbnailUploader value={thumbnail} onChange={setThumbnail} isMobile={false} />
+              <ThumbnailUploader value={thumbnail} onChange={setThumbnail} onFileChange={setThumbnailFile} isMobile={false} />
               <div style={{ flex: 1, paddingTop: 4 }}>
                 <p style={{ margin: "0 0 8px", fontSize: 13, color: T.muted, lineHeight: 1.7 }}>
                   스터디 방을 대표하는 이미지를 업로드하세요.<br />
                   이미지가 없으면 기본 이미지가 사용됩니다.
                 </p>
                 <button
+                  type="button"
                   onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement | null)?.click()}
                   style={{ padding: "7px 16px", fontSize: 13, fontWeight: 600, borderRadius: 7, border: `1px solid ${T.border}`, background: T.surface3, color: T.text2, cursor: "pointer", transition: "all 0.15s" }}
                   onMouseOver={(e) => { e.currentTarget.style.borderColor = T.red; e.currentTarget.style.color = T.red; }}
@@ -272,7 +331,7 @@ export default function RoomCreatePage() {
               if (val.length === 0) setErrors((p) => ({ ...p, name: "" }));
               else if (val.trim().length < 2)
                 setErrors((p) => ({ ...p, name: "스터디 이름은 2자 이상 입력해주세요." }));
-              else if (val.length > 10)
+              else if (val.trim().length > 10)
                 setErrors((p) => ({ ...p, name: "스터디 이름은 10자 이하로 입력해주세요." }));
               else setErrors((p) => ({ ...p, name: "" }));
             }}
@@ -292,7 +351,12 @@ export default function RoomCreatePage() {
             value={visibility}
             onChange={(v) => {
               setVisibility(v);
-              setErrors((p) => ({ ...p, visibility: "" }));
+              setErrors((p) => ({ ...p, visibility: "", code: "" }));
+
+              if (v === "public") {
+                setCode("");
+                setCodeCheck("idle");
+              }
             }}
             error={errors.visibility}
             isMobile={isMobile}
@@ -306,7 +370,7 @@ export default function RoomCreatePage() {
               code={code}
               onChange={(v) => {
                 setCode(v);
-                setCodeCheck("idle");
+
                 if (v.length === 0) setErrors((p) => ({ ...p, code: "" }));
                 else if (v.length < 4)
                   setErrors((p) => ({ ...p, code: "참여 코드는 4자리 이상 입력해주세요." }));
@@ -344,12 +408,21 @@ export default function RoomCreatePage() {
         </Row>
 
         {/* 관심 카테고리 — 메인페이지 필터와 동일한 카테고리 값 사용 */}
-        <Row label="관심 카테고리" hint="선택 입력 · 1개 선택" isMobile={isMobile}>
+        <Row label="관심 카테고리" required hint="1개 선택" isMobile={isMobile}>
           <CategoryPicker
             value={selectedCats}
-            onChange={setSelectedCats}
+            onChange={(categories) => {
+              setSelectedCats(categories);
+              setErrors((prev) => ({
+                ...prev,
+                category: "",
+              }));
+            }}
             isMobile={isMobile}
           />
+          {errors.category && (
+            <p style={errStyle}>{errors.category}</p>
+          )}
         </Row>
 
         {/* 장치 설정 */}
@@ -389,8 +462,8 @@ export default function RoomCreatePage() {
           <SubmitConfirmModal
             open={showSubmitConfirm}
             onClose={() => setShowSubmitConfirm(false)}
-            onConfirm={handleConfirmCreate}
             isCreating={isCreating}
+            onConfirm={handleConfirmCreate}
             createError={createError}
             thumbnail={thumbnail}
             name={name}

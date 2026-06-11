@@ -146,20 +146,21 @@ public class RoomImageStorageServiceImpl implements RoomImageStorageService{
     }
 
     private String extractStoredFileName(String imagePath) {
+        // 1. 이미지 접근 경로에서 마지막 구분자 위치 조회
         int slashIndex = Math.max(
             imagePath.lastIndexOf('/'), 
             imagePath.lastIndexOf('\\') 
         );
-
+        // 2. 경로에서 실제 저장 파일명만 추출
         String storedFileName =
             slashIndex >= 0
                 ? imagePath.substring(slashIndex + 1)
                 : imagePath;
-        
+        // 3. 추출된 파일명이 없으면 잘못된 경로로 판단
         if (storedFileName.isBlank()) {
             throw new IllegalArgumentException("이미지 파일 경로가 올바르지 않습니다.");
         }
-
+        // 4. 실제 저장 파일명 반환
         return storedFileName;
     }
     
