@@ -12,6 +12,7 @@ CREATE TABLE rooms (
     room_premium BOOLEAN NOT NULL DEFAULT FALSE,
     room_thumbnail VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expired_at TIMESTAMP NOT NULL, 
 
     CONSTRAINT fk_rooms_user FOREIGN KEY (user_uuid)
@@ -19,7 +20,11 @@ CREATE TABLE rooms (
     CONSTRAINT fk_rooms_category FOREIGN KEY(category_no)
     REFERENCES categories(category_no) ON DELETE CASCADE
 );
-
+CREATE UNIQUE INDEX uq_rooms_private_password
+ON rooms (room_password)
+WHERE room_private = TRUE
+    AND room_password IS NOT NULL;
+    
 COMMENT ON COLUMN rooms.room_no IS '방 고유 번호';
 COMMENT ON COLUMN rooms.user_uuid IS '회원 식별 번호';
 COMMENT ON COLUMN rooms.category_no IS '카테고리 식별 번호';
@@ -34,3 +39,4 @@ COMMENT ON COLUMN rooms.room_premium IS '방 프리미엄 여부';
 COMMENT ON COLUMN rooms.now_users IS '현재 방 참가 인원';
 COMMENT ON COLUMN rooms.room_thumbnail IS '썸네일';
 COMMENT ON COLUMN rooms.expired_at IS '룸 만료 날짜';
+COMMENT ON COLUMN rooms.updated_at IS '방 수정 시간';

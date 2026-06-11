@@ -57,13 +57,15 @@ public class SecurityConfig {
                     "/api/auth/password/send-code",
                     "/api/auth/password/verify-code",
                     "/api/auth/password/reset",
+                    "/room-images/**",
                     "/ws/**"
                 ).permitAll()
 
                 // 인증 필요
                 .requestMatchers(
                     "/api/auth/logout",
-                    "/api/auth/me"
+                    "/api/auth/me",
+                    "/api/rooms/**"
                 ).authenticated()
 
                 // 아직 다른 기능 개발 중이므로 임시 허용

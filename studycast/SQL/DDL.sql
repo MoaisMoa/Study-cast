@@ -4,18 +4,18 @@
 DROP TABLE IF EXISTS
     email_verifications,
     refresh_tokens,
-    users,
     user_auths,
     roles,
     user_interests,
-    rooms,
-    categories,
     room_participants,
     room_visit_histories,
     study_logs,
     study_sessions,
     ddays,
-    chats
+    chats,
+    rooms,
+    categories,
+    users
 CASCADE;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -97,11 +97,17 @@ CREATE TABLE IF NOT EXISTS rooms (
     room_premium BOOLEAN NOT NULL DEFAULT FALSE,
     room_thumbnail VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expired_at TIMESTAMP NOT NULL, 
 
     CONSTRAINT fk_rooms_user FOREIGN KEY (user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE,
     CONSTRAINT fk_rooms_category FOREIGN KEY(category_no) REFERENCES categories(category_no) ON DELETE CASCADE
 );
+-- 6-1. 비공개 방 참여코드만 중복 금지 (동시 요청 포함)
+CREATE UNIQUE INDEX uq_rooms_private_password
+ON rooms (room_password)
+WHERE room_private = TRUE
+    AND room_password IS NOT NULL;
 
 -- 7. 룸 참여자 정보
 CREATE TABLE IF NOT EXISTS room_participants (

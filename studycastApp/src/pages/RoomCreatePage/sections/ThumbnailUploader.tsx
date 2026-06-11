@@ -2,16 +2,19 @@ import { useRef, useState } from "react";
 import { useRT } from "@/theme";
 import { Icon } from "@/components/ui/Icon";
 
-const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
+const ALLOWED_TYPES = ["image/jpeg", "image/png"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
 export interface ThumbnailUploaderProps {
   value: string | null;
+  /** onChange: 화면에 보여줄 임시 미리보기 URL 전달 */
   onChange: (next: string | null) => void;
+  /** onFileChange: 실제 API로 전송할 File 객체 전달 */
+  onFileChange?: (file: File | null) => void;
   isMobile: boolean;
 }
 
-export function ThumbnailUploader({ value, onChange, isMobile }: ThumbnailUploaderProps) {
+export function ThumbnailUploader({ value, onChange, onFileChange, isMobile }: ThumbnailUploaderProps) {
   const T = useRT();
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
@@ -28,7 +31,15 @@ export function ThumbnailUploader({ value, onChange, isMobile }: ThumbnailUpload
       return;
     }
     setFileError("");
-    onChange(URL.createObjectURL(file));
+    /** 이전 미리보기 URL 해제 (파일 여러번 바꿀 떄) */
+    if (value?.startsWith("blob:")) {
+      URL.revokeObjectURL(value);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+
+    onChange(previewUrl);
+    onFileChange?.(file);
   };
 
   const handleClick = () => {
@@ -36,8 +47,8 @@ export function ThumbnailUploader({ value, onChange, isMobile }: ThumbnailUpload
     inputRef.current?.click();
   };
 
-  const thumbW: string | number = isMobile ? "100%" : 240;
-  const thumbH: number | undefined = isMobile ? undefined : 135;
+  const thumbW: string | number = isMobile ? 260 : 240;
+  const thumbH: number | undefined = isMobile ? 195 : 180;
 
   return (
     <div>
@@ -57,7 +68,7 @@ export function ThumbnailUploader({ value, onChange, isMobile }: ThumbnailUpload
           position: "relative",
           width: thumbW,
           height: thumbH,
-          aspectRatio: "16 / 9",
+          aspectRatio: "4 / 3",
           flexShrink: 0,
           borderRadius: 10,
           overflow: "hidden",
@@ -89,6 +100,7 @@ export function ThumbnailUploader({ value, onChange, isMobile }: ThumbnailUpload
               background: "linear-gradient(to top,rgba(0,0,0,0.6) 0%,transparent 55%)",
             }} />
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 handleClick();
@@ -112,13 +124,26 @@ export function ThumbnailUploader({ value, onChange, isMobile }: ThumbnailUpload
                 whiteSpace: "nowrap",
               }}
             >
-              <Icon name="edit" size={12} color="#fff" /> 편집
+              <Icon name="edit" size={12} color="#fff" /> 이미지 변경
             </button>
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                /** 미리보기 해제 */
+                if (value?.startsWith("blob:")) {
+                  URL.revokeObjectURL(value);
+                }
+
                 onChange(null);
+                onFileChange?.(null);
                 setFileError("");
+                /** 삭제 시 input 값 초기화
+                 * : 이미 선택한 파일을 삭제한 뒤 같은 파일 다시 고를 때
+                 */
+                if (inputRef.current) {
+                  inputRef.current.value = "";
+                }
               }}
               style={{
                 position: "absolute",
@@ -160,7 +185,11 @@ export function ThumbnailUploader({ value, onChange, isMobile }: ThumbnailUpload
           type="file"
           accept=".jpg,.jpeg,.png,image/jpeg,image/png"
           style={{ display: "none" }}
-          onChange={(e) => handleFile(e.target.files?.[0])}
+          onChange={(e) => {
+            handleFile(e.target.files?.[0])
+            /** 새 파일 선택 후에도 초기화 */
+            e.target.value = "";
+          }}
         />
       </div>
       {fileError && (

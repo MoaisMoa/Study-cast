@@ -1,6 +1,7 @@
 package com.younghee.studycast.service;
 
 import java.time.LocalDateTime;
+import java.util.NoSuchElementException;
 import java.util.Random;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,8 +12,8 @@ import com.younghee.studycast.dao.EmailVerificationMapper;
 import com.younghee.studycast.dao.RefreshTokenMapper;
 import com.younghee.studycast.dao.UserMapper;
 import com.younghee.studycast.dto.EmailVerificationDTO;
-import com.younghee.studycast.dto.PasswordResetRequest;
 import com.younghee.studycast.dto.UserDTO;
+import com.younghee.studycast.dto.request.PasswordResetRequest;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,11 +47,11 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         UserDTO user = userMapper.findByEmail(userEmail);
 
         if (user == null) {
-            throw new RuntimeException("가입된 이메일이 없습니다.");
+            throw new NoSuchElementException("가입된 이메일이 없습니다.");
         }
 
         if (!"ACTIVE".equals(user.getUserStatus())) {
-            throw new RuntimeException("사용할 수 없는 계정입니다.");
+            throw new IllegalStateException("사용할 수 없는 계정입니다.");
         }
         // 확장1) 인증번호 재발송 제한 확인
         EmailVerificationDTO latestCode =
@@ -59,7 +60,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         if (latestCode != null &&
             latestCode.getCreatedAt().plusSeconds(RESEND_LIMIT_SECONDS).isAfter(LocalDateTime.now())
         ) {
-            throw new RuntimeException("인증번호는 1분 후 다시 요청할 수 있습니다.");
+            throw new IllegalStateException("인증번호는 1분 후 다시 요청할 수 있습니다.");
         }
 
         // 3. 기존 미사용 인증번호 재사용 불가 (used=true)
@@ -106,12 +107,12 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         validateSavedCode(savedCode);
         // 4. 실패 횟수 확인
         if (savedCode.getAttemptCount() >= MAX_ATTEMPT_COUNT) {
-            throw new RuntimeException("인증번호 입력 횟수를 초과했습니다.");
+            throw new IllegalStateException("인증번호 입력 횟수를 초과했습니다.");
         }        
         // 5. BCrypt matches로 비교 (개별 트랜잭션)
         if (!passwordEncoder.matches(verificationCode, savedCode.getVerificationCode())) {
             emailVerificationAttemptService.increaseAttemptCount(savedCode.getVerificationNo());
-            throw new RuntimeException("인증번호가 올바르지 않습니다.");
+            throw new SecurityException("인증번호가 올바르지 않습니다.");
         }
         // 6. 성공 시 verified=true 처리
         emailVerificationMapper.markVerified(savedCode.getVerificationNo());
@@ -128,11 +129,11 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         UserDTO user = userMapper.findByEmail(request.getUserEmail());
         
         if (user == null) {
-            throw new RuntimeException("가입된 이메일이 없습니다.");
+            throw new NoSuchElementException("가입된 이메일이 없습니다.");
         }
         
         if (!"ACTIVE".equals(user.getUserStatus())) {
-            throw new RuntimeException("사용할 수 없는 계정입니다.");
+            throw new IllegalStateException("사용할 수 없는 계정입니다.");
         }
         // 3. 해당 이메일의 최신 미사용 인증번호 조회
         EmailVerificationDTO savedCode =
@@ -141,22 +142,22 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         validateSavedCode(savedCode);
         // 5. 인증번호 확인 완료 여부 확인
         if (!savedCode.isVerified()) {
-            throw new RuntimeException("인증번호 확인이 필요합니다.");
+            throw new IllegalStateException("인증번호 확인이 필요합니다.");
         }
 
         if (savedCode.getAttemptCount() >= MAX_ATTEMPT_COUNT) {
-            throw new RuntimeException("인증번호 입력 횟수를 초과했습니다.");
+            throw new IllegalStateException("인증번호 입력 횟수를 초과했습니다.");
         }
 
         // 6. reset 단계에서도 인증번호 재확인
         if (!passwordEncoder.matches(request.getVerificationCode(), savedCode.getVerificationCode())) {
             emailVerificationAttemptService.increaseAttemptCount(savedCode.getVerificationNo());
-            throw new RuntimeException("인증번호가 올바르지 않습니다.");
+            throw new SecurityException("인증번호가 올바르지 않습니다.");
         }
 
         // 7. 기존 비밀번호와 동일 여부 확인
         if (passwordEncoder.matches(request.getNewPassword(), user.getUserPassword())) {
-            throw new RuntimeException("이전 비밀번호와 동일한 비밀번호는 사용할 수 없습니다.");
+            throw new IllegalArgumentException("이전 비밀번호와 동일한 비밀번호는 사용할 수 없습니다.");
         }
         // 8. 새 비밀번호 BCrypt 암호화
         String encodedPassword = passwordEncoder.encode(request.getNewPassword());
@@ -164,7 +165,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         int result = userMapper.updatePassword(user.getUserUuid(), encodedPassword);
 
         if (result != 1) {
-            throw new RuntimeException("비밀번호 변경에 실패했습니다.");
+            throw new IllegalStateException("비밀번호 변경에 실패했습니다.");
         }
         // 확장2) 비밀번호 변경 후 기존 Refresh Token 전체 폐기
         refreshTokenMapper.revokeAllByUserUuid(user.getUserUuid());
@@ -179,60 +180,60 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     // 유효성 검사
     private void validateEmail(String userEmail) {
         if (userEmail == null || userEmail.isBlank()) {
-            throw new RuntimeException("이메일을 입력하세요.");
+            throw new IllegalArgumentException("이메일을 입력하세요.");
         }
 
         if (!userEmail.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
-            throw new RuntimeException("이메일 형식이 올바르지 않습니다.");
+            throw new IllegalArgumentException("이메일 형식이 올바르지 않습니다.");
         }
     }
 
     private void validateVerificationCode(String verificationCode) {
         if (verificationCode == null || verificationCode.isBlank()) {
-            throw new RuntimeException("인증번호를 입력하세요.");
+            throw new IllegalArgumentException("인증번호를 입력하세요.");
         }
 
         if (!verificationCode.matches("^\\d{6}$")) {
-            throw new RuntimeException("인증번호는 6자리 숫자여야 합니다.");
+            throw new IllegalArgumentException("인증번호는 6자리 숫자여야 합니다.");
         }
     }
 
     private void validateResetRequest(PasswordResetRequest request) {
         if (request == null) {
-            throw new RuntimeException("비밀번호 변경 정보가 없습니다.");
+            throw new IllegalArgumentException("비밀번호 변경 정보가 없습니다.");
         }
 
         validateEmail(request.getUserEmail());
         validateVerificationCode(request.getVerificationCode());
 
         if (request.getNewPassword() == null || request.getNewPassword().isBlank()) {
-            throw new RuntimeException("새 비밀번호를 입력하세요.");
+            throw new IllegalArgumentException("새 비밀번호를 입력하세요.");
         }
 
         if (!request.getNewPassword().matches("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()]).{8,16}$")) {
-            throw new RuntimeException("비밀번호는 영문자, 숫자, 특수문자를 포함한 8~16자리여야 합니다.");
+            throw new IllegalArgumentException("비밀번호는 영문자, 숫자, 특수문자를 포함한 8~16자리여야 합니다.");
         }
 
         if (request.getNewPasswordConfirm() == null || request.getNewPasswordConfirm().isBlank()) {
-            throw new RuntimeException("새 비밀번호 확인을 입력하세요.");
+            throw new IllegalArgumentException("새 비밀번호 확인을 입력하세요.");
         }
 
         if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
-            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
     }
 
     private void validateSavedCode(EmailVerificationDTO savedCode) {
         if (savedCode == null) {
-            throw new RuntimeException("인증번호가 존재하지 않습니다.");
+            throw new NoSuchElementException("인증번호가 존재하지 않습니다.");
         }
 
         if (savedCode.isUsed()) {
-            throw new RuntimeException("이미 사용된 인증번호입니다.");
+            throw new IllegalStateException("이미 사용된 인증번호입니다.");
         }
 
         if (savedCode.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("인증번호가 만료되었습니다.");
+            throw new IllegalStateException("인증번호가 만료되었습니다.");
         }
     }
 

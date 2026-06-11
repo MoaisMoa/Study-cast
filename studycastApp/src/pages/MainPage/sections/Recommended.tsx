@@ -25,7 +25,7 @@ export function Recommended() {
     if (total <= VISIBLE) return;
     const t = window.setInterval(() => setIdx((i) => (i >= maxIdx ? 0 : i + 1)), 3000);
     return () => window.clearInterval(t);
-  }, [total, maxIdx]);
+  }, [total, maxIdx, idx]);
 
   useEffect(() => {
     setIdx(0);
@@ -36,7 +36,7 @@ export function Recommended() {
   return (
     <section style={{ marginBottom: 36 }}>
       <div style={{ display: "flex", alignItems: "baseline", marginBottom: 14 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginRight: 8 }}>추천 스터디</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: T.text, marginRight: 8 }}>추천 스터디</h2>
         <span style={{ fontSize: 12, color: T.text3 }}>목표 시험·자격증에 맞는 방</span>
       </div>
 
@@ -81,20 +81,35 @@ export function Recommended() {
             </div>
           </div>
           {total > VISIBLE && (
-            <div style={{ display: "flex", justifyContent: "center", gap: 5, marginTop: 12 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 0, marginTop: 8 }}>
               {Array.from({ length: maxIdx + 1 }).map((_, i) => (
-                <div
+                <button
                   key={i}
+                  type="button"
+                  aria-label={`${i + 1}\ubc88\uc9f8 \ud398\uc774\uc9c0`}
                   onClick={() => setIdx(i)}
                   style={{
-                    width: i === idx ? 16 : 6,
-                    height: 6,
-                    borderRadius: 3,
-                    background: i === idx ? T.red : T.borderStrong,
-                    transition: "all 0.25s",
+                    border: "none",
+                    background: "none",
+                    padding: "6px 3px",
+                    margin: 0,
                     cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
-                />
+                >
+                  <span
+                    style={{
+                      display: "block",
+                      width: i === idx ? 16 : 6,
+                      height: 6,
+                      borderRadius: 3,
+                      background: i === idx ? T.red : T.borderStrong,
+                      transition: "all 0.25s",
+                    }}
+                  />
+                </button>
               ))}
             </div>
           )}

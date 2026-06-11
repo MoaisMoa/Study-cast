@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useT, useThemeCtx } from "@/theme";
 import { usePage } from "@/contexts/PageContext";
 import { useSearch } from "@/contexts/SearchContext";
@@ -13,6 +13,7 @@ export function Header() {
   const { page, setPage } = usePage();
   const { setQuery } = useSearch();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [searchFocus, setSearchFocus] = useState(false);
   const [searchVal, setSearchVal] = useState("");
 
@@ -71,16 +72,20 @@ export function Header() {
 
       <nav style={{ display: "flex", gap: 2, marginRight: "auto", alignItems: "center" }}>
         {([
-          ["홈", "home"],
-          ["방문한 방", "fav"],
-        ] as const).map(([label, key]) => {
-          const active = page === key;
+          ["홈", "home", "/"],
+          ["방문한 방", "fav", "/visited-rooms"],
+        ] as const).map(([label, key, route]) => {
+          const active = route === "/" ? (pathname === "/" && page !== "search") : pathname === route;
           return (
             <button
               key={key}
               onClick={() => {
-                setPage(key);
-                navigate("/");
+                if (route === "/") {
+                  setPage("home");
+                  navigate("/");
+                } else {
+                  navigate(route);
+                }
               }}
               style={{
                 padding: "7px 14px",

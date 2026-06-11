@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.younghee.studycast.dao.RoomsMapper">
+
+    <resultMap id="RoomsResultMap" type="com.younghee.studycast.dto.RoomsDTO">
+        <id property="roomNo" column="room_no"/>
+        <result property="userUuid" column="user_uuid"/>
+        <result property="categoryNo" column="category_no"/>
+        <result property="roomTitle" column="room_title"/>
+        <result property="maxUsers" column="max_users"/>
+        <result property="nowUsers" column="now_users"/>
+        <result property="roomPassword" column="room_password"/>
+        <result property="roomNotice" column="room_notice"/>
+        <result property="roomPrivate" column="room_private"/>
+        <result property="roomPremium" column="room_premium"/>
+        <result property="roomThumbnail" column="room_thumbnail"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="expiredAt" column="expired_at"/>
+    </resultMap>
+
+    <!-- 방 생성 -->
+    <insert id="insertRoom"
+            parameterType="RoomsDTO"
+            useGeneratedKeys="true"
+            keyProperty="roomNo"
+            keyColumn="room_no">
+        INSERT INTO rooms (
+            user_uuid,
+            category_no,
+            room_title,
+            max_users,
+            now_users,
+            room_password,
+            room_notice,
+            room_private,
+            room_thumbnail,
+            expired_at
+        ) VALUES (
+            #{userUuid},
+            #{categoryNo},
+            #{roomTitle},
+            #{maxUsers},
+            #{nowUsers},
+            #{roomPassword},
+            #{roomNotice},
+            #{roomPrivate},
+            #{roomThumbnail},
+            #{expiredAt}
+        )
+    </insert>
+
+    <!-- 방 번호로 방 조회 -->
+    <select id="findByRoomNo" parameterType="long" resultMap="RoomsResultMap">
+        SELECT
+            room_no,
+            user_uuid,
+            category_no,
+            room_title,
+            max_users,
+            now_users,
+            room_password,
+            room_notice,
+            room_private,
+            room_premium,
+            room_thumbnail,
+            created_at,
+            updated_at,
+            expired_at
+        FROM rooms
+        WHERE room_no = #{roomNo}
+    </select>
+
+    <!-- 비공개 방 참여 코드 존재 여부 확인 -->
+    <select id="existsByRoomPassword" parameterType="string" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM rooms
+            WHERE room_private = TRUE
+            AND room_password = #{roomPassword}
+        )
+    </select>
+</mapper>

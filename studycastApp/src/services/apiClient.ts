@@ -1,12 +1,9 @@
 /**
- * 추후 백엔드 연결을 위한 API 클라이언트 어댑터.
- *
- * 현재는 더미 데이터만 다루기 때문에 실제 fetch 호출 없이
- * `sleep` + 랜덤 실패 헬퍼만 노출한다.
- * 백엔드 연결 시 `request` 함수만 교체하면 된다.
+ * Spring Boot 백엔드 요청을 위한 Axios 공통 클라이언트
+ * 인증이 필요한 요청에는 Access Token을 자동으로 추가!
  */
 
-import axios from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 export interface ApiClientConfig {
   baseURL: string;
@@ -56,13 +53,21 @@ export async function mockRequest<T>(
  * }
  */
 
-// axios (Spring API 호출)
+// axios (Spring API 공통 클라이언트)
 export const apiClient = axios.create({
   baseURL: "http://localhost:8080",
-  headers: {
-    "Content-Type": "application/json",
-  },
+  // 공통 Content-Type 삭제 -> 일반 객체(json)과 FormData(multipart) 같이 보내야함.
+  // headers: {
+  //   "Content-Type": "application/json",
+  // },
 });
+
+/** 세션 저장소 초기화 — apiClient에서도 사용 */
+export function clearAuthSession(): void {
+  sessionStorage.removeItem("sc_access_token");
+  sessionStorage.removeItem("sc_refresh_token");
+  sessionStorage.removeItem("sc_user");
+}
 
 // ** accessToken 자동으로 붙이는 Axios 공통 설정
 // Axios 요청 보내기 전에 accessToken 자동으로 붙일지 말지 결정하는 코드
@@ -91,8 +96,8 @@ apiClient.interceptors.request.use((config) => {
     return config;
   };
   // ** 401 원인
-  // 4) 브라우저 localStorage에 저장된 accessToken 가져옴
-  const accessToken = localStorage.getItem("sc_access_token");
+  // 4) 브라우저 sessionStorage 저장된 accessToken 가져옴
+  const accessToken = sessionStorage.getItem("sc_access_token");
   // 5) accessToken 있으면 Authorization 헤더 추가
   // : JwtAuthenticationFilter 검증
   if (accessToken) {
@@ -100,4 +105,66 @@ apiClient.interceptors.request.use((config) => {
   }
 
   return config;
-})
+});
+
+// 3. Axios 응답 인터셉터 — 401 시 Refresh Token 재발급
+type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as RetryConfig | undefined;
+    const status = error.response?.status;
+    const url = originalRequest?.url ?? "";
+
+    // 조건: 401 에러이고, 아직 재시도하지 않았고, 401을 여러 번 받은 경우가 아니어야 함
+    if (!originalRequest || status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    // 로그인·재발급 요청 자체가 실패한 경우 다시 재발급하지 않음
+    if (
+      url.includes("/api/auth/login") ||
+      url.includes("/api/auth/refresh") ||
+      url.includes("/api/auth/logout")
+    ) {
+      clearAuthSession();
+      return Promise.reject(error);
+    }
+
+    const refreshToken = sessionStorage.getItem("sc_refresh_token");
+
+    if (!refreshToken) {
+      clearAuthSession();
+      // 로그인 페이지로 리다이렉트
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      // Refresh Token으로 새 Access Token 발급
+      const response = await apiClient.post<{ accessToken: string }>(
+        "/api/auth/refresh",
+        { refreshToken }
+      );
+
+      const newAccessToken = response.data.accessToken;
+
+      // 새 토큰 저장
+      sessionStorage.setItem("sc_access_token", newAccessToken);
+
+      // 원래 요청의 Authorization 헤더 업데이트
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+      // 원래 요청 재시도
+      return apiClient(originalRequest);
+    } catch (refreshError) {
+      // 재발급 실패 → 로그인 페이지로 이동
+      clearAuthSession();
+      window.location.href = "/login";
+      return Promise.reject(refreshError);
+    }
+  }
+);

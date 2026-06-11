@@ -13,13 +13,15 @@ export interface CreateSuccessProps {
   camOn: boolean;
   micOn: boolean;
   notice: string;
-  roomId: number;
+  /** 관심 카테고리 — 비어있으면 행 자체를 숨김 */
+  categories: string[];
   isMobile: boolean;
   onEnter: () => void;
 }
 
 export function CreateSuccess({
-  thumbnail, name, visibility, count, startDate, endDate, camOn, micOn, notice, roomId, isMobile, onEnter,
+  thumbnail, name, visibility, count, startDate, endDate,
+  camOn, micOn, notice, categories, isMobile, onEnter,
 }: CreateSuccessProps) {
   const T = useRT();
   const [currentNotice, setCurrentNotice] = useState(notice);
@@ -44,7 +46,7 @@ export function CreateSuccess({
           <img
             src={thumbnail}
             alt="thumbnail"
-            style={{ width: "100%", aspectRatio: "16/7", objectFit: "cover" }}
+            style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover" }}
           />
           <div style={{
             position: "absolute",
@@ -103,6 +105,12 @@ export function CreateSuccess({
             <Icon name="calendar" size={14} color={T.muted} />
             {startDate} ~ {endDate}
           </div>
+          {categories.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <Icon name="tag" size={14} color={T.muted} />
+              {categories.join(" · ")}
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Icon name="camera" size={14} color={T.muted} />
             카메라 {camOn ? "ON" : "OFF"}

@@ -14,7 +14,9 @@ export function CapacityStepper({ count, onChange, error, setError }: CapacitySt
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ display: "inline-flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
           onClick={() => onChange(Math.max(1, numeric - 1))}
           disabled={numeric <= 1}
@@ -98,10 +100,12 @@ export function CapacityStepper({ count, onChange, error, setError }: CapacitySt
         >
           +
         </button>
-        <span style={{ fontSize: 13, color: T.muted }}>명</span>
+          </div>
+          <MemberDots count={numeric} stretch />
+        </div>
+        <span style={{ fontSize: 13, color: T.muted, height: 36, display: "flex", alignItems: "center" }}>명</span>
       </div>
       {error && <p style={{ fontSize: 12, color: T.red, margin: "6px 0 0" }}>{error}</p>}
-      <MemberDots count={numeric} />
     </>
   );
 }

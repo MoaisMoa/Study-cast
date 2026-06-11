@@ -12,7 +12,12 @@ import { listRooms } from "@/services/roomService";
 
 function getCol(): number {
   if (typeof window === "undefined") return 5;
-  return window.innerWidth >= 1100 ? 5 : window.innerWidth >= 820 ? 4 : 3;
+  const width = window.innerWidth;
+  if (width >= 1101) return 5;
+  if (width >= 1001) return 4;
+  if (width >= 769) return 3;
+  if (width >= 601) return 2;
+  return 1;
 }
 
 export function Browse() {

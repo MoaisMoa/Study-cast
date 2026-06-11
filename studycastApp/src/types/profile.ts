@@ -1,14 +1,9 @@
+import type { RoomCategory } from "./room";
+
 export type Gender = "남자" | "여자" | "설정 안 함";
 
-export type ProfileCategory =
-  | "공무원"
-  | "대학생"
-  | "IT · 개발"
-  | "고시 · 사법"
-  | "어학 · 외국어"
-  | "취업 · 면접"
-  | "자격증"
-  | "기타";
+/** 관심 카테고리 — 메인 필터(CATS_FILTER)와 완전히 동일한 RoomCategory 사용 */
+export type ProfileCategory = RoomCategory;
 
 /** 회원가입 시 등록된 정보 — 프로필 페이지에서는 읽기 전용 */
 export interface ProfileReadOnly {

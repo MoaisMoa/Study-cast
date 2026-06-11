@@ -1,0 +1,11 @@
+{
+  "roomTitle": "토익900",
+  "roomPrivate": false,
+  "roomPassword": null,
+  "maxUsers": 4,
+  "expiredAt": "2026-07-31",
+  "cameraStatus": true,
+  "micStatus": false,
+  "categoryNo": 1,
+  "roomNotice": "매일 2시간 공부"
+}
