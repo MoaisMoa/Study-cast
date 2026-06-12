@@ -192,7 +192,7 @@ export function MobileDashboard() {
           <div>
             <div style={{ fontSize: 10, color: T.text3, marginBottom: 3 }}>내 각오</div>
             <div style={{ fontSize: 11, color: T.text, fontWeight: 500, lineHeight: 1.4 }}>
-              {studyResolution || "아직 등록된 각오가 없습니다."}
+              {studyResolution || "자신만의 각오를 등록해보세요!"}
             </div>
           </div>
         </div>

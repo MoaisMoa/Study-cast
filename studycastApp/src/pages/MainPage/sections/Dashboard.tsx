@@ -388,7 +388,7 @@ export function Dashboard() {
                 설정
               </button>
             </div>
-            <div style={{ fontSize: 13, color: T.text, fontWeight: 500, lineHeight: 1.5 }}>{studyResolution || "아직 등록된 각오가 없습니다."}</div>
+            <div style={{ fontSize: 13, color: T.text, fontWeight: 500, lineHeight: 1.5 }}>{studyResolution || "자신만의 각오를 등록해보세요!"}</div>
           </div>
 
           {/* 내 디데이 — 플래너의 가장 빠른 D-day와 연동 (설정은 플래너에서) */}
