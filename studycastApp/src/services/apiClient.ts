@@ -78,7 +78,10 @@ const PUBLIC_AUTH_URLS = [
   "/api/auth/refresh",
   "/api/auth/password/send-code",
   "/api/auth/password/verify-code",
-  "/api/auth/password/reset"
+  "/api/auth/password/reset",
+  // 메인페이지 공개 API
+  "/api/main/rooms",
+  "/api/main/guest-recommendations"
 ];
 
 // 2. Axios 요청 인터셉터

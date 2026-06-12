@@ -58,6 +58,8 @@ public class SecurityConfig {
                     "/api/auth/password/verify-code",
                     "/api/auth/password/reset",
                     "/room-images/**",
+                    "/api/main/rooms",
+                    "/api/main/guest-recommendations",
                     "/ws/**"
                 ).permitAll()
 
@@ -65,7 +67,8 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/logout",
                     "/api/auth/me",
-                    "/api/rooms/**"
+                    "/api/rooms/**",
+                    "/api/main/**"
                 ).authenticated()
 
                 // 아직 다른 기능 개발 중이므로 임시 허용

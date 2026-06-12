@@ -1,5 +1,6 @@
 import { useT } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Footer } from "@/components/layout/Footer";
@@ -28,6 +29,7 @@ export default function MainPage() {
 function MainPageInner() {
   const T = useT();
   const isMobile = useIsMobile();
+  const { isLoggedIn } = useAuth();
   const { page } = usePage();
 
   return (
@@ -52,7 +54,7 @@ function MainPageInner() {
               </div>
             ) : (
               <>
-                <MobileDashboard />
+                {isLoggedIn && <MobileDashboard />}
                 <MobileRecommended />
                 <MobileBrowse />
               </>
@@ -74,7 +76,7 @@ function MainPageInner() {
               <SearchResultPage />
             ) : (
               <>
-                <Dashboard />
+                {isLoggedIn && <Dashboard />}
                 <Recommended />
                 <Browse />
               </>

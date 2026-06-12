@@ -70,13 +70,13 @@ public class GlobalExceptionHandler {
     // 그 외 RuntimeException 공통 처리
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException e) {
-        log.warn(">>>RuntimeException 발생: {}", e.getMessage());
+        log.warn(">>>RuntimeException 발생: {}", e);
 
         return ResponseEntity
-            .badRequest()
+            .internalServerError()
             .body(Map.of(
                 "success", false,
-                "message", e.getMessage()
+                "message", "서버 오류가 발생했습니다."
             ));
     }
 

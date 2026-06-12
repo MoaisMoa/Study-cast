@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Room, RoomCategory } from "@/types";
 import { useT } from "@/theme";
 import { useWindowWidth } from "@/hooks/useWindowWidth";
@@ -7,7 +7,7 @@ import { useModal } from "@/contexts/ModalContext";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { CATS_FILTER, TYPE_OPTS } from "@/data/categories";
 import type { TypeOpt } from "@/data/categories";
-import { ROOM_POOL } from "@/data/rooms";
+import { listRoomCards } from "@/services/roomService";
 import { Icon } from "@/components/ui/Icon";
 
 const TABS_M = ["전체", "신규"] as const;
@@ -25,27 +25,63 @@ export function MobileBrowse() {
   const [roomType, setRoomType] = useState<TypeOpt>("전체 스터디");
   const [typeOpen, setTypeOpen] = useState(false);
   const [onlyAvail, setOnlyAvail] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(6);
+
+  const PAGE = 6;
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [page, setPage] = useState(0);
+  const [last, setLast] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const visible = rooms;
 
   const catRef = useRef<HTMLDivElement>(null);
   const typeRef = useRef<HTMLDivElement>(null);
   useClickOutside(catRef, () => setCatOpen(false), catOpen);
   useClickOutside(typeRef, () => setTypeOpen(false), typeOpen);
 
-  const pool: Room[] = [
-    ...ROOM_POOL,
-    ...ROOM_POOL.map((r) => ({ ...r, id: r.id + 100 })),
-  ];
-  const filtered = pool.filter((r) => {
-    if (tab === 1 && (r.createdDaysAgo == null || r.createdDaysAgo > 10)) return false;
-    if (selCats.length > 0 && !selCats.includes(r.cat)) return false;
-    if (onlyAvail && r.members === r.max) return false;
-    if (roomType === "일반" && r.type !== "FREE") return false;
-    if (roomType === "프리미엄" && r.type !== "PREMIUM") return false;
-    return true;
-  });
-  const visible = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
+  useEffect(() => {
+    fetchRooms(0, false);
+  }, [tab, selCats, roomType, onlyAvail]);
+
+  const toApiCategoryNos = () => {
+    const map: Record<RoomCategory, number> = {
+      어학: 1,
+      공무원: 2,
+      "개발·IT": 3,
+      자격증: 4,
+      "취업·면접": 5,
+      대학생: 6,
+    };
+
+    return selCats.map((cat) => map[cat]);
+  };
+
+  const fetchRooms = async (nextPage: number, append: boolean) => {
+    if (isLoading) return;
+
+    setIsLoading(true);
+
+    try {
+      const response = await listRoomCards({
+        tab: tab === 1 ? "NEW" : "ALL",
+        categoryNos: toApiCategoryNos(),
+        roomType:
+          roomType === "일반"
+            ? "FREE"
+            : roomType === "프리미엄"
+            ? "PREMIUM"
+            : "ALL",
+        joinableOnly: onlyAvail,
+        page: nextPage,
+        size: PAGE,
+      });
+
+      setRooms((prev) => (append ? [...prev, ...response.rooms] : response.rooms));
+      setPage(response.page);
+      setLast(response.last);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const toggleCat = (c: RoomCategory) =>
     setSelCats((prev) =>
@@ -62,7 +98,7 @@ export function MobileBrowse() {
         {TABS_M.map((t, i) => (
           <button
             key={t}
-            onClick={() => { setTab(i); setVisibleCount(6); }}
+            onClick={() => { setTab(i); }}
             style={{
               flexShrink: 0,
               padding: "5px 13px",
@@ -168,7 +204,7 @@ export function MobileBrowse() {
                   return (
                     <button
                       key={c}
-                      onClick={() => { toggleCat(c); setVisibleCount(6); }}
+                      onClick={() => { toggleCat(c); }}
                       style={{
                         padding: "8px 10px",
                         borderRadius: 8,
@@ -238,7 +274,6 @@ export function MobileBrowse() {
                       onClick={() => {
                         setRoomType(opt);
                         setTypeOpen(false);
-                        setVisibleCount(6);
                       }}
                       style={{
                         padding: "8px 10px",
@@ -386,10 +421,13 @@ export function MobileBrowse() {
         )}
       </div>
 
-      {hasMore && (
+      {!last && (
         <div style={{ textAlign: "center" }}>
-          <button
-            onClick={() => setVisibleCount((c) => c + 6)}
+          <button onClick={() => {
+            if (isLoading) return;
+            fetchRooms(page + 1, true);
+          }}
+          disabled={isLoading}
             style={{
               padding: "10px 32px",
               borderRadius: 6,
@@ -400,7 +438,7 @@ export function MobileBrowse() {
               cursor: "pointer",
             }}
           >
-            더 보기
+            {isLoading ? "불러오는 중..." : "더 보기"}
           </button>
         </div>
       )}

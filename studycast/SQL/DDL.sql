@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS users (
     user_name VARCHAR(255) NOT NULL,
     user_profile_image VARCHAR(255),
     user_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+    user_study_resolution VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP
