@@ -95,7 +95,7 @@ public class GlobalExceptionHandler {
 
     // DB 제약조건 오류 처리
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<Map<String, String>> handleDataIntegrityViolation(
+    public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
         DataIntegrityViolationException e
     ) {
         String causeMessage = e.getMostSpecificCause().getMessage();
@@ -104,8 +104,8 @@ public class GlobalExceptionHandler {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of(
-                        "message",
-                        "이미 사용 중인 참여 코드입니다."
+                        "success", false,
+                        "message", "이미 사용 중인 참여 코드입니다."
                     ));
         }
 
@@ -114,8 +114,8 @@ public class GlobalExceptionHandler {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
                     .body(Map.of(
-                        "message",
-                        "존재하지 않는 카테고리입니다."
+                        "success", false,
+                        "message", "존재하지 않는 카테고리입니다."
                     ));
         }
 
@@ -123,8 +123,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(Map.of(
-                    "message",
-                    "데이터 저장 중 제약조건 오류가 발생했습니다."
+                    "success", false,
+                    "message", "데이터 저장 중 제약조건 오류가 발생했습니다."
                 ));
     }
 }

@@ -3,6 +3,7 @@ import type { VisitedRoom } from "@/types/visitedRoom";
 import { useT } from "@/theme";
 import { verifyEntryCode } from "@/services/visitedRoomService";
 import { openStudyRoom } from "@/utils/openStudyRoom";
+import { Icon } from "@/components/ui/Icon";
 
 const CODE_RE = /^[0-9]{4,6}$/;
 
@@ -70,7 +71,10 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
         </div>
 
         <div style={{ padding: "22px 24px 28px" }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: T.text, marginBottom: 16, lineHeight: 1.3 }}>{room.title}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: T.text, marginBottom: 16, lineHeight: 1.3, display: "flex", alignItems: "center", gap: 8 }}>
+            {room.title.replace(/ \(비공개\)$/, "")}
+            {isPrivate && <Icon name="lock" size={18} color={T.text3} strokeWidth={1.8} />}
+          </div>
 
           <div style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -124,7 +128,7 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
                 <button
                   onClick={handleCodeSubmit}
                   disabled={verifying}
-                  style={{ flex: 2, padding: "13px 0", borderRadius: 12, border: "none", background: T.red, color: "#fff", fontSize: 15, fontWeight: 800, cursor: verifying ? "not-allowed" : "pointer", opacity: verifying ? 0.7 : 1 }}
+                  style={{ flex: 1, padding: "13px 0", borderRadius: 12, border: "none", background: T.red, color: "#fff", fontSize: 15, fontWeight: 800, cursor: verifying ? "not-allowed" : "pointer", opacity: verifying ? 0.7 : 1 }}
                 >
                   {verifying ? "확인 중..." : "입장하기"}
                 </button>

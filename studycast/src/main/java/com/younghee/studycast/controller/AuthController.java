@@ -41,7 +41,7 @@ public class AuthController {
 
     // 로그인
     @PostMapping("/api/auth/login")
-    public AuthResponse logiResponse(@RequestBody UserDTO request) {
+    public AuthResponse loginResponse(@RequestBody UserDTO request) {
         
         log.info("로그인 API 요청: email={}", request.getUserEmail());
 

@@ -53,7 +53,7 @@ export function Recommended() {
         </div>
       ) : (
         <>
-          <div style={{ overflow: "hidden", borderRadius: T.radius }}>
+          <div style={{ overflow: "hidden", borderRadius: T.radius, paddingTop: 4, marginTop: -4 }}>
             <div style={{
               display: "flex",
               gap: 16,

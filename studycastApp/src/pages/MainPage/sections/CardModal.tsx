@@ -1,23 +1,63 @@
+import { useState } from "react";
 import { useT } from "@/theme";
 import { useModal, useModalRoom } from "@/contexts/ModalContext";
+import { verifyEntryCode } from "@/services/visitedRoomService";
 import { openStudyRoom } from "@/utils/openStudyRoom";
+import { Icon } from "@/components/ui/Icon";
 
-/**
- * 카드 클릭 시 떠오르는 방 상세 모달.
- * `ModalContext`로 열려있는 방을 읽고, 배경 클릭 / X 버튼 / 참여하기 버튼을 표시.
- */
+const CODE_RE = /^[0-9]{4,6}$/;
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
 export function CardModal() {
   const T = useT();
   const room = useModalRoom();
   const setModalRoom = useModal();
 
+  const [codeStep, setCodeStep] = useState(false);
+  const [codeVal, setCodeVal] = useState("");
+  const [codeError, setCodeError] = useState<null | "format" | "wrong">(null);
+  const [verifying, setVerifying] = useState(false);
+
   if (!room) return null;
-  const full = room.members === room.max;
-  const onClose = () => setModalRoom(null);
+
+  const full = !room.overCapacity && room.members >= room.max;
+  const isPrivate = room.isPrivate ?? false;
+
+  const createdMs = room.createdAt ? new Date(room.createdAt).getTime() : null;
+  const expiredMs = room.expiredAt ? new Date(room.expiredAt).getTime() : null;
+  const totalDays =
+    createdMs && expiredMs ? Math.ceil((expiredMs - createdMs) / 86_400_000) : null;
+
+  const handleClose = () => {
+    setCodeStep(false);
+    setCodeVal("");
+    setCodeError(null);
+    setModalRoom(null);
+  };
+
+  const handleEnterClick = () => {
+    if (isPrivate) { setCodeStep(true); return; }
+    openStudyRoom(room.id);
+    handleClose();
+  };
+
+  const handleCodeSubmit = async () => {
+    if (!CODE_RE.test(codeVal.trim())) { setCodeError("format"); return; }
+    setVerifying(true);
+    const ok = await verifyEntryCode(room.id, codeVal);
+    setVerifying(false);
+    if (ok) { openStudyRoom(room.id); handleClose(); return; }
+    setCodeError("wrong");
+  };
 
   return (
     <div
-      onClick={onClose}
+      onClick={handleClose}
       style={{
         position: "fixed",
         inset: 0,
@@ -55,7 +95,7 @@ export function CardModal() {
             background: "linear-gradient(to top,rgba(0,0,0,.45) 0%,transparent 50%)",
           }} />
           <button
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="닫기"
             style={{
               position: "absolute",
@@ -92,23 +132,27 @@ export function CardModal() {
           <div style={{
             fontSize: 22, fontWeight: 800, color: T.text,
             marginBottom: 16, lineHeight: 1.3,
+            display: "flex", alignItems: "center", gap: 8,
           }}>
-            {room.title}
+            {room.title.replace(/ \(비공개\)$/, "")}
+            {isPrivate && <Icon name="lock" size={18} color={T.text3} strokeWidth={1.8} />}
           </div>
 
           <div style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <span style={{ fontSize: 13, color: T.text2, fontWeight: 500 }}>스터디 기간</span>
-              <span style={{
-                background: "#FFF3E0", color: "#E65100",
-                fontSize: 11, fontWeight: 700,
-                padding: "2px 8px", borderRadius: 20,
-              }}>
-                총 92일
-              </span>
+              {totalDays != null && (
+                <span style={{
+                  background: "#FFF3E0", color: "#E65100",
+                  fontSize: 11, fontWeight: 700,
+                  padding: "2px 8px", borderRadius: 20,
+                }}>
+                  총 {totalDays}일
+                </span>
+              )}
             </div>
             <div style={{ fontSize: 15, fontWeight: 600, color: T.text }}>
-              2026년 05월 3일 ~ 2026년 08월 3일
+              {formatDate(room.createdAt)} ~ {formatDate(room.expiredAt)}
             </div>
           </div>
 
@@ -131,33 +175,104 @@ export function CardModal() {
             </div>
           </div>
 
-          <div style={{
-            fontSize: 12, color: T.text3,
-            textAlign: "center", marginBottom: 14,
-          }}>
-            설정한 내용으로 스터디에 참여하시겠어요?
-          </div>
-
-          <button
-            disabled={full}
-            onClick={() => { if (!full) { openStudyRoom(room.id); onClose(); } }}
-            style={{
-              width: "100%",
-              padding: "14px 0",
-              borderRadius: 12,
-              border: "none",
-              background: full ? "#9e9e9e" : T.red,
-              color: "#fff",
-              fontSize: 16, fontWeight: 800,
-              cursor: full ? "not-allowed" : "pointer",
-              transition: "opacity 0.15s",
-              letterSpacing: ".02em",
-            }}
-            onMouseEnter={(e) => { if (!full) e.currentTarget.style.opacity = ".85"; }}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          >
-            {full ? "참여 마감" : "참여하기"}
-          </button>
+          {codeStep ? (
+            <>
+              <div style={{ fontSize: 13, color: T.text2, textAlign: "center", marginBottom: 12 }}>
+                비공개 스터디방입니다. 참여 코드가 필요합니다.
+              </div>
+              <input
+                type="text"
+                value={codeVal}
+                onChange={(e) => {
+                  setCodeVal(e.target.value.replace(/\D/g, "").slice(0, 6));
+                  setCodeError(null);
+                }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleCodeSubmit(); }}
+                placeholder="참여 코드 입력 (4~6자리 숫자)"
+                maxLength={6}
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  border: `1.5px solid ${codeError ? T.red : T.border}`,
+                  fontSize: 15,
+                  outline: "none",
+                  background: T.bg,
+                  color: T.text,
+                  marginBottom: 6,
+                  fontFamily: "'Noto Sans KR', sans-serif",
+                  boxSizing: "border-box",
+                  letterSpacing: "0.15em",
+                  fontWeight: 700,
+                }}
+              />
+              {codeError === "format" && (
+                <div style={{ fontSize: 12, color: T.red, marginBottom: 10 }}>4~6자리 숫자를 입력해주세요.</div>
+              )}
+              {codeError === "wrong" && (
+                <div style={{ fontSize: 12, color: T.red, marginBottom: 10 }}>참여 코드가 올바르지 않습니다.</div>
+              )}
+              {!codeError && <div style={{ marginBottom: 10 }} />}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => { setCodeStep(false); setCodeVal(""); setCodeError(null); }}
+                  style={{
+                    flex: 1, padding: "13px 0", borderRadius: 12,
+                    border: `1.5px solid ${T.border}`, background: "none",
+                    color: T.text2, fontSize: 15, fontWeight: 600, cursor: "pointer",
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleCodeSubmit}
+                  disabled={verifying}
+                  style={{
+                    flex: 1, padding: "13px 0", borderRadius: 12,
+                    border: "none", background: T.red,
+                    color: "#fff", fontSize: 15, fontWeight: 800,
+                    cursor: verifying ? "not-allowed" : "pointer",
+                    opacity: verifying ? 0.7 : 1,
+                  }}
+                >
+                  {verifying ? "확인 중..." : "입장하기"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{
+                fontSize: 12, color: T.text3,
+                textAlign: "center", marginBottom: 14,
+              }}>
+                {full
+                  ? "정원이 마감된 스터디방입니다."
+                  : isPrivate
+                    ? "비공개 스터디방입니다. 참여 코드가 필요합니다."
+                    : "설정한 내용으로 스터디에 참여하시겠어요?"}
+              </div>
+              <button
+                disabled={full}
+                onClick={handleEnterClick}
+                style={{
+                  width: "100%",
+                  padding: "14px 0",
+                  borderRadius: 12,
+                  border: "none",
+                  background: full ? "#9e9e9e" : T.red,
+                  color: "#fff",
+                  fontSize: 16, fontWeight: 800,
+                  cursor: full ? "not-allowed" : "pointer",
+                  transition: "opacity 0.15s",
+                  letterSpacing: ".02em",
+                }}
+                onMouseEnter={(e) => { if (!full) e.currentTarget.style.opacity = ".85"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+              >
+                {full ? "참여 마감" : isPrivate ? "코드 입력 후 입장" : "참여하기"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

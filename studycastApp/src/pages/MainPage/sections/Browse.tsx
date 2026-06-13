@@ -173,7 +173,7 @@ export function Browse() {
                 opacity: isLoggedIn ? 1 : 0.5,
               }}
             >
-              관심 설정
+              관심 카테고리
               {selCats.length > 0 && isLoggedIn && (
                 <span style={{
                   background: T.red,

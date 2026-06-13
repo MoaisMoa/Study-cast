@@ -1,8 +1,8 @@
 package com.younghee.studycast.service;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.NoSuchElementException;
-import java.util.Random;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -37,6 +37,8 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     private final RefreshTokenMapper refreshTokenMapper;
     // 수정) 개별 트랜잭션
     private final EmailVerificationAttemptService emailVerificationAttemptService;
+    // 수정) Random -> SecureRandom
+    private static final SecureRandom secureRandom = new SecureRandom();
 
     @Override
     @Transactional
@@ -238,10 +240,10 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     }
 
     private String generateCode() {
-        Random random = new Random();
-        int number = random.nextInt(1_000_000);
+        int number = secureRandom.nextInt(1_000_000);
+        String code = String.format("%06d", number);
 
-        return String.format("%06d", number);
+        return code;
     }
     
 }

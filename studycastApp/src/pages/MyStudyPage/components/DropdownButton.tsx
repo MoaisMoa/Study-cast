@@ -77,7 +77,7 @@ export function DropdownButton({
           zIndex: 200,
           minWidth: 120,
         }}>
-          <div style={{ padding: 6 }}>
+          <div style={{ padding: "10px 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
             {options.map((opt) => {
               const sel = opt.value === value;
               return (
@@ -86,24 +86,22 @@ export function DropdownButton({
                   onClick={() => { onChange(opt.value); setOpen(false); }}
                   style={{
                     width: "100%",
-                    padding: "8px 12px",
-                    borderRadius: 7,
-                    border: `1.5px solid ${sel ? T.red : "transparent"}`,
-                    background: sel ? T.redLight : "none",
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: `1.5px solid ${sel ? T.red : T.border}`,
+                    background: sel ? T.redLight : T.bg,
                     color: sel ? T.red : T.text2,
                     fontWeight: sel ? 700 : 400,
-                    fontSize: 13,
+                    fontSize: 12,
                     cursor: "pointer",
                     textAlign: "left",
                     display: "flex",
                     alignItems: "center",
-                    gap: 6,
+                    gap: 5,
                     fontFamily: "'Noto Sans KR',sans-serif",
                   }}
-                  onMouseEnter={(e) => { if (!sel) e.currentTarget.style.background = T.bg; }}
-                  onMouseLeave={(e) => { if (!sel) e.currentTarget.style.background = "none"; }}
                 >
-                  {sel && <Icon name="check" size={12} color={T.red} strokeWidth={2.5} />}
+                  {sel && <Icon name="check" size={11} color={T.red} strokeWidth={2.5} />}
                   {opt.label}
                 </button>
               );

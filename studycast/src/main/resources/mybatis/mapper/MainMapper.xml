@@ -21,6 +21,7 @@
         <result property="full" column="full"/>
         <result property="premium" column="premium"/>
         <result property="joinable" column="joinable"/>
+        <result property="roomPrivate" column="room_private"/>
 
         <result property="createdAt" column="created_at"/>
         <result property="expiredAt" column="expired_at"/>
@@ -58,6 +59,7 @@
             (r.created_at &gt;= NOW() - INTERVAL '10 days') AS new_room,
             (r.now_users &gt;= r.max_users) AS full,
             r.room_premium AS premium,
+            r.room_private,
 
             <!-- 바로 참여 가능 여부 -->
             (
@@ -175,6 +177,7 @@
             (r.created_at &gt;= NOW() - INTERVAL '10 days') AS new_room,
             (r.now_users &gt;= r.max_users) AS full,
             r.room_premium AS premium,
+            r.room_private,
 
             <!-- 바로 참여 가능 여부 -->
             (
@@ -205,9 +208,7 @@
         ) activity
             ON r.room_no = activity.room_no
 
-        WHERE r.room_private = FALSE
-            <!-- 종료된 방 제외 -->
-            AND r.expired_at &gt; NOW()
+        WHERE r.expired_at &gt; NOW()
             <!-- 추천 스터디는 마감 방 제외 -->
             AND r.now_users &lt; r.max_users
             <!-- 관심 카테고리가 있으면 해당 카테고리만, 없으면 전체 조회 -->
@@ -262,6 +263,7 @@
             (r.created_at &gt;= NOW() - INTERVAL '10 days') AS new_room,
             (r.now_users &gt;= r.max_users) AS full,
             r.room_premium AS premium,
+            r.room_private,
 
             <!-- 바로 참여 가능 여부 -->
             (
@@ -291,9 +293,7 @@
             GROUP BY room_no
         ) activity
             ON r.room_no = activity.room_no
-        WHERE r.room_private = FALSE
-            <!-- 종료된 방 제외 -->
-            AND r.expired_at &gt; NOW()
+        WHERE r.expired_at &gt; NOW()
             <!-- 조건1) 신규 탭이면 생성일 기준 10일 이내 방만 조회 -->
             <if test="'NEW'.equals(request.tab)">
                 AND r.created_at &gt;= NOW() - INTERVAL '10 days'
@@ -363,6 +363,7 @@
             (r.created_at &gt;= NOW() - INTERVAL '10 days') AS new_room,
             (r.now_users &gt;= r.max_users) AS full,
             r.room_premium AS premium,
+            r.room_private,
 
             <!-- 바로 참여 가능 여부 -->
             (
@@ -395,9 +396,7 @@
         ) activity
             ON r.room_no = activity.room_no
 
-        WHERE r.room_private = FALSE
-            <!-- 종료된 방 제외 -->
-            AND r.expired_at &gt; NOW()
+        WHERE r.expired_at &gt; NOW()
 
             <!-- 마감 방 제외 -->
             AND r.now_users &lt; r.max_users

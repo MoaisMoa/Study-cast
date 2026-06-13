@@ -17,6 +17,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.younghee.studycast.security.JwtAuthenticationFilter;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -45,6 +46,22 @@ public class SecurityConfig {
             .httpBasic(AbstractHttpConfigurer::disable)
             .logout(AbstractHttpConfigurer::disable)
 
+            // 인증/인가 실패 응답 처리
+            .exceptionHandling(exception -> exception
+                // 인증되지 않은 사용자가 인증 필요 API에 접근한 경우
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"success\":false,\"message\":\"로그인이 필요합니다.\"}");
+                })
+                // 인증O/권한X 경우
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"success\":false,\"message\":\"접근 권한이 없습니다.\"}");
+                })
+            )    
+            
             .authorizeHttpRequests(auth -> auth
                 // CORS preflight 요청 허용
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -68,7 +85,8 @@ public class SecurityConfig {
                     "/api/auth/logout",
                     "/api/auth/me",
                     "/api/rooms/**",
-                    "/api/main/**"
+                    "/api/main/**",
+                    "/api/visited-rooms/**"
                 ).authenticated()
 
                 // 아직 다른 기능 개발 중이므로 임시 허용

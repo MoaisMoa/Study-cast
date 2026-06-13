@@ -33,12 +33,15 @@ public class MainRoomResponse {
     private Boolean full;
     private Boolean premium;
     private Boolean joinable;
+    private Boolean roomPrivate; // 비공개 방 여부 (true: 비밀번호 필요)
 
     // 5. 기간 / 방문 정보
     private LocalDateTime createdAt;
     private LocalDateTime expiredAt;
     private LocalDateTime lastVisitedAt;
+    // 추가) 자주 방문한 방
+    private Integer visitCount;
 
-    // 5. 추후 연결 정보
+    // 6. 추후 연결 정보
     private Long averageStudySeconds;
 }

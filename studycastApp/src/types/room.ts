@@ -2,6 +2,8 @@
 export type MainRoomTab = "ALL" | "NEW";
 // 메인페이지 스터디 및 유형 필터
 export type MainRoomType = "ALL" | "FREE" | "PREMIUM";
+// 카드 표시용 방 유형 (ALL 제외)
+export type RoomType = "FREE" | "PREMIUM";
 // 관심 카테고리
 export type RoomCategory =
   | "어학"
@@ -46,11 +48,13 @@ export interface MainRoomResponse {
   full: boolean;
   premium: boolean;
   joinable: boolean;
+  roomPrivate: boolean;
 
   createdAt: string;
   expiredAt: string;
   lastVisitedAt: string | null;
 
+  visitCount?: number | null;
   averageStudySeconds: number | null;
 }
 
@@ -86,6 +90,9 @@ export interface Room {
   createdDaysAgo?: number;
   overCapacity?: boolean;
   badge?: "NEW";
+  isPrivate?: boolean;
+  createdAt?: string | null;
+  expiredAt?: string | null;
 }
 
 /** 내 스터디(메인 좌측 슬롯)용 Room */

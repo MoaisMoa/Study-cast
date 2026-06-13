@@ -188,6 +188,9 @@ function toRoom(response: MainRoomResponse): Room {
     recent: response.newRoom,
     createdDaysAgo,
     overCapacity: response.currentUsers > response.maxUsers,
+    isPrivate: response.roomPrivate,
+    createdAt: response.createdAt ?? null,
+    expiredAt: response.expiredAt ?? null,
   };
 }
 

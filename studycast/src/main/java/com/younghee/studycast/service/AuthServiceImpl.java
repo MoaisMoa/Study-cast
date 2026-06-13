@@ -93,7 +93,7 @@ public class AuthServiceImpl implements AuthService {
         }
         // 6. DB 만료 시간 확인
         if (savedToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new IllegalStateException("Refresh Token이 만료되었습니다.");
+            throw new SecurityException("Refresh Token이 만료되었습니다.");
         }
         // 7. 토큰 안의 userUuid와 DB userUuid
         UUID userUuid = jwtProvider.getUserUuid(refreshToken);

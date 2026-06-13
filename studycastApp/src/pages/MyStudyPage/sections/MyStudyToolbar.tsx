@@ -1,6 +1,12 @@
 import { useT } from "@/theme";
 import type { SortValue, StatusFilter, VisibilityFilter } from "@/types/myStudy";
 import { SORT_OPTIONS, STATUS_FILTERS, VISIBILITY_FILTERS } from "@/data/myStudy";
+
+const STATUS_DISPLAY: Record<string, string> = {
+  "운영 중": "입장 가능",
+  "마감": "정원 마감",
+  "종료": "운영 종료",
+};
 import { DropdownButton } from "../components/DropdownButton";
 
 export interface MyStudyToolbarProps {
@@ -34,7 +40,7 @@ export function MyStudyToolbar({
         <DropdownButton
           label="운영 상태"
           align="right"
-          options={STATUS_FILTERS.map((s) => ({ value: s, label: s }))}
+          options={STATUS_FILTERS.map((s) => ({ value: s, label: STATUS_DISPLAY[s] ?? s }))}
           value={statusFilter}
           neutralValue="전체"
           onChange={(v) => onStatusChange(v as StatusFilter)}
