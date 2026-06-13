@@ -10,12 +10,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.younghee.studycast.dao.RoleMapper;
 import com.younghee.studycast.dao.UserMapper;
 import com.younghee.studycast.dto.UserDTO;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final UserMapper userMapper;
-    private final RoleMapper roleMapper;
 
     @Override
     protected void doFilterInternal(
@@ -38,14 +37,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String uri = request.getRequestURI();
-        String header = request.getHeader("Authorization");
 
-        if (header == null || !header.startsWith("Bearer ")) {
+        String token = null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("sc_access_token".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        if (token == null) {
             filterChain.doFilter(request, response);
             return;
         }
-
-        String token = header.substring(7);
 
         if (!jwtProvider.validateToken(token)) {
             sendUnauthorized(response, "유효하지 않은 토큰입니다.");
@@ -68,20 +75,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.clearContext();
 
-        // ADMIN 추가 시
-        // List<SimpleGrantedAuthority> authorities =
-        //     roleMapper.findRolesByUserUuid(userUuid)
-        //         .stream()
-        //         .map(SimpleGrantedAuthority::new)
-        //         .collect(Collectors.toList());
-
         UsernamePasswordAuthenticationToken authenticationToken =
             new UsernamePasswordAuthenticationToken(
                 userUuid,
                 null,
                 List.of(new SimpleGrantedAuthority("ROLE_USER"))
-                // ADMIN 추가 시 위의 List 대신 아래 코드로 변경
-                // authorities
             );
 
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
