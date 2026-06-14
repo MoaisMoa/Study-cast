@@ -80,22 +80,28 @@
         <!-- 카테고리명 조회 -->
         INNER JOIN categories c
             ON r.category_no = c.category_no
-        <!-- 내가 참여 중인 방만 조회 -->
-        INNER JOIN room_participants rp
+        <!-- 내가 참여 중인 방 여부 확인 (입장 전 생성 방도 포함하기 위해 LEFT JOIN) -->
+        LEFT JOIN room_participants rp
             ON r.room_no = rp.room_no
-        <!-- 내가 최근 방문 일시 조회 -->
+            AND rp.user_uuid = #{userUuid}
+        <!-- 내 최근 방문 일시 조회 -->
         LEFT JOIN room_visit_histories rvh
             ON r.room_no = rvh.room_no
             AND rvh.user_uuid = #{userUuid}
 
-        WHERE rp.user_uuid = #{userUuid}
+        WHERE (
+            <!-- 내가 생성한 방 (입장 전이어도 표시) -->
+            r.user_uuid = #{userUuid}
+            <!-- 또는 내가 참여 중인 방 -->
+            OR rp.user_uuid IS NOT NULL
+        )
             <!-- 종료된 방 제외 -->
             AND r.expired_at &gt; NOW()
 
         ORDER BY
-            <!-- 내가 생성한 방 우선 -->
+            <!-- 내가 생성한 방 1순위 -->
             CASE WHEN r.user_uuid = #{userUuid} THEN 0 ELSE 1 END ASC,
-            <!-- 그 외 방은 최근 방문순 -->
+            <!-- 그 다음 최근 방문순 -->
             rvh.last_visited_at DESC NULLS LAST,
             <!-- 동일 조건이면 최근 생성순, 제목순 -->
             r.created_at DESC,
@@ -324,10 +330,9 @@
                     r.created_at DESC,
                     r.room_title ASC
                 </when>
-                <!-- 전체 탭은 최근 활동순, 최근 생성순, 제목순 -->
+                <!-- 전체 탭은 최근 활동순(방문 기록 없으면 생성일 대체), 제목순 -->
                 <otherwise>
-                    activity.last_active_at DESC NULLS LAST,
-                    r.created_at DESC,
+                    COALESCE(activity.last_active_at, r.created_at) DESC,
                     r.room_title ASC
                 </otherwise>
             </choose>

@@ -146,7 +146,7 @@ export function Dashboard() {
               </span>
             </div>
           ) : !hasRooms ? (
-            <div style={{
+            <div onClick={() => navigate("/rooms/new")} style={{
               width: "100%",
               height: "100%",
               background: T.surface2,
@@ -156,6 +156,7 @@ export function Dashboard() {
               justifyContent: "center",
               gap: 10,
               border: `1.5px dashed ${T.border}`,
+              cursor: "pointer",
             }}>
               <div style={{
                 width: 36, height: 36, borderRadius: "50%", background: T.bg,

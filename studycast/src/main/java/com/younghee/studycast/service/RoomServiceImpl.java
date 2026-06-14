@@ -10,10 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.younghee.studycast.config.StudyRoomPolicyProperties;
-import com.younghee.studycast.dao.RoomParticipantsMapper;
 import com.younghee.studycast.dao.RoomsMapper;
 import com.younghee.studycast.domain.RoomCategory;
-import com.younghee.studycast.dto.RoomParticipantDTO;
 import com.younghee.studycast.dto.RoomsDTO;
 import com.younghee.studycast.dto.request.RoomCreateRequest;
 import com.younghee.studycast.dto.response.JoinCodeCheckResponse;
@@ -34,7 +32,6 @@ public class RoomServiceImpl implements RoomService {
     private static final int MAX_PERIOD_DAYS = 90;
 
     private final RoomsMapper roomsMapper;
-    private final RoomParticipantsMapper roomParticipantsMapper;
     private final StudyRoomPolicyProperties studyRoomPolicyProperties;
     private final RoomImageStorageService roomImageStorageService;
 
@@ -62,13 +59,13 @@ public class RoomServiceImpl implements RoomService {
                 request.getRoomPrivate(),
                 request.getRoomPassword()
             );
-            // 5. RoomsDTO 생성
+            // 5. RoomsDTO 생성 (now_users는 실제 입장 시점에 증가하므로 0으로 초기화)
             RoomsDTO room = RoomsDTO.builder()
                                     .userUuid(userUuid)
                                     .categoryNo(request.getCategoryNo())
                                     .roomTitle(request.getRoomTitle().trim())
                                     .maxUsers(request.getMaxUsers())
-                                    .nowUsers(1)
+                                    .nowUsers(0)
                                     .roomPassword(roomPassword)
                                     .roomNotice(trimToNull(request.getRoomNotice()))
                                     .roomPrivate(request.getRoomPrivate())
@@ -77,24 +74,11 @@ public class RoomServiceImpl implements RoomService {
                                     .build();
             // 6. rooms 테이블에 생성된 roomNo 받기 (핵심)
             int insertedRoomCount = roomsMapper.insertRoom(room);
-            
+
             if (insertedRoomCount != 1 || room.getRoomNo() == null) {
                 throw new IllegalStateException("스터디방 생성에 실패했습니다.");
             }
-            // 7. RoomParticipantDTO 생성
-            RoomParticipantDTO participant = RoomParticipantDTO.builder()
-                                                                .userUuid(userUuid)
-                                                                .roomNo(room.getRoomNo())
-                                                                .cameraStatus(request.getCameraStatus())
-                                                                .micStatus(request.getMicStatus())
-                                                                .build();
-            // 8. room_participants 테이블에 방장 등록 (핵심)
-            int insertedParticipantCount = roomParticipantsMapper.insertRoomParticipant(participant);
-
-            if (insertedParticipantCount != 1) {
-                throw new IllegalStateException("방장 참여자 등록에 실패했습니다.");
-            }
-            // 9. RoomCreateResponse 반환
+            // 7. RoomCreateResponse 반환 (방 입장은 별도 join API에서 처리)
             return new RoomCreateResponse(
                 room.getRoomNo(),
                 room.getRoomTitle(),

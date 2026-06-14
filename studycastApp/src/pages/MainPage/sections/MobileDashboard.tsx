@@ -81,8 +81,11 @@ export function MobileDashboard() {
               <span style={{ fontSize: 13, color: T.text3, textAlign: "center", lineHeight: 1.6 }}>로그인 후 이용해주세요</span>
             </div>
           ) : !hasRooms ? (
-            <div style={{ width: "100%", height: "100%", background: T.surface2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, border: `1.5px dashed ${T.border}` }}>
-              <span style={{ fontSize: 12, color: T.text3 }}>스터디방 참여하기</span>
+            <div onClick={() => navigate("/rooms/new")} style={{ width: "100%", height: "100%", background: T.surface2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, border: `1.5px dashed ${T.border}`, cursor: "pointer" }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon name="plus" size={18} color={T.text3} />
+              </div>
+              <span style={{ fontSize: 12, color: T.text3, textAlign: "center", lineHeight: 1.5 }}>스터디방<br />참여하기</span>
             </div>
           ) : myIdx === rooms.length ? (
             <div onClick={() => navigate("/rooms/new")} style={{ width: "100%", height: "100%", background: T.surface2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, border: `1.5px dashed ${T.border}`, borderRadius: T.radius }}>
