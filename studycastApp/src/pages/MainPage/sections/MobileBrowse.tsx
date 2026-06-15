@@ -394,7 +394,7 @@ export function MobileBrowse() {
                   marginBottom: 3,
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}>
-                  {r.title}
+                  {r.title.replace(/ \(비공개\)$/, "")}
                 </div>
                 <div style={{ fontSize: 12, color: T.text3 }}>
                   {r.cat} · 평균 {r.time}

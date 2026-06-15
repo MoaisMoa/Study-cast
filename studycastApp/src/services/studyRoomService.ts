@@ -1,20 +1,5 @@
-/**
- * 스터디룸 서비스 — 현재는 더미 데이터 기준 mock 구현.
- *
- * API/WebSocket/WebRTC 연동 시 이 파일의 함수 본문만 교체하면 되도록,
- * 컴포넌트는 항상 이 서비스 함수만 호출한다 (데이터 직접 import 금지).
- *
- *   - REST  : fetchRoom / updateRoom / kickMember / postNotice ...
- *   - 채팅  : subscribeChat (WebSocket onmessage 로 교체)
- *   - 타이머: reportTimer (서버 시간 동기화로 교체)
- *   - 캠    : (WebRTC) CamGrid의 getUserMedia 자리 그대로 사용
- */
-
 import type { ChatMessage, RoomMember } from "@/types/studyRoom";
-import {
-  ALL_INIT, INITIAL_MESSAGES, ROOM_MAX_MEMBERS, ROOM_TITLE_DEFAULT,
-} from "@/data/studyRoom";
-import { mockRequest } from "./apiClient";
+import { apiClient } from "./apiClient";
 
 /** 방 입장 시 한 번에 받아오는 초기 스냅샷 */
 export interface RoomSnapshot {
@@ -24,84 +9,150 @@ export interface RoomSnapshot {
   members: RoomMember[];
   messages: ChatMessage[];
   notice: string | null;
-  /** 본인이 방장인지 */
   isHost: boolean;
+  isPrivate: boolean;
+  joinCode: string | null;
+  camOn: boolean;
+  micOn: boolean;
+  thumbnail: string | null;
 }
 
-/** 방 입장 — 초기 스냅샷 조회 (GET /rooms/:id) */
-export async function fetchRoom(roomId: string): Promise<RoomSnapshot> {
-  // TODO(API 연결): return request<RoomSnapshot>(`/rooms/${roomId}`);
-  return mockRequest(
-    {
-      roomId,
-      title: ROOM_TITLE_DEFAULT,
-      maxMembers: ROOM_MAX_MEMBERS,
-      members: ALL_INIT,
-      messages: INITIAL_MESSAGES,
-      notice: null,
-      isHost: true,
-    },
-    { latency: 200 }
-  );
+interface RoomDetailResponse {
+  roomNo: number;
+  roomTitle: string;
+  roomNotice: string | null;
+  roomThumbnail: string | null;
+  categoryNo: number;
+  categoryName: string;
+  currentUsers: number;
+  maxUsers: number;
+  roomPrivate: boolean;
+  roomPassword: string | null;
+  owner: boolean;
+  expired: boolean;
+  cameraStatus: boolean;
+  micStatus: boolean;
+  createdAt: string;
+  expiredAt: string;
 }
 
-/** 방 설정 변경 (PUT /rooms/:id) */
+interface ParticipantResponse {
+  userUuid: string;
+  userName: string;
+  profileImage: string | null;
+  owner: boolean;
+  cameraStatus: boolean;
+  micStatus: boolean;
+  joinedAt: string;
+}
+
+const MEMBER_COLORS = ["#E53935", "#2DA58E", "#C07A3A", "#1976D2", "#7B1FA2", "#388E3C", "#D32F2F"];
+
+function nowT(): string {
+  const d = new Date();
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map((v) => String(v).padStart(2, "0")).join(":");
+}
+
+function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean): RoomMember {
+  const joinedAt = p.joinedAt ? new Date(p.joinedAt) : new Date();
+  const joinMin = Math.max(0, Math.floor((Date.now() - joinedAt.getTime()) / 60_000));
+  return {
+    id: index + 1,
+    name: isMe ? "나" : p.userName,
+    short: isMe ? "나" : p.userName.slice(0, 2),
+    email: "",
+    role: p.owner ? "HOST" : "MEMBER",
+    color: isMe ? MEMBER_COLORS[0] : MEMBER_COLORS[(index % (MEMBER_COLORS.length - 1)) + 1],
+    sec: 0,
+    joinMin,
+    mic: p.micStatus,
+    cam: p.cameraStatus,
+  };
+}
+
+/** 방 입장 + 초기 스냅샷 조회 */
+export async function fetchRoom(roomId: string, myName: string): Promise<RoomSnapshot> {
+  // 입장 처리 (이미 active 상태면 백엔드가 중복 처리)
+  await apiClient.post(`/api/rooms/${roomId}/join`);
+
+  const [detailRes, participantsRes] = await Promise.all([
+    apiClient.get<RoomDetailResponse>(`/api/rooms/${roomId}`),
+    apiClient.get<ParticipantResponse[]>(`/api/rooms/${roomId}/participants`),
+  ]);
+
+  const detail = detailRes.data;
+
+  // 나를 항상 index 0(id=1)으로 정렬
+  const sorted = [...participantsRes.data].sort((a) => (a.userName === myName ? -1 : 1));
+  const members = sorted.map((p, i) => toRoomMember(p, i, p.userName === myName));
+
+  return {
+    roomId,
+    title: detail.roomTitle,
+    maxMembers: detail.maxUsers,
+    members,
+    messages: [{ id: 0, type: "system", text: "스터디룸에 입장했습니다.", time: nowT() }],
+    notice: detail.roomNotice ?? null,
+    isHost: detail.owner,
+    isPrivate: detail.roomPrivate,
+    joinCode: detail.roomPassword ?? null,
+    camOn: detail.cameraStatus ?? true,
+    micOn: detail.micStatus ?? false,
+    thumbnail: detail.roomThumbnail ?? null,
+  };
+}
+
+/** 방 설정 변경 */
 export async function updateRoom(
   _roomId: string,
   _patch: Partial<Pick<RoomSnapshot, "title" | "maxMembers">>
 ): Promise<{ ok: boolean }> {
-  return mockRequest({ ok: true }, { latency: 400 });
+  return { ok: true };
 }
 
-/** 멤버 추방 (DELETE /rooms/:id/members/:memberId) */
+/** 멤버 추방 */
 export async function kickMember(_roomId: string, _memberId: number): Promise<{ ok: boolean }> {
-  return mockRequest({ ok: true }, { latency: 300 });
+  return { ok: true };
 }
 
-/** 공지 등록/수정/삭제 (PUT /rooms/:id/notice) — null 이면 삭제 */
+/** 공지 등록/수정/삭제 */
 export async function saveNotice(_roomId: string, notice: string | null): Promise<{ ok: boolean; notice: string | null }> {
-  return mockRequest({ ok: true, notice }, { latency: 300 });
+  return { ok: true, notice };
 }
 
-/** 채팅 메시지 전송 (WebSocket send 또는 POST /rooms/:id/messages) */
+/** 채팅 메시지 전송 */
 export async function sendMessage(_roomId: string, text: string): Promise<ChatMessage> {
   const now = new Date();
   const time = [now.getHours(), now.getMinutes(), now.getSeconds()]
     .map((v) => String(v).padStart(2, "0")).join(":");
-  return mockRequest<ChatMessage>(
-    { id: Date.now(), name: "나", text, time, mine: true, isHost: true },
-    { latency: 80 }
-  );
+  return { id: Date.now(), name: "나", text, time, mine: true, isHost: true };
 }
 
-/**
- * 실시간 채팅 구독 — 현재는 mock(no-op).
- * WebSocket 연동 시: ws.onmessage = (e) => onMessage(JSON.parse(e.data));
- * 반환값은 구독 해제 함수.
- */
+/** 실시간 채팅 구독 (WebSocket 연동 전 no-op) */
 export function subscribeChat(
   _roomId: string,
   _onMessage: (msg: ChatMessage) => void
 ): () => void {
-  // TODO(WebSocket): const ws = new WebSocket(`${WS_BASE}/rooms/${_roomId}`);
-  //                  ws.onmessage = (e) => _onMessage(JSON.parse(e.data));
-  //                  return () => ws.close();
   return () => {};
 }
 
-/**
- * 공부 타이머 보고 — 현재는 mock(no-op).
- * 서버 시간 동기화 시: POST /rooms/:id/timer { state, sec }
- */
+/** 공부 타이머 보고 (no-op) */
 export async function reportTimer(
   _roomId: string,
   _state: "running" | "paused" | "idle",
   _sec: number
-): Promise<void> {
-  // TODO(API 연결): await request(`/rooms/${_roomId}/timer`, { method: "POST", body: ... });
+): Promise<void> {}
+
+/** 방 나가기 */
+export async function leaveRoom(roomId: string, studiedSeconds = 0): Promise<{ ok: boolean }> {
+  await apiClient.delete(`/api/rooms/${roomId}/leave`, {
+    data: { studiedSeconds },
+  });
+  return { ok: true };
 }
 
-/** 방 나가기 (POST /rooms/:id/leave) */
-export async function leaveRoom(_roomId: string): Promise<{ ok: boolean }> {
-  return mockRequest({ ok: true }, { latency: 150 });
+/** 오늘 누적 공부 시간 조회 (초 단위) */
+export async function getTodayStudySeconds(): Promise<number> {
+  const res = await apiClient.get<{ totalSeconds: number }>("/api/study-logs/today");
+  return res.data.totalSeconds;
 }

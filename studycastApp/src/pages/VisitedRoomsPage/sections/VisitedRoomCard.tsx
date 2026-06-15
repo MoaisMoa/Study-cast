@@ -56,7 +56,7 @@ export function VisitedRoomCard({ room, tab, onCardClick }: VisitedRoomCardProps
       </div>
 
       <div style={{ padding: "11px 13px 13px", background: T.surface }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 4 }}>{room.title}</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 4 }}>{room.title.replace(/ \(비공개\)$/, "")}</div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: 12, color: T.text3 }}>{room.cat} · 평균 {room.time}</span>
           {meta && <span style={{ fontSize: 11, color: T.text3, background: T.surface2, padding: "2px 7px", borderRadius: 10 }}>{meta}</span>}

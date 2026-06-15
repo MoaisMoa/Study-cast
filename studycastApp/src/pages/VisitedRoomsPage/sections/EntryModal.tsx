@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { VisitedRoom } from "@/types/visitedRoom";
 import { useT } from "@/theme";
-import { verifyEntryCode } from "@/services/visitedRoomService";
+import { joinRoom } from "@/services/visitedRoomService";
 import { openStudyRoom } from "@/utils/openStudyRoom";
 import { Icon } from "@/components/ui/Icon";
 
@@ -36,7 +36,7 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
   const handleCodeSubmit = async () => {
     if (!CODE_RE.test(codeVal.trim())) { setCodeError("format"); return; }
     setVerifying(true);
-    const ok = await verifyEntryCode(room.id, codeVal);
+    const ok = await joinRoom(room.id, codeVal.trim());
     setVerifying(false);
     if (ok) { openStudyRoom(room.id); handleClose(); return; }
     setCodeError("wrong");

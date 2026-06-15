@@ -103,7 +103,7 @@ export function MyStudyCard({ room, onCardClick, selectMode, selected, onToggle,
 
       <div style={{ padding: "11px 13px 13px", background: T.surface }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 4 }}>
-          {room.title}
+          {room.title.replace(/ \(비공개\)$/, "")}
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginTop: 2 }}>
           <div style={{ fontSize: 12, color: T.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

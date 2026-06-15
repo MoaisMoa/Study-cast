@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import type { ChatMessage, RoomMember, RoomModal, TimerState } from "@/types/studyRoom";
 import { useT, useThemeCtx } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import {
-  ALL_INIT, INITIAL_MESSAGES, ROOM_MAX_MEMBERS, ROOM_TITLE_DEFAULT, SELF,
-  fmtT, nowDate, nowT,
-} from "@/data/studyRoom";
+import { fmtT, nowDate, nowT } from "@/data/studyRoom";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchRoom, leaveRoom } from "@/services/studyRoomService";
+import { API_BASE_URL } from "@/services/apiClient";
 import { LearningPlannerModal } from "@/pages/MainPage/sections/planner/LearningPlannerModal";
 import {
   Av, BellIc, CalIc, CamOff, CamOn, ChatIc, CogIc, ExitIc, ExpandIc, MenuIc, MicOff, MicOn, MoonIc, PauseIc, PlayIc, SendIc, ShrinkIc, SunIc, UsersIc, XIc,
@@ -23,18 +23,17 @@ import { NoticeModal } from "./sections/NoticeModal";
 export default function StudyRoomPage() {
   const T = useT();
   const { mode, toggle } = useThemeCtx();
-  const navigate = useNavigate();
   const { roomId } = useParams();
   const isMobile = useIsMobile(768);
+  const { user } = useAuth();
 
   // 멤버/시간
-  const [members, setMembers] = useState<RoomMember[]>(ALL_INIT);
-  const [elapsed] = useState<Record<number, number>>(() => Object.fromEntries(ALL_INIT.map((m) => [m.id, m.sec])));
-  const [totalSec, setTotalSec] = useState(8073);
+  const [members, setMembers] = useState<RoomMember[]>([]);
+  const [elapsed, setElapsed] = useState<Record<number, number>>({});
+  const [totalSec, setTotalSec] = useState(0);
   const [timerSec, setTimerSec] = useState(0);
   const [timerState, setTimerState] = useState<TimerState>("idle");
 
-  // 장치
   const [mic, setMic] = useState(true);
   const [cam, setCam] = useState(true);
   const [camWarn, setCamWarn] = useState(false);
@@ -50,6 +49,10 @@ export default function StudyRoomPage() {
   const [full, setFull] = useState(false);
   const [sideHover, setSideHover] = useState(false);
   const sideHoverTimer = useRef<number | null>(null);
+  // 나가기 버튼으로 이미 퇴장한 경우 pagehide에서 중복 호출 방지
+  const exitedRef = useRef(false);
+  // pagehide 핸들러가 최신 timerSec을 읽을 수 있도록 ref로 추적
+  const timerSecRef = useRef(0);
   const [modal, setModal] = useState<RoomModal>(null);
   const [kickTarget, setKickTarget] = useState<RoomMember | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -57,19 +60,47 @@ export default function StudyRoomPage() {
   const [drawer, setDrawer] = useState<null | "menu" | "chat" | "members">(null);
 
   // 방 정보
-  const [roomTitle, setRoomTitle] = useState(ROOM_TITLE_DEFAULT);
-  const [maxMembers, setMaxMembers] = useState(ROOM_MAX_MEMBERS);
+  const [isHost, setIsHost] = useState(false);
+  const [roomTitle, setRoomTitle] = useState("");
+  const [maxMembers, setMaxMembers] = useState(4);
+  const [roomPrivate, setRoomPrivate] = useState(false);
+  const [joinCode, setJoinCode] = useState<string | null>(null);
   const [noticeMsg, setNoticeMsg] = useState<string | null>(null);
   const [settingCamOn, setSettingCamOn] = useState(true);
   const [settingMicOn, setSettingMicOn] = useState(true);
+  const [roomThumbnail, setRoomThumbnail] = useState<string | null>(null);
   const [kickedMsg, setKickedMsg] = useState<string | null>(null);
 
   // 채팅
   const [chatTab, setChatTab] = useState<"채팅" | "멤버">("채팅");
   const [inp, setInp] = useState("");
-  const [msgs, setMsgs] = useState<ChatMessage[]>(INITIAL_MESSAGES);
+  const [msgs, setMsgs] = useState<ChatMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+
+  // API: 방 입장 처리 + 초기 데이터 로드
+  useEffect(() => {
+    if (!roomId) return;
+    let cancelled = false;
+    fetchRoom(roomId, user?.name ?? "").then((snap) => {
+      if (cancelled) return;
+      setMembers(snap.members);
+      setElapsed(Object.fromEntries(snap.members.map((m) => [m.id, m.sec])));
+      setRoomTitle(snap.title);
+      setMaxMembers(snap.maxMembers);
+      setNoticeMsg(snap.notice);
+      setIsHost(snap.isHost);
+      setRoomPrivate(snap.isPrivate);
+      setJoinCode(snap.joinCode);
+      setMsgs(snap.messages);
+      setCam(snap.camOn);
+      setMic(snap.micOn);
+      setSettingCamOn(snap.camOn);
+      setSettingMicOn(snap.micOn);
+      setRoomThumbnail(snap.thumbnail);
+    });
+    return () => { cancelled = true; };
+  }, [roomId, user?.name]);
 
   // 시계 + 타이머
   useEffect(() => {
@@ -83,6 +114,9 @@ export default function StudyRoomPage() {
     }, 1000);
     return () => window.clearInterval(t);
   }, [timerState]);
+
+  // timerSec ref 동기화 (pagehide 핸들러용)
+  useEffect(() => { timerSecRef.current = timerSec; }, [timerSec]);
 
   // 카메라 OFF 시 자동 일시정지
   useEffect(() => {
@@ -142,11 +176,31 @@ export default function StudyRoomPage() {
     setKickTarget(null);
   };
 
-  const doExit = () => {
+  const doExit = async () => {
+    exitedRef.current = true;
     setTimerState("idle");
     setShowExitConfirm(false);
-    navigate("/");
+    try { await leaveRoom(roomId!, timerSec); } catch { /* ignore */ }
+    window.close();
   };
+
+  // 탭/브라우저 강제 종료 시 퇴장 처리
+  // keepalive: true → 페이지 언로드 후에도 브라우저가 요청 완료를 보장
+  const handlePageHide = useCallback(() => {
+    if (exitedRef.current || !roomId) return;
+    fetch(`${API_BASE_URL}/api/rooms/${roomId}/leave`, {
+      method: "DELETE",
+      credentials: "include",
+      keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studiedSeconds: timerSecRef.current }),
+    });
+  }, [roomId]);
+
+  useEffect(() => {
+    window.addEventListener("pagehide", handlePageHide);
+    return () => window.removeEventListener("pagehide", handlePageHide);
+  }, [handlePageHide]);
 
   const handleSideEnter = () => { if (sideHoverTimer.current) window.clearTimeout(sideHoverTimer.current); setSideHover(true); };
   const handleSideLeave = () => { sideHoverTimer.current = window.setTimeout(() => setSideHover(false), 300); };
@@ -159,15 +213,15 @@ export default function StudyRoomPage() {
     else if (timerState === "running") handleTimerPause();
     else handleTimerResume();
   };
-  const rightPanelProps = { chatTab, setChatTab, msgs, inp, setInp, send, isSending, sendError, setSendError, members, elapsed: { ...elapsed, [SELF.id]: totalSec }, totalSec, timerState, noticeMsg, mic, cam, maxMembers, setNoticeMsg };
+  const rightPanelProps = { chatTab, setChatTab, msgs, inp, setInp, send, isSending, sendError, setSendError, members, elapsed: { ...elapsed, 1: totalSec }, totalSec, timerState, noticeMsg, mic, cam, maxMembers, setNoticeMsg };
 
   // ── 공통 모달 묶음 ──
   const modals = (
     <>
       {modal === "cal" && <LearningPlannerModal open onClose={() => setModal(null)} />}
-      {modal === "members" && <MemberModal members={members} elapsed={{ ...elapsed, [SELF.id]: totalSec }} mic={mic} cam={cam} joinElapsed={timerSec} isHost onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
-      {modal === "settings" && <SettingModal onClose={() => setModal(null)} isHost roomTitle={roomTitle} setRoomTitle={setRoomTitle} settingCamOn={settingCamOn} setSettingCamOn={setSettingCamOn} settingMicOn={settingMicOn} setSettingMicOn={setSettingMicOn} maxMembers={maxMembers} setMaxMembers={setMaxMembers} />}
-      {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={setNoticeMsg} noticeMsg={noticeMsg} isHost />}
+      {modal === "members" && <MemberModal members={members} elapsed={{ ...elapsed, 1: totalSec }} mic={mic} cam={cam} joinElapsed={timerSec} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
+      {modal === "settings" && <SettingModal onClose={() => setModal(null)} isHost={isHost} roomTitle={roomTitle} setRoomTitle={setRoomTitle} settingCamOn={settingCamOn} setSettingCamOn={setSettingCamOn} settingMicOn={settingMicOn} setSettingMicOn={setSettingMicOn} maxMembers={maxMembers} setMaxMembers={setMaxMembers} roomThumbnail={roomThumbnail} />}
+      {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={setNoticeMsg} noticeMsg={noticeMsg} isHost={isHost} />}
       {kickTarget && <KickConfirm member={kickTarget} onConfirm={doKick} onCancel={() => setKickTarget(null)} />}
       {showExitConfirm && <ExitConfirm onConfirm={doExit} onCancel={() => setShowExitConfirm(false)} />}
     </>
@@ -242,7 +296,7 @@ export default function StudyRoomPage() {
 
         {/* 캠 그리드 (모바일 전용 4분할 확대/축소) */}
         <MobileCamGrid
-          members={members} elapsed={{ ...elapsed, [SELF.id]: totalSec }} totalSec={totalSec}
+          members={members} elapsed={{ ...elapsed, 1: totalSec }} totalSec={totalSec}
           timerState={timerState} cam={cam} mic={mic} focused={focusedId}
           setFocused={setFocusedId}
           onTimerToggle={timerAction} onTimerReset={handleTimerReset}
@@ -330,7 +384,7 @@ export default function StudyRoomPage() {
               <span style={{ color: T.text, fontWeight: 700, fontSize: 15 }}>멤버 <span style={{ color: T.text3, fontWeight: 400, fontSize: 13 }}>{members.length}명</span></span>
               <button onClick={() => setDrawer(null)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}><XIc s={18} c={T.text3} /></button>
             </div>
-            <MobileMemberDrawer members={members} elapsed={{ ...elapsed, [SELF.id]: totalSec }} totalSec={totalSec} timerState={timerState} mic={mic} cam={cam} />
+            <MobileMemberDrawer members={members} elapsed={{ ...elapsed, 1: totalSec }} totalSec={totalSec} timerState={timerState} mic={mic} cam={cam} />
           </div>
         )}
 

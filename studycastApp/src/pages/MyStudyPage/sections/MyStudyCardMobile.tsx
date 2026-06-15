@@ -85,7 +85,7 @@ export function MyStudyCardMobile({ room, onCardClick, selectMode, selected, onT
 
       <div style={{ padding: "11px 13px 13px", background: T.surface }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {room.title}
+          {room.title.replace(/ \(비공개\)$/, "")}
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginTop: 2 }}>
           <div style={{ fontSize: 12, color: T.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

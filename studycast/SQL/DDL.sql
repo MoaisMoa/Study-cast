@@ -97,6 +97,10 @@ ON rooms (room_password)
 WHERE room_private = TRUE
     AND room_password IS NOT NULL;
 
+-- 6-2. 장치 설정 기본값 (방 생성 시 설정한 카메라/마이크 on/off)
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS camera_status BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS mic_status    BOOLEAN NOT NULL DEFAULT FALSE;
+
 -- 7. 룸 참여자 정보
 CREATE TABLE IF NOT EXISTS room_participants (
     part_no BIGSERIAL PRIMARY KEY,
@@ -109,6 +113,27 @@ CREATE TABLE IF NOT EXISTS room_participants (
     CONSTRAINT fk_participant_room FOREIGN KEY (room_no) REFERENCES rooms(room_no) ON DELETE CASCADE,
     CONSTRAINT uq_user_in_room UNIQUE (user_uuid, room_no)
 );
+-- 7-1. 방 상세 페이지 위한 보강 쿼리
+ALTER TABLE room_participants
+ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE room_participants
+ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE room_participants
+ADD COLUMN IF NOT EXISTS left_at TIMESTAMP;
+
+ALTER TABLE room_participants
+ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE room_participants
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+-- 7-2. 참여자 목록 조회, 현재 인원 재계산, active 여부 확인 -> 자주 사용(인덱스)
+CREATE INDEX IF NOT EXISTS idx_room_participants_room_active
+ON room_participants(room_no, active);
+
+CREATE INDEX IF NOT EXISTS idx_room_participants_user_active
+ON room_participants(user_uuid, active);
 
 -- 8. 룸 방문 기록
 CREATE TABLE IF NOT EXISTS room_visit_histories (

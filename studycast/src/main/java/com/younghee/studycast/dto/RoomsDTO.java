@@ -31,6 +31,9 @@ public class RoomsDTO {
     private Boolean roomPrivate;    // 방 비공개 여부
     private Boolean roomPremium;    // 방 프리미엄 여부
 
+    private Boolean cameraStatus;   // 방 생성 시 설정한 카메라 기본 상태
+    private Boolean micStatus;      // 방 생성 시 설정한 마이크 기본 상태
+
     private String roomThumbnail;   // 썸네일 사진
 
     private LocalDateTime createdAt;    // 방 생성일

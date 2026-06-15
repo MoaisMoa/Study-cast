@@ -126,7 +126,7 @@ export function StudyCard({ room }: { room: Room }) {
           whiteSpace: "nowrap",
           marginBottom: 4,
         }}>
-          {room.title}
+          {room.title.replace(/ \(비공개\)$/, "")}
         </div>
         <div style={{ fontSize: 10, color: T.text3 }}>
           {room.cat} · 평균 {room.time}

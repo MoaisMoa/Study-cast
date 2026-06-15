@@ -15,6 +15,7 @@ export interface SettingModalProps {
   setSettingMicOn: (v: boolean) => void;
   maxMembers: number;
   setMaxMembers: (v: number) => void;
+  roomThumbnail?: string | null;
 }
 
 const GREEN = "#2e7d32";
@@ -29,7 +30,7 @@ function Toggle({ on, set, color }: { on: boolean; set: (v: boolean) => void; co
 }
 
 export function SettingModal(props: SettingModalProps) {
-  const { onClose, isHost, roomTitle, setRoomTitle, settingCamOn, setSettingCamOn, settingMicOn, setSettingMicOn, maxMembers, setMaxMembers } = props;
+  const { onClose, isHost, roomTitle, setRoomTitle, settingCamOn, setSettingCamOn, settingMicOn, setSettingMicOn, maxMembers, setMaxMembers, roomThumbnail } = props;
   const T = useT();
   const today = new Date().toISOString().slice(0, 10);
   const maxDate = (() => { const d = new Date(); d.setDate(d.getDate() + 90); return d.toISOString().slice(0, 10); })();
@@ -38,7 +39,7 @@ export function SettingModal(props: SettingModalProps) {
   const [endDate2, setEndDate2] = useState("2026-08-01");
   const [maxM, setMaxM] = useState(maxMembers);
   const [selCats, setSelCats] = useState<RoomCategory[]>(["개발·IT"]);
-  const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const [imgSrc, setImgSrc] = useState<string | null>(roomThumbnail ?? null);
   const [imgName, setImgName] = useState("");
   const [imgErr, setImgErr] = useState("");
   const [saveStatus, setSaveStatus] = useState<null | "success" | "error">(null);

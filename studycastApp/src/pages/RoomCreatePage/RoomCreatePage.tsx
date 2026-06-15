@@ -202,14 +202,12 @@ export default function RoomCreatePage() {
   };
 
   const enterCreatedRoom = () => {
-  if (createdRoomId != null) {
-    // 스터디방 상세는 새 창(탭)으로 — 생성 페이지는 그대로 유지
-    const url = `${window.location.origin}/rooms/${createdRoomId}`;
-    window.open(url, "_blank", "noopener,noreferrer");   // ← 새 탭으로 열기
-  } else {
-    navigate("/");
-  }
-};
+    if (createdRoomId != null) {
+      window.open(`${window.location.origin}/rooms/${createdRoomId}`, "_blank", "noopener,noreferrer");
+    } else {
+      navigate("/");
+    }
+  };
 
   // ── 스타일 ──────────────────────────────────────
   const page = {

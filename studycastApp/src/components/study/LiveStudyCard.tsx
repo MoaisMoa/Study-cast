@@ -123,7 +123,7 @@ export function LiveStudyCard({ room: r }: { room: Room }) {
           marginBottom: 5,
           lineHeight: 1.3,
         }}>
-          {r.title}
+          {r.title.replace(/ \(비공개\)$/, "")}
         </div>
         <div style={{ fontSize: 13, color: T.text3 }}>
           {r.cat} · 평균 {r.time}

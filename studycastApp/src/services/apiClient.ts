@@ -39,10 +39,12 @@ export async function mockRequest<T>(
   return data;
 }
 
+export const API_BASE_URL = "http://localhost:8080";
+
 // axios (Spring API 공통 클라이언트)
 // withCredentials: true → httpOnly Cookie를 모든 요청에 자동 포함
 export const apiClient = axios.create({
-  baseURL: "http://localhost:8080",
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 

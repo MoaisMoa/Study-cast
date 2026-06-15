@@ -25,10 +25,15 @@ export async function recordVisit(roomNo: number): Promise<void> {
   await apiClient.post(`/api/visited-rooms/${roomNo}`);
 }
 
-/** 비공개 방 참여 코드 검증 — 2차 구현 전 mock */
-const MOCK_CODE = "1234";
-export async function verifyEntryCode(_roomId: number, code: string): Promise<boolean> {
-  return new Promise((resolve) => setTimeout(() => resolve(code.trim() === MOCK_CODE), 300));
+/** 스터디방 입장 — 비공개방은 joinCode 포함 */
+export async function joinRoom(roomId: number, joinCode?: string): Promise<boolean> {
+  try {
+    const body = joinCode ? { joinCode } : null;
+    await apiClient.post(`/api/rooms/${roomId}/join`, body);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function toVisitedRoom(r: MainRoomResponse): VisitedRoom {
