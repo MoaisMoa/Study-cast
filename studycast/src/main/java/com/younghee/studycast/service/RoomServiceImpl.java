@@ -190,8 +190,8 @@ public class RoomServiceImpl implements RoomService {
         // - 방장은 정원이 가득 차도 입장 보장 정책 적용
         boolean owner = userUuid.equals(room.getUserUuid());
 
-        // 7. 비공개방이면 joinCode 검증 (방장은 코드 없이 입장 가능)
-        if (Boolean.TRUE.equals(room.getRoomPrivate()) && !owner) {
+        // 7. 비공개방이면 joinCode 검증 (방장 포함 모든 참여자)
+        if (Boolean.TRUE.equals(room.getRoomPrivate())) {
             String joinCode = request == null ? null : request.getJoinCode();
 
             if (joinCode == null || joinCode.trim().isEmpty()) {

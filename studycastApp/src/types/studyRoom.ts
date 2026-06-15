@@ -4,6 +4,7 @@ export type DeviceError = null | "denied" | "unavailable";
 
 export interface RoomMember {
   id: number;
+  userUuid: string;
   name: string;
   short: string;
   email: string;

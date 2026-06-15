@@ -58,6 +58,7 @@ function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean): Roo
   const joinMin = Math.max(0, Math.floor((Date.now() - joinedAt.getTime()) / 60_000));
   return {
     id: index + 1,
+    userUuid: p.userUuid,
     name: isMe ? "나" : p.userName,
     short: isMe ? "나" : p.userName.slice(0, 2),
     email: "",
@@ -155,4 +156,16 @@ export async function leaveRoom(roomId: string, studiedSeconds = 0): Promise<{ o
 export async function getTodayStudySeconds(): Promise<number> {
   const res = await apiClient.get<{ totalSeconds: number }>("/api/study-logs/today");
   return res.data.totalSeconds;
+}
+
+export interface LiveKitToken {
+  url: string;
+  roomName: string;
+  token: string;
+}
+
+/** LiveKit 접속 토큰 발급 */
+export async function fetchLiveKitToken(roomId: string): Promise<LiveKitToken> {
+  const res = await apiClient.get<LiveKitToken>(`/api/rooms/${roomId}/token`);
+  return res.data;
 }

@@ -7,6 +7,7 @@ import { fmtT, nowDate, nowT } from "@/data/studyRoom";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchRoom, leaveRoom } from "@/services/studyRoomService";
 import { API_BASE_URL } from "@/services/apiClient";
+import { useLiveKit } from "@/hooks/useLiveKit";
 import { LearningPlannerModal } from "@/pages/MainPage/sections/planner/LearningPlannerModal";
 import {
   Av, BellIc, CalIc, CamOff, CamOn, ChatIc, CogIc, ExitIc, ExpandIc, MenuIc, MicOff, MicOn, MoonIc, PauseIc, PlayIc, SendIc, ShrinkIc, SunIc, UsersIc, XIc,
@@ -123,31 +124,14 @@ export default function StudyRoomPage() {
     if (!cam && timerState === "running") setTimerState("paused");
   }, [cam, timerState]);
 
-  // 입장 시 마이크 권한 요청 (mock 단계 — 실패 시 배너로 안내)
-  useEffect(() => {
-    if (!mic) return;
-    let cancelled = false;
-    navigator.mediaDevices?.getUserMedia({ audio: true })
-      .then((s) => { s.getTracks().forEach((t) => t.stop()); if (!cancelled) setMicError(null); })
-      .catch((err: DOMException) => {
-        if (cancelled) return;
-        setMicError(err.name === "NotAllowedError" || err.name === "PermissionDeniedError" ? "denied" : "unavailable");
-      });
-    return () => { cancelled = true; };
-  }, [mic]);
-
-  // 입장/토글 시 카메라 권한 요청 — 실패 시 배너 + 아바타 폴백(camError)
-  useEffect(() => {
-    if (!cam) { setCamError(null); return; }
-    let cancelled = false;
-    navigator.mediaDevices?.getUserMedia({ video: true })
-      .then((s) => { s.getTracks().forEach((t) => t.stop()); if (!cancelled) setCamError(null); })
-      .catch((err: DOMException) => {
-        if (cancelled) return;
-        setCamError(err.name === "NotAllowedError" || err.name === "PermissionDeniedError" ? "denied" : "unavailable");
-      });
-    return () => { cancelled = true; };
-  }, [cam]);
+  // LiveKit 연결 — 카메라/마이크 실제 연결 및 비디오 트랙 관리
+  const { selfIdentity, videoTracks } = useLiveKit(
+    roomId,
+    cam,
+    mic,
+    (e) => setCamError(e),
+    (e) => setMicError(e),
+  );
 
   const handleTimerStart = () => { if (!cam) { setCamWarn(true); setTimeout(() => setCamWarn(false), 3000); return; } setTimerState("running"); };
   const handleTimerPause = () => setTimerState("paused");
@@ -230,7 +214,8 @@ export default function StudyRoomPage() {
   const camGridEl = (
     <CamGrid members={members} elapsed={elapsed} totalSec={totalSec} timerSec={timerSec} timerState={timerState}
       cam={cam} camError={!!camError} focusedId={focusedId} setFocusedId={setFocusedId}
-      onTimerStart={handleTimerStart} onTimerPause={handleTimerPause} onTimerResume={handleTimerResume} onTimerReset={handleTimerReset} />
+      onTimerStart={handleTimerStart} onTimerPause={handleTimerPause} onTimerResume={handleTimerResume} onTimerReset={handleTimerReset}
+      videoTracks={videoTracks} selfIdentity={selfIdentity} />
   );
 
   // 장치 오류 배너 (데스크탑/모바일 공용)
@@ -300,6 +285,7 @@ export default function StudyRoomPage() {
           timerState={timerState} cam={cam} mic={mic} focused={focusedId}
           setFocused={setFocusedId}
           onTimerToggle={timerAction} onTimerReset={handleTimerReset}
+          videoTracks={videoTracks} selfIdentity={selfIdentity}
         />
 
         {/* 하단 컨트롤 바: 마이크 · 채팅 · 중앙 타이머 · 멤버 · 카메라 */}

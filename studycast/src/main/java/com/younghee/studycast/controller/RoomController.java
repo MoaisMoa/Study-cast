@@ -9,10 +9,12 @@ import com.younghee.studycast.dto.request.LeaveRoomRequest;
 import com.younghee.studycast.dto.request.RoomCreateRequest;
 import com.younghee.studycast.dto.request.RoomJoinRequest;
 import com.younghee.studycast.dto.response.JoinCodeCheckResponse;
+import com.younghee.studycast.dto.response.LiveKitTokenResponse;
 import com.younghee.studycast.dto.response.RoomCreateResponse;
 import com.younghee.studycast.dto.response.RoomDetailResponse;
 import com.younghee.studycast.dto.response.RoomJoinResponse;
 import com.younghee.studycast.dto.response.RoomParticipantResponse;
+import com.younghee.studycast.service.LiveKitTokenService;
 import com.younghee.studycast.service.RoomService;
 
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 public class RoomController {
     
     private final RoomService roomService;
+    private final LiveKitTokenService liveKitTokenService;
 
     // 스터디방 생성
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -104,6 +107,20 @@ public class RoomController {
 
         return ResponseEntity.ok(response);
     }
+
+    // LiveKit 접속 토큰 발급
+    @GetMapping("/{roomNo}/token")
+    public ResponseEntity<LiveKitTokenResponse> getLiveKitToken(
+        @PathVariable Long roomNo,
+        Authentication authentication
+    ) {
+        UUID userUuid = getUserUuid(authentication);
+
+        LiveKitTokenResponse response =
+            liveKitTokenService.issueRoomToken(roomNo, userUuid);
+
+        return ResponseEntity.ok(response);
+    }
     
     // 스터디방 퇴장 처리 + 공부시간 저장
     @DeleteMapping("/{roomNo}/leave")
@@ -120,6 +137,7 @@ public class RoomController {
 
         return ResponseEntity.noContent().build();
     }
+
     
     // 인증 객체에서 로그인 사용자 UUID 추출
     private UUID getUserUuid(Authentication authentication) {
