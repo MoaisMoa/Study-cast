@@ -14,7 +14,7 @@ import type { ChatMessage, RoomMember } from "@/types/studyRoom";
 import {
   ALL_INIT, INITIAL_MESSAGES, ROOM_MAX_MEMBERS, ROOM_TITLE_DEFAULT,
 } from "@/data/studyRoom";
-import { mockRequest } from "./apiClient";
+import { apiClient, mockRequest } from "./apiClient";
 // import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
 
@@ -141,20 +141,52 @@ function toChatMessage(payload: any): ChatMessage {
 }
 
 /** 방 입장 — 초기 스냅샷 조회 (GET /rooms/:id) */
+const AVATAR_COLORS = [
+  "#E53935", "#8E24AA", "#1E88E5", "#00897B",
+  "#43A047", "#FB8C00", "#6D4C41", "#546E7A",
+];
+
+function memberColor(index: number): string {
+  return AVATAR_COLORS[index % AVATAR_COLORS.length];
+}
+
 export async function fetchRoom(roomId: string): Promise<RoomSnapshot> {
-  // TODO(API 연결): return request<RoomSnapshot>(`/rooms/${roomId}`);
-  return mockRequest(
-    {
-      roomId,
-      title: ROOM_TITLE_DEFAULT,
-      maxMembers: ROOM_MAX_MEMBERS,
-      members: ALL_INIT,
-      messages: INITIAL_MESSAGES,
-      notice: null,
-      isHost: true,
-    },
-    { latency: 200 }
-  );
+  const res = await apiClient.get(`/api/rooms/${roomId}`);
+  const data = res.data;
+
+  const members: RoomMember[] = (data.members ?? []).map((m: any, i: number) => ({
+    id: i + 1,
+    name: m.userName ?? "알 수 없음",
+    short: (m.userName ?? "?").charAt(0).toUpperCase(),
+    email: m.userEmail ?? "",
+    role: m.isHost ? "HOST" : "MEMBER",
+    color: memberColor(i),
+    sec: 0,
+    joinMin: 0,
+    mic: m.micStatus ?? false,
+    cam: m.cameraStatus ?? false,
+  }));
+
+  const messages: ChatMessage[] = (data.messages ?? []).map((c: any) => {
+    const sentAt = c.sentAt ? new Date(c.sentAt) : new Date();
+    return {
+      id: Number(c.chatNo ?? Date.now()),
+      name: c.userName ?? "알 수 없음",
+      text: c.message ?? "",
+      time: formatTime(sentAt),
+      mine: false,
+    };
+  });
+
+  return {
+    roomId: String(data.roomId),
+    title: data.title ?? "",
+    maxMembers: data.maxMembers ?? 4,
+    members,
+    messages,
+    notice: data.notice ?? null,
+    isHost: data.isHost ?? false,
+  };
 }
 
 /** 방 설정 변경 (PUT /rooms/:id) */
@@ -171,8 +203,13 @@ export async function kickMember(_roomId: string, _memberId: number): Promise<{ 
 }
 
 /** 공지 등록/수정/삭제 (PUT /rooms/:id/notice) — null 이면 삭제 */
-export async function saveNotice(_roomId: string, notice: string | null): Promise<{ ok: boolean; notice: string | null }> {
-  return mockRequest({ ok: true, notice }, { latency: 300 });
+export async function saveNotice(roomId: string, notice: string | null): Promise<{ ok: boolean; notice: string | null }> {
+  if (notice === null || notice.trim() === "") {
+    await apiClient.delete(`/api/rooms/${roomId}/notice`);
+    return { ok: true, notice: null };
+  }
+  await apiClient.post(`/api/rooms/${roomId}/notice`, { roomNotice: notice });
+  return { ok: true, notice };
 }
 
 /** 채팅 메시지 전송 (WebSocket send 또는 POST /rooms/:id/messages) */

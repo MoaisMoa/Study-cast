@@ -17,4 +17,7 @@ public interface RoomService {
     );    
     // 참여 코드 중복 확인
     JoinCodeCheckResponse checkJoinCodeDuplicate(String code);
+
+    //
+    RoomSnapshotResponse getRoomSnapshot(Long roomNo, UUID currentUserUuid);
 }

@@ -21,4 +21,5 @@ public interface RoomMapper {
     int clearRoomNotice(@Param("roomNo") Long roomNo);
     int selectParticipantCount(Long roomNo);
     List<RoomParticipantDTO> selectParticipants(Long roomNo);
+    List<Map<String, Object>> selectParticipantsWithUser(Long roomNo);
 }

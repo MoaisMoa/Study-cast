@@ -92,4 +92,18 @@
             updated_at = CURRENT_TIMESTAMP
         WHERE room_no = #{roomNo}
     </update>
+
+    <select id="selectParticipantsWithUser" parameterType="long" resultType="map">
+        SELECT
+            rp.part_no              AS "partNo",
+            rp.user_uuid            AS "userUuid",
+            rp.camera_stauts        AS "cameraStauts"
+            rp.mic_status           AS "micStatus"
+            r.user_name             AS "userName"
+            r.useremail             AS "userName"
+            u.user_profile_image    AS "userProfileImage"
+        FROM room_paricipants rp
+        INNER JOIN users u ON rp.user_uuid = u.user_uuid
+        WHERE rp.room_no = #{roomNo}
+    </select>
 </mapper>
