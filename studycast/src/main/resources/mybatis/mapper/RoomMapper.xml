@@ -90,13 +90,15 @@
 
     <update id="updateRoomNotice" parameterType="map">
         UPDATE rooms
-        SET room_notice = #{roomNotice}
+        SET room_notice = #{roomNotice},
+            updated_at = CURRENT_TIMESTAMP
         WHERE room_no = #{roomNo}
     </update>
 
     <update id="clearRoomNotice" parameterType="long">
         UPDATE rooms
-        SET room_notice = NULL
+        SET room_notice = NULL,
+            updated_at = CURRENT_TIMESTAMP
         WHERE room_no = #{roomNo}
     </update>
 

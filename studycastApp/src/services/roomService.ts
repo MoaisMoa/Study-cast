@@ -116,3 +116,29 @@ export async function createRoom(
   // 6. 생성된 방 정보 반환
   return response.data;
 }
+
+export async function updateRoomNotice(
+  roomId: number,
+  notice: string | null
+): Promise<{ ok: boolean; notice?: string | null }> {
+  try {
+    await apiClient.put(
+      `/api/rooms/${roomId}/notice`,
+      { notice }
+    );
+    return { ok: true, notice };
+  } catch (error) {
+    console.error("공지사항 업데이트 실패:", error);
+    return { ok: false };
+  }
+}
+
+export async function deleteRoomNotice(roomId: number): Promise<{ ok: boolean }> {
+  try {
+    await apiClient.delete(`/api/rooms/${roomId}/notice`);
+    return { ok: true };
+  } catch (error) {
+    console.error("공지사항 삭제 실패 : ", error);
+    return { ok: false };
+  }
+}

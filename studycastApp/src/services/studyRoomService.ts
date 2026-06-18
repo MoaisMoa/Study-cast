@@ -42,7 +42,10 @@ let activeRoomId: string | null = null;
 function getAccessToken(): string | null {
   const token = sessionStorage.getItem("sc_access_token");
   if (!token) {
-    console.warn("studyRoomService: access token is missing for WebSocket authentication.");
+    console.warn("[AUTH] Access token is missing from sessionStorage for WebSocket authentication.");
+    console.warn("[AUTH] sessionStorage keys:", Object.keys(sessionStorage));
+  } else {
+    console.log("[AUTH] Access token found, length:", token.length);
   }
   return token;
 }
@@ -59,7 +62,8 @@ function buildStompClient(): Client {
   
   console.log("[STOMP] buildStompClient: token present =", !!token);
   if (token) {
-    console.log("[STOMP] Token header will be sent: Authorization: Bearer [token]");
+    console.log("[STOMP] Authorization header will be sent: Bearer [token...]");
+    console.log("[STOMP] Token length:", token.length);
   }
   
   const client = new Client({
@@ -75,11 +79,11 @@ function buildStompClient(): Client {
   });
   
   client.onConnect = (frame) => {
-    console.log("[STOMP] Connected successfully");
+    console.log("[STOMP] Connected successfully", frame);
   };
   
   client.onStompError = (frame) => {
-    console.error("[STOMP] STOMP error:", frame?.body);
+    console.error("[STOMP] STOMP error:", frame?.body, frame);
   };
   
   client.onWebSocketError = (event) => {
@@ -94,9 +98,11 @@ async function ensureStompConnected(): Promise<void> {
     throw new Error("로그인이 필요합니다.");
   }
   if (stompClient && stompClient.active && stompClient.connected) {
+    console.log("[STOMP] Already connected, reusing existing connection");
     return;
   }
   if (stompClient) {
+    console.log("[STOMP] Deactivating existing client");
     stompClient.deactivate();
     stompClient = null;
   }
@@ -104,17 +110,17 @@ async function ensureStompConnected(): Promise<void> {
   const client = buildStompClient();
   const ready = new Promise<void>((resolve, reject) => {
     client.onConnect = () => {
-      console.log("[STOMP] onConnect fired - connection established");
+      console.log("[STOMP] onConnect fired - connection established and authenticated");
       stompClient = client;
       resolve();
     };
     client.onStompError = (frame) => {
-      console.error("[STOMP] onStompError fired:", frame?.body);
+      console.error("[STOMP] onStompError fired:", frame?.body, frame);
       reject(new Error(frame?.body || "STOMP error"));
     };
     client.onWebSocketError = (event) => {
-      console.error("[STOMP] onWebSocketError fired");
-      reject(new Error("WebSocket error"));
+      console.error("[STOMP] onWebSocketError fired during connect:", event);
+      reject(new Error("WebSocket error during connection"));
     };
   });
   console.log("[STOMP] Calling client.activate()");
@@ -174,14 +180,23 @@ export async function sendMessage(_roomId: string, text: string): Promise<ChatMe
   if (!_roomId) {
     throw new Error("roomId is required for sendMessage");
   }
+  
+  console.log("[STOMP CHAT] Sending message to room", _roomId);
+  
   await ensureStompConnected();
   if (!stompClient || !stompClient.connected) {
     throw new Error("WebSocket not connected");
   }
+  
+  const destination = `${STOMP_DESTINATION_PREFIX}/rooms/${_roomId}/chat`;
+  console.log("[STOMP CHAT] Publishing to destination:", destination);
+  
   stompClient.publish({
-    destination: `${STOMP_DESTINATION_PREFIX}/rooms/${_roomId}/chat`,
+    destination,
     body: JSON.stringify({ message: text }),
   });
+
+  console.log("[STOMP CHAT] Message published successfully");
 
   return {
     id: Date.now(),
@@ -203,18 +218,21 @@ export function subscribeChat(
   _onMessage: (msg: ChatMessage) => void
 ): () => void {
   if (!_roomId) {
+    console.warn("[STOMP CHAT] subscribeChat called with empty roomId");
     return () => {};
   }
 
   let active = true;
   let subscription: any = null;
   const cleanup = () => {
+    console.log("[STOMP CHAT] Cleanup called for room", _roomId);
     active = false;
     if (subscription) {
       subscription.unsubscribe();
       subscription = null;
     }
-    if (stompClient) {
+    if (stompClient && activeRoomId === _roomId) {
+      console.log("[STOMP CHAT] Deactivating STOMP client");
       stompClient.deactivate();
       stompClient = null;
       activeRoomId = null;
@@ -223,28 +241,40 @@ export function subscribeChat(
 
   ensureStompConnected()
     .then(() => {
-      if (!active || !stompClient) return;
+      if (!active || !stompClient) {
+        console.warn("[STOMP CHAT] Connection lost or cleanup called during connect");
+        return;
+      }
       if (activeRoomId && activeRoomId !== _roomId && stompSubscription) {
+        console.log("[STOMP CHAT] Unsubscribing from previous room:", activeRoomId);
         stompSubscription.unsubscribe();
         stompSubscription = null;
       }
       activeRoomId = _roomId;
+      const destination = `${STOMP_SUBSCRIBE_PREFIX}/rooms/${_roomId}`;
+      console.log("[STOMP CHAT] Subscribing to:", destination);
+      
       subscription = stompClient.subscribe(
-        `${STOMP_SUBSCRIBE_PREFIX}/rooms/${_roomId}`,
+        destination,
         (frame) => {
-          if (!frame.body) return;
+          if (!frame.body) {
+            console.warn("[STOMP CHAT] Empty frame body received");
+            return;
+          }
           try {
             const payload = JSON.parse(frame.body);
+            console.log("[STOMP CHAT] Message received:", payload);
             _onMessage(toChatMessage(payload));
-          } catch {
-            // ignore malformed message
+          } catch (err) {
+            console.error("[STOMP CHAT] Failed to parse message:", err, frame.body);
           }
         }
       );
       stompSubscription = subscription;
+      console.log("[STOMP CHAT] Subscription successful for room", _roomId);
     })
     .catch((error) => {
-      console.error("채팅 WebSocket 구독 실패", error);
+      console.error("[STOMP CHAT] WebSocket 구독 실패:", error);
     });
 
   return cleanup;

@@ -83,4 +83,13 @@
             AND room_password = #{roomPassword}
         )
     </select>
+
+    <!-- 방 공지사항 업데이트 -->
+    <update id="updateRoomNotice" parameterType="map">
+        UPDATE rooms
+        SET
+            room_notice = #{roomNotice},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE room_no = #{roomNo}
+    </update>
 </mapper>

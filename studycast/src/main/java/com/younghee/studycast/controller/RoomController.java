@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 
 
 
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/rooms")
@@ -58,5 +59,4 @@ public class RoomController {
 
         return ResponseEntity.ok(response);
     }
-    
 }

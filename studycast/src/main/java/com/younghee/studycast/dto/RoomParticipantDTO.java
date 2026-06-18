@@ -3,12 +3,14 @@ package com.younghee.studycast.dto;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 // 스터디룸 참여 현황 DTO
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class RoomParticipantDTO {

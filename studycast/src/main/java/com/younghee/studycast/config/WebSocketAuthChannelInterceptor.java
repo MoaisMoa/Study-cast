@@ -44,7 +44,8 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
 
         if (StompCommand.CONNECT.equals(command)) {
             String authHeader = getAuthorizationHeader(accessor);
-            log.info("CONNECT: authHeaderPresent={}, headerValue={}", authHeader != null, authHeader);
+            log.info("CONNECT: authHeaderPresent={}", authHeader != null);
+            
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
                 try {
@@ -58,18 +59,18 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
                                 List.of(new SimpleGrantedAuthority("ROLE_USER"))
                             );
                             accessor.setUser(principal);
-                            log.info("CONNECT success: userUuid={}, email={}", userUuid, user.getUserEmail());
+                            log.info("[STOMP CONNECT SUCCESS] userUuid={}, email={}", userUuid, user.getUserEmail());
                         } else {
-                            log.warn("CONNECT denied: user is null or inactive. userUuid={}", userUuid);
+                            log.warn("[STOMP CONNECT FAILED] user is null or inactive. userUuid={}", userUuid);
                         }
                     } else {
-                        log.warn("CONNECT denied: invalid JWT token");
+                        log.warn("[STOMP CONNECT FAILED] invalid JWT token");
                     }
                 } catch (Exception e) {
-                    log.error("CONNECT error: ", e);
+                    log.error("[STOMP CONNECT ERROR] token validation failed: ", e);
                 }
             } else {
-                log.warn("CONNECT denied: missing or malformed Authorization header");
+                log.warn("[STOMP CONNECT FAILED] missing or malformed Authorization header");
             }
         }
 
@@ -114,20 +115,29 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
     }
 
     private String getAuthorizationHeader(StompHeaderAccessor accessor) {
-        var nativeHeaders = accessor.toNativeHeaderMap();
-        if (nativeHeaders == null) {
-            return null;
+        // 방법 1: getFirstNativeHeader 사용 (권장)
+        String header = accessor.getFirstNativeHeader("Authorization");
+        if (header != null) {
+            log.debug("Found Authorization header via getFirstNativeHeader: {}", 
+                header.substring(0, Math.min(20, header.length())) + "...");
+            return header;
         }
 
-        for (var entry : nativeHeaders.entrySet()) {
-            if (entry.getKey() != null && entry.getKey().equalsIgnoreCase("Authorization")) {
-                var values = entry.getValue();
-                if (values != null && !values.isEmpty()) {
-                    return values.get(0);
+        // 방법 2: toNativeHeaderMap 대체
+        var nativeHeaders = accessor.toNativeHeaderMap();
+        if (nativeHeaders != null) {
+            for (var entry : nativeHeaders.entrySet()) {
+                if (entry.getKey() != null && entry.getKey().equalsIgnoreCase("Authorization")) {
+                    var values = entry.getValue();
+                    if (values != null && !values.isEmpty()) {
+                        log.debug("Found Authorization header via toNativeHeaderMap");
+                        return values.get(0);
+                    }
                 }
             }
         }
 
+        log.warn("No Authorization header found in STOMP CONNECT frame");
         return null;
     }
 }

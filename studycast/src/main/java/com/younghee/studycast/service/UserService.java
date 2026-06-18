@@ -2,8 +2,8 @@ package com.younghee.studycast.service;
 
 import java.util.UUID;
 
-import com.younghee.studycast.dto.SignupRequest;
 import com.younghee.studycast.dto.UserDTO;
+import com.younghee.studycast.dto.request.SignupRequest;
 
 public interface UserService {
     // 회원가입

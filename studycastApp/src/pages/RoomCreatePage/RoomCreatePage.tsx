@@ -260,6 +260,7 @@ export default function RoomCreatePage() {
             micOn={micOn}
             notice={notice}
             roomId={createdRoomId ?? 0}
+            categories={selectedCats.map(String)}
             isMobile={isMobile}
             onEnter={enterCreatedRoom}
           />
