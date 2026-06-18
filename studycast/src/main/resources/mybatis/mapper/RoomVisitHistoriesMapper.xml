@@ -72,7 +72,7 @@
             r.now_users AS current_users,
             r.max_users,
             <!-- 카드 상태값 -->
-            FALSE AS live,
+            (r.now_users &gt; 0) AS live,
             (r.created_at &gt;= NOW() - INTERVAL '10 days') AS new_room,
             (r.now_users &gt;= r.max_users) AS full,
             r.room_premium AS premium,
@@ -125,7 +125,7 @@
             r.now_users AS current_users,
             r.max_users,
             <!-- 카드 상태값 -->
-            FALSE AS live,
+            (r.now_users &gt; 0) AS live,
             (r.created_at &gt;= NOW() - INTERVAL '10 days') AS new_room,
             (r.now_users &gt;= r.max_users) AS full,
             r.room_premium AS premium,

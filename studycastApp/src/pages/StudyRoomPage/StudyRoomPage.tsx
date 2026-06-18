@@ -7,6 +7,7 @@ import { fmtT, nowDate, nowT } from "@/data/studyRoom";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchRoom, leaveRoom } from "@/services/studyRoomService";
 import { API_BASE_URL } from "@/services/apiClient";
+import { registerSession, unregisterSession } from "@/utils/roomSession";
 import { useLiveKit } from "@/hooks/useLiveKit";
 import { LearningPlannerModal } from "@/pages/MainPage/sections/planner/LearningPlannerModal";
 import {
@@ -70,6 +71,8 @@ export default function StudyRoomPage() {
   const [settingCamOn, setSettingCamOn] = useState(true);
   const [settingMicOn, setSettingMicOn] = useState(true);
   const [roomThumbnail, setRoomThumbnail] = useState<string | null>(null);
+  const [categoryNo, setCategoryNo] = useState(0);
+  const [expiredAt, setExpiredAt] = useState("");
   const [kickedMsg, setKickedMsg] = useState<string | null>(null);
 
   // 채팅
@@ -82,6 +85,7 @@ export default function StudyRoomPage() {
   // API: 방 입장 처리 + 초기 데이터 로드
   useEffect(() => {
     if (!roomId) return;
+    registerSession(roomId);
     let cancelled = false;
     fetchRoom(roomId, user?.name ?? "", user?.profileImage).then((snap) => {
       if (cancelled) return;
@@ -99,6 +103,8 @@ export default function StudyRoomPage() {
       setSettingCamOn(snap.camOn);
       setSettingMicOn(snap.micOn);
       setRoomThumbnail(snap.thumbnail);
+      setCategoryNo(snap.categoryNo);
+      setExpiredAt(snap.expiredAt);
     });
     return () => { cancelled = true; };
   }, [roomId, user?.name]);
@@ -161,10 +167,13 @@ export default function StudyRoomPage() {
   };
 
   const doExit = async () => {
-    exitedRef.current = true;
     setTimerState("idle");
     setShowExitConfirm(false);
-    try { await leaveRoom(roomId!, timerSec); } catch { /* ignore */ }
+    try {
+      await leaveRoom(roomId!, timerSec);
+      exitedRef.current = true;
+    } catch { /* ignore — pagehide fallback will handle cleanup */ }
+    unregisterSession();
     window.close();
   };
 
@@ -179,6 +188,7 @@ export default function StudyRoomPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ studiedSeconds: timerSecRef.current }),
     });
+    unregisterSession();
   }, [roomId]);
 
   useEffect(() => {
@@ -204,7 +214,7 @@ export default function StudyRoomPage() {
     <>
       {modal === "cal" && <LearningPlannerModal open onClose={() => setModal(null)} />}
       {modal === "members" && <MemberModal members={members} elapsed={{ ...elapsed, 1: totalSec }} mic={mic} cam={cam} joinElapsed={timerSec} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
-      {modal === "settings" && <SettingModal onClose={() => setModal(null)} isHost={isHost} roomTitle={roomTitle} setRoomTitle={setRoomTitle} settingCamOn={settingCamOn} setSettingCamOn={setSettingCamOn} settingMicOn={settingMicOn} setSettingMicOn={setSettingMicOn} maxMembers={maxMembers} setMaxMembers={setMaxMembers} roomThumbnail={roomThumbnail} />}
+      {modal === "settings" && <SettingModal onClose={() => setModal(null)} isHost={isHost} roomTitle={roomTitle} setRoomTitle={setRoomTitle} settingCamOn={settingCamOn} setSettingCamOn={setSettingCamOn} settingMicOn={settingMicOn} setSettingMicOn={setSettingMicOn} maxMembers={maxMembers} setMaxMembers={setMaxMembers} roomThumbnail={roomThumbnail} setRoomThumbnail={setRoomThumbnail} roomId={roomId} categoryNo={categoryNo} setCategoryNo={setCategoryNo} expiredAt={expiredAt} setExpiredAt={setExpiredAt} roomNotice={noticeMsg} />}
       {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={setNoticeMsg} noticeMsg={noticeMsg} isHost={isHost} />}
       {kickTarget && <KickConfirm member={kickTarget} onConfirm={doKick} onCancel={() => setKickTarget(null)} />}
       {showExitConfirm && <ExitConfirm onConfirm={doExit} onCancel={() => setShowExitConfirm(false)} />}
@@ -322,14 +332,14 @@ export default function StudyRoomPage() {
         </div>
 
         {/* 드로어 오버레이 */}
-        {drawer && <div onClick={() => setDrawer(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 40 }} />}
+        {drawer && <div onClick={() => setDrawer(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 65 }} />}
 
         {/* 메뉴 드로어 */}
         {drawer === "menu" && (
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 50, background: T.surface, borderRadius: "18px 18px 0 0", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", maxHeight: "70dvh", animation: "slideUp 240ms ease forwards" }}>
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 70, background: T.surface, borderRadius: "18px 18px 0 0", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", maxHeight: "70dvh", animation: "slideUp 240ms ease forwards" }}>
             <div onClick={() => setDrawer(null)} style={{ width: 36, height: 3, borderRadius: 2, background: T.borderStrong, margin: "10px auto 0", flexShrink: 0, cursor: "pointer" }} />
             <div style={{ padding: "10px 16px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-              <span style={{ color: T.text, fontWeight: 700, fontSize: 15 }}>메뉴</span>
+              <span style={{ color: T.text, fontWeight: 700, fontSize: 20 }}>메뉴</span>
               <button onClick={() => setDrawer(null)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}><XIc s={18} c={T.text3} /></button>
             </div>
             <div style={{ padding: "0 14px 20px", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -352,7 +362,7 @@ export default function StudyRoomPage() {
 
         {/* 채팅 드로어 */}
         {drawer === "chat" && (
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 50, background: T.surface, borderRadius: "18px 18px 0 0", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", height: "58dvh", animation: "slideUp 240ms ease forwards" }}>
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 70, background: T.surface, borderRadius: "18px 18px 0 0", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", height: "58dvh", animation: "slideUp 240ms ease forwards" }}>
             <div onClick={() => setDrawer(null)} style={{ width: 36, height: 3, borderRadius: 2, background: T.borderStrong, margin: "10px auto 0", flexShrink: 0, cursor: "pointer" }} />
             <div style={{ padding: "10px 16px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
               <span style={{ color: T.text, fontWeight: 700, fontSize: 15 }}>채팅</span>
@@ -364,7 +374,7 @@ export default function StudyRoomPage() {
 
         {/* 멤버 드로어 */}
         {drawer === "members" && (
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 50, background: T.surface, borderRadius: "18px 18px 0 0", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", maxHeight: "60dvh", animation: "slideUp 240ms ease forwards" }}>
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 70, background: T.surface, borderRadius: "18px 18px 0 0", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", maxHeight: "60dvh", animation: "slideUp 240ms ease forwards" }}>
             <div onClick={() => setDrawer(null)} style={{ width: 36, height: 3, borderRadius: 2, background: T.borderStrong, margin: "10px auto 0", flexShrink: 0, cursor: "pointer" }} />
             <div style={{ padding: "10px 16px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
               <span style={{ color: T.text, fontWeight: 700, fontSize: 15 }}>멤버 <span style={{ color: T.text3, fontWeight: 400, fontSize: 13 }}>{members.length}명</span></span>

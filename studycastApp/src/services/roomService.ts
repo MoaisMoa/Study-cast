@@ -9,20 +9,7 @@
 
 import { CreateRoomPayload, CreateRoomResponse, JoinCodeCheckResponse, MainRoomPageResponse, MainRoomResponse, MainRoomSearchParams, MainSummaryResponse, Room, MyRoom } from "@/types";
 import { apiClient } from "./apiClient";
-
-/** 스터디방 기본 이미지 */
-const DEFAULT_ROOM_IMAGES = [
-  "https://images.unsplash.com/photo-1513258496099-48168024aec0?w=400&q=75",
-  "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&q=75",
-  "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=400&q=75",
-  "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&q=75",
-  "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&q=75",
-];
-
-function getDefaultRoomImage(roomNo: number): string {
-  const index = roomNo % DEFAULT_ROOM_IMAGES.length;
-  return DEFAULT_ROOM_IMAGES[index];
-}
+import { getDefaultRoomImage } from "@/utils/roomImage";
 
 /** 공개 스터디 목록 API 응답 원본 조회 */
 export async function listRooms(
@@ -208,9 +195,12 @@ function toMyRoom(response: MainRoomResponse): MyRoom {
     max: response.maxUsers,
     img: response.roomThumbnail || getDefaultRoomImage(response.roomNo),
     live: response.live,
+    isPrivate: response.roomPrivate,
+    time: formatStudyTime(response.averageStudySeconds),
     createdAt: response.createdAt
       ? new Date(response.createdAt).getTime()
       : null,
+    expiredAt: response.expiredAt ?? null,
     visitedAt: response.lastVisitedAt
       ? new Date(response.lastVisitedAt).getTime()
       : null,

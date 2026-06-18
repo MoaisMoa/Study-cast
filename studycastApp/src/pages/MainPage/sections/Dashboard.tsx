@@ -7,7 +7,6 @@ import { useModal } from "@/contexts/ModalContext";
 import { Icon } from "@/components/ui/Icon";
 import { fmtTimer } from "@/utils/time";
 import { getMainSummary, listMyRooms } from "@/services/roomService";
-import { openStudyRoom } from "@/utils/openStudyRoom";
 import { LearningPlannerModal } from "./planner/LearningPlannerModal";
 
 /** 내 스터디 + 스탯 (각오 / 디데이 / 타이머) */
@@ -211,12 +210,15 @@ export function Dashboard() {
                 id: curRoom.id,
                 title: curRoom.title,
                 cat: curRoom.cat,
-                time: "—",
+                time: curRoom.time,
                 members: curRoom.members,
                 max: curRoom.max,
                 img: curRoom.img,
                 live: curRoom.live,
                 type: curRoom.type,
+                isPrivate: curRoom.isPrivate,
+                createdAt: curRoom.createdAt ? new Date(curRoom.createdAt).toISOString() : null,
+                expiredAt: curRoom.expiredAt,
               })}
               style={{ width: "100%", height: "100%", position: "relative" }}
             >
@@ -270,7 +272,20 @@ export function Dashboard() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    openStudyRoom(curRoom.id);
+                    setModalRoom({
+                      id: curRoom.id,
+                      title: curRoom.title,
+                      cat: curRoom.cat,
+                      time: curRoom.time,
+                      members: curRoom.members,
+                      max: curRoom.max,
+                      img: curRoom.img,
+                      live: curRoom.live,
+                      type: curRoom.type,
+                      isPrivate: curRoom.isPrivate,
+                      createdAt: curRoom.createdAt ? new Date(curRoom.createdAt).toISOString() : null,
+                      expiredAt: curRoom.expiredAt,
+                    });
                   }}
                   style={{
                     padding: "4px 12px",

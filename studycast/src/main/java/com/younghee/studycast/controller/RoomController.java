@@ -8,12 +8,14 @@ import org.springframework.web.multipart.MultipartFile;
 import com.younghee.studycast.dto.request.LeaveRoomRequest;
 import com.younghee.studycast.dto.request.RoomCreateRequest;
 import com.younghee.studycast.dto.request.RoomJoinRequest;
+import com.younghee.studycast.dto.request.RoomUpdateRequest;
 import com.younghee.studycast.dto.response.JoinCodeCheckResponse;
 import com.younghee.studycast.dto.response.LiveKitTokenResponse;
 import com.younghee.studycast.dto.response.RoomCreateResponse;
 import com.younghee.studycast.dto.response.RoomDetailResponse;
 import com.younghee.studycast.dto.response.RoomJoinResponse;
 import com.younghee.studycast.dto.response.RoomParticipantResponse;
+import com.younghee.studycast.dto.response.RoomUpdateResponse;
 import com.younghee.studycast.service.LiveKitTokenService;
 import com.younghee.studycast.service.RoomService;
 
@@ -27,6 +29,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -139,6 +142,19 @@ public class RoomController {
     }
 
     
+    // 스터디방 설정 업데이트 (방장 전용)
+    @PatchMapping(value = "/{roomNo}/settings", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RoomUpdateResponse> updateRoomSettings(
+        @PathVariable Long roomNo,
+        @RequestPart("request") RoomUpdateRequest request,
+        @RequestPart(value = "image", required = false) MultipartFile image,
+        Authentication authentication
+    ) {
+        UUID userUuid = getUserUuid(authentication);
+        RoomUpdateResponse response = roomService.updateRoomSettings(roomNo, userUuid, request, image);
+        return ResponseEntity.ok(response);
+    }
+
     // 인증 객체에서 로그인 사용자 UUID 추출
     private UUID getUserUuid(Authentication authentication) {
         if (authentication == null || authentication.getPrincipal() == null) {

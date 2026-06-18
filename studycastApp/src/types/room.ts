@@ -105,7 +105,10 @@ export interface MyRoom {
   max: number;
   img: string;
   live: boolean;
+  isPrivate: boolean;
+  time: string;
   createdAt: number | null;
+  expiredAt: string | null;
   visitedAt: number | null;
 }
 

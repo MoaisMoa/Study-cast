@@ -15,6 +15,8 @@ export interface RoomSnapshot {
   camOn: boolean;
   micOn: boolean;
   thumbnail: string | null;
+  categoryNo: number;
+  expiredAt: string;
 }
 
 interface RoomDetailResponse {
@@ -101,15 +103,35 @@ export async function fetchRoom(roomId: string, myName: string, myProfileImage?:
     camOn: detail.cameraStatus ?? true,
     micOn: detail.micStatus ?? false,
     thumbnail: detail.roomThumbnail ?? null,
+    categoryNo: detail.categoryNo,
+    expiredAt: detail.expiredAt,
   };
+}
+
+export interface RoomUpdatePayload {
+  roomTitle: string;
+  maxUsers: number;
+  categoryNo: number;
+  expiredAt: string;
+  cameraStatus: boolean;
+  micStatus: boolean;
+  roomNotice: string | null;
 }
 
 /** 방 설정 변경 */
 export async function updateRoom(
-  _roomId: string,
-  _patch: Partial<Pick<RoomSnapshot, "title" | "maxMembers">>
-): Promise<{ ok: boolean }> {
-  return { ok: true };
+  roomId: string,
+  payload: RoomUpdatePayload,
+  image?: File | null
+): Promise<{ thumbnail: string | null }> {
+  const formData = new FormData();
+  formData.append("request", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+  if (image) formData.append("image", image);
+  const res = await apiClient.patch<{ roomNo: number; roomThumbnail: string | null }>(
+    `/api/rooms/${roomId}/settings`,
+    formData
+  );
+  return { thumbnail: res.data.roomThumbnail ?? null };
 }
 
 /** 멤버 추방 */

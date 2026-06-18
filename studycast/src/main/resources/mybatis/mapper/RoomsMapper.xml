@@ -134,6 +134,22 @@
         WHERE room_no = #{roomNo}
     </select>
 
+    <!-- 방 설정 업데이트 -->
+    <update id="updateRoom">
+        UPDATE rooms
+        SET
+            room_title     = #{req.roomTitle},
+            max_users      = #{req.maxUsers},
+            category_no    = #{req.categoryNo},
+            expired_at     = #{req.expiredAt},
+            camera_status  = #{req.cameraStatus},
+            mic_status     = #{req.micStatus},
+            room_notice    = #{req.roomNotice},
+            room_thumbnail = #{thumbnail},
+            updated_at     = NOW()
+        WHERE room_no = #{roomNo}
+    </update>
+
     <!-- 현재 인원 재계산 -->
     <update id="syncNowUsersByActiveParticipants">
         UPDATE rooms

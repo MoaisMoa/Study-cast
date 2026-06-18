@@ -1,6 +1,7 @@
 import type { VisitedRoom, VisitedRoomStatus } from "@/types/visitedRoom";
 import type { MainRoomPageResponse, MainRoomResponse } from "@/types";
 import { apiClient } from "./apiClient";
+import { getDefaultRoomImage } from "@/utils/roomImage";
 
 const PAGE_SIZE = 10;
 
@@ -56,7 +57,7 @@ function toVisitedRoom(r: MainRoomResponse): VisitedRoom {
     title: r.roomTitle,
     cat: r.categoryName,
     time: formatStudyTime(r.averageStudySeconds),
-    img: r.roomThumbnail ?? `https://picsum.photos/seed/room${r.roomNo}/400/300`,
+    img: r.roomThumbnail ?? getDefaultRoomImage(r.roomNo),
     members: r.currentUsers,
     max: r.maxUsers,
     visibility: r.roomPrivate ? "private" : "public",

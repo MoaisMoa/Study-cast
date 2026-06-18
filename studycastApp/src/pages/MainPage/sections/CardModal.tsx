@@ -3,6 +3,7 @@ import { useT } from "@/theme";
 import { useModal, useModalRoom } from "@/contexts/ModalContext";
 import { joinRoom } from "@/services/visitedRoomService";
 import { openStudyRoom } from "@/utils/openStudyRoom";
+import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
 import { Icon } from "@/components/ui/Icon";
 
 const CODE_RE = /^[0-9]{4,6}$/;
@@ -22,6 +23,8 @@ export function CardModal() {
   const [codeVal, setCodeVal] = useState("");
   const [codeError, setCodeError] = useState<null | "format" | "wrong">(null);
   const [verifying, setVerifying] = useState(false);
+  const [entering, setEntering] = useState(false);
+  const [entryBlocked, setEntryBlocked] = useState(false);
 
   if (!room) return null;
 
@@ -37,11 +40,17 @@ export function CardModal() {
     setCodeStep(false);
     setCodeVal("");
     setCodeError(null);
+    setEntryBlocked(false);
     setModalRoom(null);
   };
 
-  const handleEnterClick = () => {
+  const handleEnterClick = async () => {
     if (isPrivate) { setCodeStep(true); return; }
+    setEntering(true);
+    const allowed = await canEnterRoom();
+    setEntering(false);
+    if (!allowed) { setEntryBlocked(true); return; }
+    setPendingEntry(String(room.id));
     openStudyRoom(room.id);
     handleClose();
   };
@@ -49,9 +58,11 @@ export function CardModal() {
   const handleCodeSubmit = async () => {
     if (!CODE_RE.test(codeVal.trim())) { setCodeError("format"); return; }
     setVerifying(true);
+    const allowed = await canEnterRoom();
+    if (!allowed) { setVerifying(false); setEntryBlocked(true); setCodeStep(false); return; }
     const ok = await joinRoom(room.id, codeVal.trim());
     setVerifying(false);
-    if (ok) { openStudyRoom(room.id); handleClose(); return; }
+    if (ok) { setPendingEntry(String(room.id)); openStudyRoom(room.id); handleClose(); return; }
     setCodeError("wrong");
   };
 
@@ -242,17 +253,19 @@ export function CardModal() {
           ) : (
             <>
               <div style={{
-                fontSize: 12, color: T.text3,
+                fontSize: 12, color: entryBlocked ? T.red : T.text3,
                 textAlign: "center", marginBottom: 14,
               }}>
-                {full
-                  ? "정원이 마감된 스터디방입니다."
-                  : isPrivate
-                    ? "비공개 스터디방입니다. 참여 코드가 필요합니다."
-                    : "설정한 내용으로 스터디에 참여하시겠어요?"}
+                {entryBlocked
+                  ? "이미 입장 중인 방이 있습니다."
+                  : full
+                    ? "정원이 마감된 스터디방입니다."
+                    : isPrivate
+                      ? "비공개 스터디방입니다. 참여 코드가 필요합니다."
+                      : "설정한 내용으로 스터디에 참여하시겠어요?"}
               </div>
               <button
-                disabled={full}
+                disabled={full || entering}
                 onClick={handleEnterClick}
                 style={{
                   width: "100%",
@@ -262,14 +275,15 @@ export function CardModal() {
                   background: full ? "#9e9e9e" : T.red,
                   color: "#fff",
                   fontSize: 16, fontWeight: 800,
-                  cursor: full ? "not-allowed" : "pointer",
+                  cursor: full || entering ? "not-allowed" : "pointer",
                   transition: "opacity 0.15s",
                   letterSpacing: ".02em",
+                  opacity: entering ? 0.7 : 1,
                 }}
-                onMouseEnter={(e) => { if (!full) e.currentTarget.style.opacity = ".85"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+                onMouseEnter={(e) => { if (!full && !entering) e.currentTarget.style.opacity = ".85"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = entering ? "0.7" : "1"; }}
               >
-                {full ? "참여 마감" : isPrivate ? "코드 입력 후 입장" : "참여하기"}
+                {full ? "참여 마감" : entering ? "확인 중..." : isPrivate ? "코드 입력 후 입장" : "참여하기"}
               </button>
             </>
           )}

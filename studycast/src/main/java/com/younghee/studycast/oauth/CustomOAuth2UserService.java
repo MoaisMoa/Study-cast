@@ -87,6 +87,15 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService{
         // 수정) 비활성/탈퇴 계정은 마지막 로그인 시간 갱신 전에 차단
         validateActiveUser(user);
 
+        // 프로필 이미지가 없는 경우에만 소셜 이미지로 업데이트
+        if (user.getUserProfileImage() == null || user.getUserProfileImage().isBlank()) {
+            String socialImage = userAuth.getProviderProfileImage();
+            if (socialImage != null && !socialImage.isBlank()) {
+                userMapper.updateProfileImage(user.getUserUuid(), socialImage);
+                user.setUserProfileImage(socialImage);
+            }
+        }
+
         // 소셜 계정 마지막 로그인 시간 갱신
         userAuthMapper.updateLastLoginAt(userAuth.getAuthNo());
 
@@ -106,6 +115,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService{
         } else {
             // 3. 기존 회원이 있으면 상태 확인 후 소셜 계정 연결
             validateActiveUser(user);
+            // 4. 프로필 이미지가 없는 경우에만 소셜 이미지로 업데이트
+            if (user.getUserProfileImage() == null || user.getUserProfileImage().isBlank()) {
+                String socialImage = oAuthUserInfo.getProfileImage();
+                if (socialImage != null && !socialImage.isBlank()) {
+                    userMapper.updateProfileImage(user.getUserUuid(), socialImage);
+                    user.setUserProfileImage(socialImage);
+                }
+            }
         }
         // 4. user_auths에 소셜 연동 정보 저장
         UserAuthDTO userAuth = createUserAuth(user.getUserUuid(), oAuthUserInfo, email);

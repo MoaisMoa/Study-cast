@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import com.younghee.studycast.dto.RoomsDTO;
+import com.younghee.studycast.dto.request.RoomUpdateRequest;
 import com.younghee.studycast.dto.response.RoomDetailResponse;
 
 @Mapper
@@ -30,4 +31,10 @@ public interface RoomsMapper {
     int syncNowUsersByActiveParticipants(@Param("roomNo") Long roomNo);
     // 현재 인원 조회
     Integer findNowUsersByRoomNo(@Param("roomNo") Long roomNo);
+    // 방 설정 업데이트
+    int updateRoom(
+        @Param("roomNo") Long roomNo,
+        @Param("req") RoomUpdateRequest req,
+        @Param("thumbnail") String thumbnail
+    );
 }

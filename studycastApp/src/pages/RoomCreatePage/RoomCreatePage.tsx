@@ -11,6 +11,7 @@ import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Row } from "@/components/ui/Row";
 import { offsetDate, todayStr } from "@/utils/date";
 import { createRoom } from "@/services/roomService";
+import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
 import { ThumbnailUploader } from "./sections/ThumbnailUploader";
 import { VisibilitySelector } from "./sections/VisibilitySelector";
 import { JoinCodeField } from "./sections/JoinCodeField";
@@ -201,8 +202,14 @@ export default function RoomCreatePage() {
     setCreateError("");
   };
 
-  const enterCreatedRoom = () => {
+  const enterCreatedRoom = async () => {
     if (createdRoomId != null) {
+      const allowed = await canEnterRoom();
+      if (!allowed) {
+        setCreateError("이미 입장 중인 방이 있습니다.");
+        return;
+      }
+      setPendingEntry(String(createdRoomId));
       window.open(`${window.location.origin}/rooms/${createdRoomId}`, "_blank", "noopener,noreferrer");
     } else {
       navigate("/");

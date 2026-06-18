@@ -7,11 +7,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.younghee.studycast.dto.request.RoomCreateRequest;
 import com.younghee.studycast.dto.request.RoomJoinRequest;
+import com.younghee.studycast.dto.request.RoomUpdateRequest;
 import com.younghee.studycast.dto.response.JoinCodeCheckResponse;
 import com.younghee.studycast.dto.response.RoomCreateResponse;
 import com.younghee.studycast.dto.response.RoomDetailResponse;
 import com.younghee.studycast.dto.response.RoomJoinResponse;
 import com.younghee.studycast.dto.response.RoomParticipantResponse;
+import com.younghee.studycast.dto.response.RoomUpdateResponse;
 
 public interface RoomService {
     // 스터디방 생성
@@ -32,4 +34,6 @@ public interface RoomService {
     List<RoomParticipantResponse> getActiveParticipants(Long roomNo);
     // 스터디방 퇴장 처리 + 공부시간 저장
     void leaveRoom(Long roomNo, UUID userUuid, int studiedSeconds);
+    // 스터디방 설정 업데이트 (방장 전용)
+    RoomUpdateResponse updateRoomSettings(Long roomNo, UUID userUuid, RoomUpdateRequest request, MultipartFile image);
 }

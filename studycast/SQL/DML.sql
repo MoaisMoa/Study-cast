@@ -92,8 +92,12 @@ INSERT INTO room_visit_histories (room_no, user_uuid, visit_count, last_visited_
 ((SELECT room_no FROM rooms WHERE room_title = '자소서 첨삭 스터디'                LIMIT 1), '22222222-2222-2222-2222-222222222222',  3, NOW() - INTERVAL '2 weeks'),
 ((SELECT room_no FROM rooms WHERE room_title = '토익 900 목표반'                   LIMIT 1), '22222222-2222-2222-2222-222222222222', 12, NOW() - INTERVAL '3 weeks');
 
--- =====================================================================
--- 5. 참여자 데이터 없음
---    now_users는 rooms INSERT에 설정된 테스트값을 그대로 사용
---    실제 참여/퇴장 시 서버(syncNowUsersByActiveParticipants)가 관리
--- =====================================================================
+-- 1. user_auths에 Google 레코드 있는지, provider_profile_image 값 있는지
+SELECT auth_no, user_uuid, provider, provider_profile_image, connected_at 
+FROM user_auths 
+WHERE provider = 'GOOGLE';
+
+-- 2. users 테이블 상태
+SELECT user_uuid, user_email, user_name, user_profile_image, created_at
+FROM users
+WHERE user_email = 'aya70713@gmail.com';

@@ -19,11 +19,13 @@ import com.younghee.studycast.dto.RoomParticipantDTO;
 import com.younghee.studycast.dto.RoomsDTO;
 import com.younghee.studycast.dto.request.RoomCreateRequest;
 import com.younghee.studycast.dto.request.RoomJoinRequest;
+import com.younghee.studycast.dto.request.RoomUpdateRequest;
 import com.younghee.studycast.dto.response.JoinCodeCheckResponse;
 import com.younghee.studycast.dto.response.RoomCreateResponse;
 import com.younghee.studycast.dto.response.RoomDetailResponse;
 import com.younghee.studycast.dto.response.RoomJoinResponse;
 import com.younghee.studycast.dto.response.RoomParticipantResponse;
+import com.younghee.studycast.dto.response.RoomUpdateResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -311,6 +313,47 @@ public class RoomServiceImpl implements RoomService {
                 log.warn("공부 시간 저장 실패 (퇴장 처리는 완료됨): roomNo={}, userUuid={}", roomNo, userUuid, e);
             }
         }
+    }
+
+    @Override
+    @Transactional
+    public RoomUpdateResponse updateRoomSettings(Long roomNo, UUID userUuid, RoomUpdateRequest request, MultipartFile image) {
+        // 1. 방 존재 확인
+        RoomsDTO room = roomsMapper.findByRoomNo(roomNo);
+        if (room == null) {
+            throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
+        }
+        // 2. 방장 권한 확인
+        if (!userUuid.equals(room.getUserUuid())) {
+            throw new SecurityException("방장만 설정을 변경할 수 있습니다.");
+        }
+        // 3. 요청값 검증
+        validateRoomTitle(request.getRoomTitle());
+        validateMaxUsers(request.getMaxUsers());
+        validateExpiredAt(request.getExpiredAt());
+        validateCategory(request.getCategoryNo());
+        validateDeviceStatus(request.getCameraStatus(), request.getMicStatus());
+        validateRoomNotice(request.getRoomNotice());
+        // 4. 썸네일 처리 — 새 파일이 있을 때만 교체
+        String thumbnailPath = room.getRoomThumbnail();
+        String newThumbnailPath = null;
+        if (image != null && !image.isEmpty()) {
+            newThumbnailPath = roomImageStorageService.store(image);
+            if (thumbnailPath != null) {
+                deleteStoredImageQuietly(thumbnailPath);
+            }
+            thumbnailPath = newThumbnailPath;
+        }
+        // 5. DB 업데이트
+        try {
+            roomsMapper.updateRoom(roomNo, request, thumbnailPath);
+        } catch (RuntimeException e) {
+            if (newThumbnailPath != null) {
+                deleteStoredImageQuietly(newThumbnailPath);
+            }
+            throw e;
+        }
+        return new RoomUpdateResponse(roomNo, thumbnailPath);
     }
 
     private void validateUserUuid(UUID userUuid) {

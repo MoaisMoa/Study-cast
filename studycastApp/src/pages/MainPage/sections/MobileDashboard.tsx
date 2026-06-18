@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { MyRoom } from "@/types";
 import { listMyRooms, getMainSummary } from "@/services/roomService";
 import { fmtTimer } from "@/utils/time";
-import { openStudyRoom } from "@/utils/openStudyRoom";
+import { useModal } from "@/contexts/ModalContext";
 import { Icon } from "@/components/ui/Icon";
 import { LearningPlannerModal } from "./planner/LearningPlannerModal";
 
@@ -13,6 +13,7 @@ export function MobileDashboard() {
   const T = useT();
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
+  const setModalRoom = useModal();
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [myIdx, setMyIdx] = useState(0);
   const [rooms, setRooms] = useState<MyRoom[]>([]);
@@ -106,7 +107,25 @@ export function MobileDashboard() {
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "10px 14px" }}>
                 <div style={{ fontSize: 10, color: "rgba(255,255,255,.7)", marginBottom: 3 }}>참여 중인 스터디</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{curRoom.title}</div>
-                <button onClick={() => openStudyRoom(curRoom.id)} style={{ padding: "4px 12px", borderRadius: 5, border: "1.5px solid rgba(255,255,255,.6)", background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>입장하기 →</button>
+                <button
+                  onClick={() => {
+                    setModalRoom({
+                      id: curRoom.id,
+                      title: curRoom.title,
+                      cat: curRoom.cat,
+                      time: curRoom.time,
+                      members: curRoom.members,
+                      max: curRoom.max,
+                      img: curRoom.img,
+                      live: curRoom.live,
+                      type: curRoom.type,
+                      isPrivate: curRoom.isPrivate,
+                      createdAt: curRoom.createdAt ? new Date(curRoom.createdAt).toISOString() : null,
+                      expiredAt: curRoom.expiredAt,
+                    });
+                  }}
+                  style={{ padding: "4px 12px", borderRadius: 5, border: "1.5px solid rgba(255,255,255,.6)", background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                >입장하기 →</button>
               </div>
             </>
           ) : null}
