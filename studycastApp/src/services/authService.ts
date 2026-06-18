@@ -48,6 +48,7 @@ export async function login(
     const user: AuthUser = {
       email: meResponse.data.userEmail,
       name: meResponse.data.userName,
+      profileImage: meResponse.data.userProfileImage ?? undefined,
     };
 
     sessionStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -98,6 +99,7 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
     const user: AuthUser = {
       email: response.data.userEmail,
       name: response.data.userName,
+      profileImage: response.data.userProfileImage ?? undefined,
     };
 
     sessionStorage.setItem(USER_KEY, JSON.stringify(user));

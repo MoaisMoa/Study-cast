@@ -77,7 +77,7 @@ export function MemberModal({
             return (
               <div key={m.id} style={{ display: "grid", gridTemplateColumns: colTpl, alignItems: "center", padding: "14px 22px", borderBottom: i < sortedMembers.length - 1 ? `1px solid ${T.border}` : "none" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                  <div style={{ flexShrink: 0 }}><Av name={m.short} color={m.color} size={40} /></div>
+                  <div style={{ flexShrink: 0 }}><Av name={m.short} color={m.color} size={40} profileImage={m.profileImage} /></div>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{m.name}</span>

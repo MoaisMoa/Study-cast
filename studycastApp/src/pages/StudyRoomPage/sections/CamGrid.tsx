@@ -21,6 +21,7 @@ export interface CamGridProps {
   // LiveKit
   videoTracks: Map<string, LiveKitVideoTrack>;
   selfIdentity: string | null;
+  selfProfileImage?: string;
 }
 
 function LiveVideo({ track, mirrored = false }: { track: LiveKitVideoTrack; mirrored?: boolean }) {
@@ -55,6 +56,7 @@ interface CamCellProps {
   onTimerPause: () => void;
   onTimerResume: () => void;
   onTimerReset: () => void;
+  profileImage?: string;
 }
 
 function CamCell({
@@ -62,6 +64,7 @@ function CamCell({
   isSelf, camOn, camError, videoTrack,
   timerSec, timerState, totalSec, elapsed,
   onTimerStart, onTimerPause, onTimerResume, onTimerReset,
+  profileImage,
 }: CamCellProps) {
   const showVideo = !!videoTrack && camOn && (isSelf ? !camError : true);
 
@@ -74,7 +77,7 @@ function CamCell({
     }}>
       {showVideo
         ? <LiveVideo track={videoTrack!} mirrored={isSelf} />
-        : <Av name={m.short} color={m.color} size={avSize} />}
+        : <Av name={m.short} color={m.color} size={avSize} profileImage={isSelf ? profileImage : undefined} />}
 
       {((isSelf && timerState === "running" && camOn) || (!isSelf && camOn)) && (
         <div style={{ position: "absolute", top: 8, left: 8, display: "flex", alignItems: "center", gap: 3, background: "#E53935", color: "#fff", fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 5, zIndex: 2 }}>
@@ -104,7 +107,7 @@ function CamCell({
 
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "32px 12px 10px", background: "linear-gradient(to top,rgba(0,0,0,.6),transparent)", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 2 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <Av name={m.short} color={m.color} size={24} />
+          <Av name={m.short} color={m.color} size={24} profileImage={isSelf ? profileImage : undefined} />
           <span style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>{m.name}</span>
           {m.role === "HOST" && <span style={{ background: "rgba(255,255,255,.22)", color: "#fff", fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3 }}>HOST</span>}
         </div>
@@ -118,7 +121,7 @@ export function CamGrid(props: CamGridProps) {
   const {
     members, elapsed, totalSec, timerSec, timerState, cam, camError = false,
     focusedId, setFocusedId, onTimerStart, onTimerPause, onTimerResume, onTimerReset,
-    videoTracks, selfIdentity,
+    videoTracks, selfIdentity, selfProfileImage,
   } = props;
 
   const all = members.slice(0, 4);
@@ -133,6 +136,7 @@ export function CamGrid(props: CamGridProps) {
       videoTrack: videoTracks.get(isSelf ? (selfIdentity ?? "") : m.userUuid),
       timerSec, timerState, totalSec, elapsed,
       onTimerStart, onTimerPause, onTimerResume, onTimerReset,
+      profileImage: selfProfileImage,
     };
   }
 

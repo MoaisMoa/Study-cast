@@ -14,6 +14,7 @@ export interface RoomMember {
   joinMin: number;   // 참석 시간(분)
   mic: boolean;
   cam: boolean;
+  profileImage?: string;
 }
 
 export interface ChatMessage {

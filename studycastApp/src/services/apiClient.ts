@@ -56,6 +56,21 @@ export function clearAuthSession(): void {
 // Axios 응답 인터셉터 — 401 시 /refresh 호출 후 원래 요청 재시도
 type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
+// 동시 다발 401 시 refresh를 한 번만 호출하기 위한 싱글턴 Promise
+let refreshPromise: Promise<void> | null = null;
+let isRedirectingToLogin = false;
+
+function redirectToLoginOnce(): void {
+  if (isRedirectingToLogin) return;
+
+  isRedirectingToLogin = true;
+  clearAuthSession();
+
+  if (window.location.pathname !== "/login") {
+    window.location.href = "/login";
+  }
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -63,7 +78,11 @@ apiClient.interceptors.response.use(
     const status = error.response?.status;
     const url = originalRequest?.url ?? "";
 
-    if (!originalRequest || status !== 401 || originalRequest._retry) {
+    if (!originalRequest || status !== 401) {
+      return Promise.reject(error);
+    }
+    if (originalRequest._retry) {
+      redirectToLoginOnce();
       return Promise.reject(error);
     }
 
@@ -82,17 +101,26 @@ apiClient.interceptors.response.use(
 
     originalRequest._retry = true;
 
+    // refresh가 이미 진행 중이면 기존 Promise 대기, 아니면 새로 시작
+    if (!refreshPromise) {
+      refreshPromise = axios
+        .post("http://localhost:8080/api/auth/refresh", null, { withCredentials: true })
+        .then(() => {})
+        .catch((refreshError) => {
+          redirectToLoginOnce();
+          return Promise.reject(refreshError);
+        })
+        .finally(() => {
+          refreshPromise = null;
+        });
+    }
+
     try {
-      // 별도 인스턴스 사용 → apiClient 응답 인터셉터를 타지 않아 무한 루프 원천 차단
-      await axios.post("http://localhost:8080/api/auth/refresh", null, {
-        withCredentials: true,
-      });
-      // 원래 요청 재시도 — 새 Access Token 쿠키가 자동으로 포함됨
+      await refreshPromise;
+      // 새 Access Token 쿠키가 세팅된 후 원래 요청 재시도
       return apiClient(originalRequest);
-    } catch (refreshError) {
-      clearAuthSession();
-      window.location.href = "/login";
-      return Promise.reject(refreshError);
+    } catch {
+      return Promise.reject(error);
     }
   }
 );

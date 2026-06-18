@@ -53,7 +53,7 @@ function nowT(): string {
   return [d.getHours(), d.getMinutes(), d.getSeconds()].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
-function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean): RoomMember {
+function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean, myProfileImage?: string): RoomMember {
   const joinedAt = p.joinedAt ? new Date(p.joinedAt) : new Date();
   const joinMin = Math.max(0, Math.floor((Date.now() - joinedAt.getTime()) / 60_000));
   return {
@@ -68,11 +68,12 @@ function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean): Roo
     joinMin,
     mic: p.micStatus,
     cam: p.cameraStatus,
+    profileImage: isMe ? myProfileImage : undefined,
   };
 }
 
 /** 방 입장 + 초기 스냅샷 조회 */
-export async function fetchRoom(roomId: string, myName: string): Promise<RoomSnapshot> {
+export async function fetchRoom(roomId: string, myName: string, myProfileImage?: string): Promise<RoomSnapshot> {
   // 입장 처리 (이미 active 상태면 백엔드가 중복 처리)
   await apiClient.post(`/api/rooms/${roomId}/join`);
 
@@ -85,7 +86,7 @@ export async function fetchRoom(roomId: string, myName: string): Promise<RoomSna
 
   // 나를 항상 index 0(id=1)으로 정렬
   const sorted = [...participantsRes.data].sort((a) => (a.userName === myName ? -1 : 1));
-  const members = sorted.map((p, i) => toRoomMember(p, i, p.userName === myName));
+  const members = sorted.map((p, i) => toRoomMember(p, i, p.userName === myName, myProfileImage));
 
   return {
     roomId,

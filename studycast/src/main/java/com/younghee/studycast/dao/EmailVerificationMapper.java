@@ -38,5 +38,5 @@ public interface EmailVerificationMapper {
     );
 
     // 확장2) 사용 완료 또는 만료일 지난 인증번호 30일 보관 후 삭제
-    int deleteExpriedOrUsedCodes();
+    int deleteExpiredOrUsedCodes();
 }

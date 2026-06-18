@@ -83,7 +83,7 @@ export default function StudyRoomPage() {
   useEffect(() => {
     if (!roomId) return;
     let cancelled = false;
-    fetchRoom(roomId, user?.name ?? "").then((snap) => {
+    fetchRoom(roomId, user?.name ?? "", user?.profileImage).then((snap) => {
       if (cancelled) return;
       setMembers(snap.members);
       setElapsed(Object.fromEntries(snap.members.map((m) => [m.id, m.sec])));
@@ -215,7 +215,7 @@ export default function StudyRoomPage() {
     <CamGrid members={members} elapsed={elapsed} totalSec={totalSec} timerSec={timerSec} timerState={timerState}
       cam={cam} camError={!!camError} focusedId={focusedId} setFocusedId={setFocusedId}
       onTimerStart={handleTimerStart} onTimerPause={handleTimerPause} onTimerResume={handleTimerResume} onTimerReset={handleTimerReset}
-      videoTracks={videoTracks} selfIdentity={selfIdentity} />
+      videoTracks={videoTracks} selfIdentity={selfIdentity} selfProfileImage={user?.profileImage} />
   );
 
   // 장치 오류 배너 (데스크탑/모바일 공용)
@@ -285,7 +285,7 @@ export default function StudyRoomPage() {
           timerState={timerState} cam={cam} mic={mic} focused={focusedId}
           setFocused={setFocusedId}
           onTimerToggle={timerAction} onTimerReset={handleTimerReset}
-          videoTracks={videoTracks} selfIdentity={selfIdentity}
+          videoTracks={videoTracks} selfIdentity={selfIdentity} selfProfileImage={user?.profileImage}
         />
 
         {/* 하단 컨트롤 바: 마이크 · 채팅 · 중앙 타이머 · 멤버 · 카메라 */}
@@ -403,7 +403,7 @@ export default function StudyRoomPage() {
           <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: T.text3 }}>{clk}</span>
           <div style={{ width: 1, height: 20, background: T.border }} />
           <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: T.red, fontWeight: 600 }}>{fmtT(timerSec)}</span>
-          <Av name="나" color={T.red} size={30} />
+          <Av name={user?.name ?? "나"} color={T.red} size={30} profileImage={user?.profileImage} />
         </div>
       </header>
 

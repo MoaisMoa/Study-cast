@@ -12,6 +12,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.younghee.studycast.dao.UserMapper;
 import com.younghee.studycast.dto.UserDTO;
+import com.younghee.studycast.util.AuthCookieUtil;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -42,7 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {
-                if ("sc_access_token".equals(cookie.getName())) {
+                if (AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME.equals(cookie.getName())) {
                     token = cookie.getValue();
                     break;
                 }
@@ -92,5 +93,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write("{\"success\": false, \"message\": \"" + message + "\"}");
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String method = request.getMethod();
+
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return true;
+        }
+
+        return uri.equals("/api/auth/signup")
+                || uri.equals("/api/auth/login")
+                || uri.equals("/api/auth/refresh")
+                || uri.equals("/api/auth/password/send-code")
+                || uri.equals("/api/auth/password/verify-code")
+                || uri.equals("/api/auth/password/reset")
+                || uri.startsWith("/oauth2/")
+                || uri.startsWith("/login/oauth2/")
+                || uri.startsWith("/room-images/")
+                || uri.equals("/api/main/rooms")
+                || uri.equals("/api/main/guest-recommendations")
+                || uri.startsWith("/ws/");
     }
 }

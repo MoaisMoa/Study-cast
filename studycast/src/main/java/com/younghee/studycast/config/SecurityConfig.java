@@ -15,6 +15,9 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.younghee.studycast.oauth.CustomOAuth2UserService;
+import com.younghee.studycast.oauth.OAuth2FailureHandler;
+import com.younghee.studycast.oauth.OAuth2SuccessHandler;
 import com.younghee.studycast.security.JwtAuthenticationFilter;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,6 +29,10 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    // 추가) 소셜 로그인
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final OAuth2FailureHandler oAuth2FailureHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -37,14 +44,25 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
 
             // 세션을 사용하지 않는 Stateless 인증 구조
+            // 수정) 소셜로그인 요청 과정에서만 세션 필요!
             .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
             )
 
             // 기본 로그인 방식 비활성화
             .formLogin(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable)
             .logout(AbstractHttpConfigurer::disable)
+
+            // oauth2Login 설정 추가
+            // OAuth 로그인 성공 후 사용자 정보 조회
+            .oauth2Login(oauth2 -> oauth2
+                .userInfoEndpoint(userInfo -> userInfo
+                    .userService(customOAuth2UserService)
+                )
+                .successHandler(oAuth2SuccessHandler)
+                .failureHandler(oAuth2FailureHandler)
+            )
 
             // 인증/인가 실패 응답 처리
             .exceptionHandling(exception -> exception
@@ -77,7 +95,9 @@ public class SecurityConfig {
                     "/room-images/**",
                     "/api/main/rooms",
                     "/api/main/guest-recommendations",
-                    "/ws/**"
+                    "/ws/**",
+                    "/oauth2/**",
+                    "/login/oauth2/**"
                 ).permitAll()
 
                 // 인증 필요

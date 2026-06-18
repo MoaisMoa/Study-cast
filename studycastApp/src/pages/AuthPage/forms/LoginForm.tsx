@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import type { AuthNavigate } from "@/types";
 import { useAT } from "@/theme";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,7 @@ interface LoginFormProps {
 export function LoginForm({ onNavigate }: LoginFormProps) {
   const T = useAT();
   const navigate = useNavigate();
+  const location = useLocation();
   const { login: setAuthUser } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -34,6 +35,15 @@ export function LoginForm({ onNavigate }: LoginFormProps) {
       setRemember(true);
     }
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const oauthError = params.get("oauthError");
+    if (oauthError) {
+      setLoginError(oauthError);
+      window.history.replaceState({}, "", "/login");
+    }
+  }, [location.search]);
 
   function validate(): boolean {
     const e: { email?: string; pw?: string } = {};
