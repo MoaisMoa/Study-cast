@@ -71,7 +71,7 @@ export function MemberModal({
         {/* 멤버 행 */}
         <div style={{ flex: 1, overflowY: "auto" }}>
           {sortedMembers.map((m, i) => {
-            const isSelf = m.role === "HOST";
+            const isSelf = m.id === 1;
             const micState = isSelf ? mic : m.mic;
             const camState = isSelf ? cam : m.cam;
             return (

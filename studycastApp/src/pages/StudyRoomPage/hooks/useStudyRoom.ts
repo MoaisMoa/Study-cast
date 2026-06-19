@@ -4,6 +4,7 @@ import {
   fetchRoom, sendMessage as svcSendMessage, subscribeChat,
   saveNotice as svcSaveNotice, kickMember as svcKickMember,
   updateRoom as svcUpdateRoom, leaveRoom as svcLeaveRoom,
+  type RoomUpdatePayload,
 } from "@/services/studyRoomService";
 
 export interface UseStudyRoomResult {
@@ -26,7 +27,7 @@ export interface UseStudyRoomResult {
   /** 공지 저장/삭제 */
   saveNotice: (msg: string | null) => Promise<void>;
   /** 방 설정 변경 */
-  updateRoom: (patch: { title?: string; maxMembers?: number }) => Promise<void>;
+  updateRoom: (payload: RoomUpdatePayload) => Promise<void>;
   /** 방 나가기 */
   leaveRoom: () => Promise<void>;
 }
@@ -44,6 +45,7 @@ export function useStudyRoom(roomId: string): UseStudyRoomResult {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const mounted = useRef(true);
+  const myUuidRef = useRef<string>("");
 
   // 초기 스냅샷 로드
   useEffect(() => {
@@ -58,21 +60,21 @@ export function useStudyRoom(roomId: string): UseStudyRoomResult {
       setMessages(snap.messages);
       setNotice(snap.notice);
       setLoading(false);
+      if (snap.members[0]?.userUuid) myUuidRef.current = snap.members[0].userUuid;
     });
     return () => { mounted.current = false; };
   }, [roomId]);
 
-  // 실시간 채팅 구독 (mock — WebSocket 연동 시 자동 동작)
+  // 실시간 채팅 구독
   useEffect(() => {
-    const unsub = subscribeChat(roomId, (msg) => {
+    const unsub = subscribeChat(roomId, () => myUuidRef.current, (msg) => {
       setMessages((prev) => [...prev, msg]);
     });
     return unsub;
   }, [roomId]);
 
   const sendMessage = useCallback(async (text: string) => {
-    const msg = await svcSendMessage(roomId, text);
-    setMessages((prev) => [...prev, msg]);
+    await svcSendMessage(roomId, text, myUuidRef.current);
   }, [roomId]);
 
   const kickMember = useCallback(async (memberId: number) => {
@@ -85,10 +87,10 @@ export function useStudyRoom(roomId: string): UseStudyRoomResult {
     setNotice(res.notice);
   }, [roomId]);
 
-  const updateRoom = useCallback(async (patch: { title?: string; maxMembers?: number }) => {
-    await svcUpdateRoom(roomId, patch);
-    if (patch.title !== undefined) setTitle(patch.title);
-    if (patch.maxMembers !== undefined) setMaxMembers(patch.maxMembers);
+  const updateRoom = useCallback(async (payload: RoomUpdatePayload) => {
+    await svcUpdateRoom(roomId, payload);
+    setTitle(payload.roomTitle);
+    setMaxMembers(payload.maxUsers);
   }, [roomId]);
 
   const leaveRoom = useCallback(async () => {

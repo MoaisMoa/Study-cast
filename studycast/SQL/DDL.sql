@@ -1,5 +1,4 @@
--- Active: 1779245779408@@localhost@5432@studycast_db@public
--- 테이블 삭제 (CASCADE로 제약조건까지 깔끔하게 제거)
+-- Active: 1781802478493@@127.0.0.1@5432
 DROP TABLE IF EXISTS
     email_verifications,
     refresh_tokens,

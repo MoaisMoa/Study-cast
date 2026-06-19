@@ -21,12 +21,15 @@ import com.younghee.studycast.service.RoomService;
 
 import lombok.RequiredArgsConstructor;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -40,9 +43,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RequiredArgsConstructor
 @RequestMapping("/api/rooms")
 public class RoomController {
-    
+
     private final RoomService roomService;
     private final LiveKitTokenService liveKitTokenService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // 스터디방 생성
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -52,16 +56,13 @@ public class RoomController {
         @RequestPart(value = "image", required = false)
         MultipartFile image
     ) {
-        // 1. JWT 인증 정보에서 로그인 사용자 UUID 조회
         UUID userUuid = getUserUuid(authentication);
-        // 2. RoomService.createRoom() 호출
         RoomCreateResponse response = roomService.createRoom(userUuid, request, image);
-        // 3. HTTP 201 Created + RoomCreateResponse 반환
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
     }
-    
+
     // 참여 코드 조회
     @GetMapping("/check-code")
     public ResponseEntity<JoinCodeCheckResponse> checkJoinCodeDuplicate(
@@ -73,8 +74,7 @@ public class RoomController {
         return ResponseEntity.ok(response);
     }
 
-    // 추가) 스터디방 상세 페이지
-    // 스터디방 상세 페이지 헤더 조회
+    // 스터디방 상세 조회
     @GetMapping("/{roomNo}")
     public ResponseEntity<RoomDetailResponse> getRoomDetail(
         @PathVariable long roomNo,
@@ -92,15 +92,31 @@ public class RoomController {
     public ResponseEntity<RoomJoinResponse> joinRoom(
         @PathVariable Long roomNo,
         @RequestBody(required = false) RoomJoinRequest request,
-        Authentication authentication    
+        Authentication authentication
     ) {
         UUID userUuid = getUserUuid(authentication);
 
         RoomJoinResponse response = roomService.joinRoom(roomNo, userUuid, request);
 
+        // 입장한 사용자 정보를 방 전체에 브로드캐스트
+        roomService.getActiveParticipants(roomNo).stream()
+            .filter(p -> userUuid.equals(p.getUserUuid()))
+            .findFirst()
+            .ifPresent(p -> {
+                Map<String, Object> event = new HashMap<>();
+                event.put("type", "JOINED");
+                event.put("userUuid", p.getUserUuid().toString());
+                event.put("userName", p.getUserName());
+                event.put("profileImage", p.getProfileImage());
+                event.put("owner", p.getOwner());
+                event.put("cameraStatus", p.getCameraStatus());
+                event.put("micStatus", p.getMicStatus());
+                messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", event);
+            });
+
         return ResponseEntity.ok(response);
     }
-    
+
     // 스터디방 active 참여자 목록 조회
     @GetMapping("/{roomNo}/participants")
     public ResponseEntity<List<RoomParticipantResponse>> getActiveParticipants(
@@ -124,7 +140,7 @@ public class RoomController {
 
         return ResponseEntity.ok(response);
     }
-    
+
     // 스터디방 퇴장 처리 + 공부시간 저장
     @DeleteMapping("/{roomNo}/leave")
     public ResponseEntity<Void> leaveRoom(
@@ -138,10 +154,15 @@ public class RoomController {
             : 0;
         roomService.leaveRoom(roomNo, userUuid, studiedSeconds);
 
+        // 퇴장 이벤트를 남은 멤버들에게 브로드캐스트
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "LEFT");
+        event.put("userUuid", userUuid.toString());
+        messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", event);
+
         return ResponseEntity.noContent().build();
     }
 
-    
     // 스터디방 설정 업데이트 (방장 전용)
     @PatchMapping(value = "/{roomNo}/settings", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RoomUpdateResponse> updateRoomSettings(

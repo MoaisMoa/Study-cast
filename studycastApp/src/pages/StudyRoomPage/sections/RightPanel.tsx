@@ -136,7 +136,7 @@ export function RightPanel(props: RightPanelProps) {
               </div>
             </div>
             {members.map((m) => {
-              const isSelf = m.role === "HOST";
+              const isSelf = m.id === 1;
               const micState = isSelf ? mic : m.mic;
               const camState = isSelf ? cam : m.cam;
               const isActive = isSelf ? timerState === "running" : camState;
