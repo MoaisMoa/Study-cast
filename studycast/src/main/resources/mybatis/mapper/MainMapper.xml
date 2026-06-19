@@ -423,4 +423,45 @@
 
         LIMIT 10
     </select>
+    <!-- 6. 내가 생성한 스터디 전체 조회 (종료된 방 포함, 관리 페이지용) -->
+    <select id="findMyCreatedRooms" resultMap="MainRoomResultMap">
+        SELECT
+            r.room_no,
+            r.room_title,
+            r.room_thumbnail,
+
+            r.category_no,
+            c.category_name,
+
+            r.now_users AS current_users,
+            r.max_users,
+
+            (r.now_users &gt; 0) AS live,
+            (r.created_at &gt;= NOW() - INTERVAL '10 days') AS new_room,
+            (r.now_users &gt;= r.max_users) AS full,
+            r.room_premium AS premium,
+            r.room_private,
+
+            (
+                r.room_private = FALSE
+                AND r.now_users &lt; r.max_users
+                AND r.expired_at &gt; NOW()
+            ) AS joinable,
+
+            r.created_at,
+            r.expired_at,
+            NULL::TIMESTAMP AS last_visited_at,
+
+            NULL::BIGINT AS average_study_seconds
+
+        FROM rooms r
+        INNER JOIN categories c
+            ON r.category_no = c.category_no
+
+        WHERE r.user_uuid = #{userUuid}
+
+        ORDER BY
+            r.created_at DESC,
+            r.room_title ASC
+    </select>
 </mapper>

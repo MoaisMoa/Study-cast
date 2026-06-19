@@ -31,4 +31,7 @@ public interface MainMapper {
 
     // 5. 비로그인 사용자용 최근 활동 추천 스터디 조회
     List<MainRoomResponse> findGuestRecommendedRooms();
+
+    // 6. 내가 생성한 스터디 전체 조회 (종료 포함, 관리 페이지용)
+    List<MainRoomResponse> findMyCreatedRooms(@Param("userUuid") UUID userUuid);
 }

@@ -83,6 +83,14 @@ public class MainController {
         List<MainRoomResponse> response = mainService.getGuestRecommendedRooms();
         return ResponseEntity.ok(response);
     }
+
+    // 6. 내가 생성한 스터디 전체 조회 (종료 포함, 관리 페이지용)
+    @GetMapping("/my-created-rooms")
+    public ResponseEntity<List<MainRoomResponse>> getMyCreatedRooms(Authentication authentication) {
+        UUID userUuid = getUserUuid(authentication);
+        List<MainRoomResponse> response = mainService.getMyCreatedRooms(userUuid);
+        return ResponseEntity.ok(response);
+    }
     
     // 6. JWT 인증 객체에서 사용자 UUID 추출
     private UUID getUserUuid(Authentication authentication) {

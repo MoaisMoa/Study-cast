@@ -23,4 +23,7 @@ public interface MainService {
 
     // 5. 비로그인 시 추천 스터디 조회
     List<MainRoomResponse> getGuestRecommendedRooms();
+
+    // 6. 내가 생성한 스터디 전체 조회 (종료 포함, 관리 페이지용)
+    List<MainRoomResponse> getMyCreatedRooms(UUID userUuid);
 }

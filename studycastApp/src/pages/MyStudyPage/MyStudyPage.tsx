@@ -16,7 +16,6 @@ import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Footer } from "@/components/layout/Footer";
 import { MobileTabBar } from "@/pages/MainPage/sections/MobileTabBar";
 import { Icon } from "@/components/ui/Icon";
-import { MOCK_MY_STUDY_USER } from "@/data/myStudy";
 import { closeRooms, deleteRooms, listMyRooms } from "@/services/myStudyService";
 import { calcRoomStatus, parseDate } from "@/utils/myStudyDate";
 import { MyStudyToolbar } from "./sections/MyStudyToolbar";
@@ -35,7 +34,6 @@ export default function MyStudyPage() {
   const isMobile = useIsMobile(768);        // 헤더/탭바 전환 기준 (MainPage와 통일)
   const cardMobile = useWindowWidth() < 480; // 카드 컴포넌트(16:9) 전환 기준
   const { user } = useAuth();
-  const ownerId = MOCK_MY_STUDY_USER.id;
 
   const [rooms, setRooms] = useState<MyStudyRoom[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -53,11 +51,11 @@ export default function MyStudyPage() {
 
   function load() {
     setLoadState("loading");
-    listMyRooms(ownerId)
+    listMyRooms()
       .then((data) => { setRooms(data); setLoadState("loaded"); })
       .catch(() => setLoadState("error"));
   }
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [ownerId]);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   // 정렬 + 필터
   const filtered = useMemo(() => {
@@ -124,7 +122,7 @@ export default function MyStudyPage() {
     }
   }
 
-  const headerName = user?.name ?? MOCK_MY_STUDY_USER.name;
+  const headerName = user?.name ?? "";
 
   // 그리드 CSS — 원본 반응형 기준 유지
   // >1100: 5열 / 1001~1100: 4열 / 769~1000: 3열 / 601~768: 2열 / ≤600: 1열

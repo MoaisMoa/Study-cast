@@ -92,6 +92,12 @@ public class MainServiceImpl implements MainService {
         return mainMapper.findGuestRecommendedRooms();
     }
 
+    @Override
+    public List<MainRoomResponse> getMyCreatedRooms(UUID userUuid) {
+        validateUserUuid(userUuid);
+        return mainMapper.findMyCreatedRooms(userUuid);
+    }
+
     private void validateUserUuid(UUID userUuid) {
         // 인증 사용자 UUID 누락 방어
         if (userUuid == null) {
