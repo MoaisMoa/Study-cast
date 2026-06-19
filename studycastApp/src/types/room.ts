@@ -29,6 +29,7 @@ export interface MainRoomSearchParams {
   joinableOnly?: boolean;
   page?: number;
   size?: number;
+  keyword?: string;
 }
 
 /** 메인페이지 스터디방 카드 API 응답 */

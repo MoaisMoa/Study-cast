@@ -323,6 +323,13 @@
             <if test="request.joinableOnly != null and request.joinableOnly == true">
                 AND r.now_users &lt; r.max_users
             </if>
+            <!-- 조건6) 키워드 검색 (방 제목 또는 카테고리명) -->
+            <if test="request.keyword != null and request.keyword != ''">
+                AND (
+                    r.room_title ILIKE '%' || #{request.keyword} || '%'
+                    OR c.category_name ILIKE '%' || #{request.keyword} || '%'
+                )
+            </if>
         ORDER BY
             <choose>
                 <!-- 신규 탭은 생성일 내림차순, 제목 오름차순 -->

@@ -1,19 +1,18 @@
 package com.younghee.studycast.service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.younghee.studycast.dao.ChatsMapper;
-import com.younghee.studycast.dao.RoomMapper;
-import com.younghee.studycast.dto.ChatMessage;
+import com.younghee.studycast.dao.UserMapper;
 import com.younghee.studycast.dto.ChatsDTO;
-import com.younghee.studycast.dto.RoomsDTO;
+import com.younghee.studycast.dto.UserDTO;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,45 +23,48 @@ import lombok.extern.slf4j.Slf4j;
 public class ChatServiceImpl implements ChatService {
 
     private final ChatsMapper chatsMapper;
-    private final RoomMapper roomMapper;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final UserMapper userMapper;
 
     @Override
     @Transactional
-    public ChatMessage publishChat(Long roomNo, UUID userUuid, String message) {
-        RoomsDTO room = roomMapper.selectRoomById(roomNo);
-        if (room == null) {
-            throw new RuntimeException("존재하지 않는 룸입니다.");
+    public Map<String, Object> sendMessage(Long roomNo, UUID userUuid, String message) {
+        if (roomNo == null || roomNo <= 0) {
+            throw new IllegalArgumentException("방 번호가 올바르지 않습니다.");
         }
-        if (!roomMapper.existsParticipant(userUuid, roomNo)) {
-            throw new RuntimeException("해당 룸의 참여자가 아닙니다.");
+        if (userUuid == null) {
+            throw new SecurityException("인증 사용자 정보가 없습니다.");
+        }
+        if (message == null || message.isBlank()) {
+            throw new IllegalArgumentException("메시지 내용이 없습니다.");
         }
 
         ChatsDTO chat = new ChatsDTO();
         chat.setRoomNo(roomNo);
         chat.setUserUuid(userUuid);
         chat.setMessage(message);
-        chat.setSentAt(LocalDateTime.now());
+        chatsMapper.insertChat(chat);
 
-        int result = chatsMapper.insertChat(chat);
-        if (result != 1) {
-            throw new RuntimeException("채팅 저장에 실패했습니다.");
+        UserDTO user = userMapper.findByUuid(userUuid);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("chatNo", chat.getChatNo());
+        result.put("roomNo", roomNo);
+        result.put("userUuid", userUuid.toString());
+        result.put("message", message);
+        result.put("sentAt", LocalDateTime.now().toString());
+        result.put("userName", user != null ? user.getUserName() : "Unknown");
+        result.put("userProfileImage", user != null ? user.getUserProfileImage() : null);
+
+        log.info("room={} message saved by {}", roomNo, userUuid);
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getChatHistory(Long roomNo) {
+        if (roomNo == null || roomNo <= 0) {
+            throw new IllegalArgumentException("방 번호가 올바르지 않습니다.");
         }
-
-        List<Map<String, Object>> rows = chatsMapper.selectRecentChats(roomNo, 1);
-        Map<String, Object> latest = rows.isEmpty() ? Map.of() : rows.get(0);
-
-        ChatMessage chatMessage = new ChatMessage();
-        chatMessage.setRoomNo(roomNo);
-        chatMessage.setUserUuid(userUuid);
-        chatMessage.setUserName((String) latest.getOrDefault("userName", null));
-        chatMessage.setUserProfileImage((String) latest.getOrDefault("userProfileImage", null));
-        chatMessage.setMessage(message);
-        chatMessage.setSentAt((LocalDateTime) latest.get("sentAt"));
-
-        messagingTemplate.convertAndSend("/sub/rooms/" + roomNo, chatMessage);
-
-        log.info("room={} message published by {}", roomNo, userUuid);
-        return chatMessage;
+        return chatsMapper.selectChatsByRoomNo(roomNo);
     }
 }

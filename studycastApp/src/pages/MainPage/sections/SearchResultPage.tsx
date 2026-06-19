@@ -1,36 +1,29 @@
+import { useEffect, useState } from "react";
 import type { Room } from "@/types";
 import { useT } from "@/theme";
 import { useModal } from "@/contexts/ModalContext";
-import { usePage } from "@/contexts/PageContext";
 import { useSearch } from "@/contexts/SearchContext";
-import { REC_ROOMS, ROOM_POOL } from "@/data/rooms";
+import { listRoomCards } from "@/services/roomService";
 import { Icon } from "@/components/ui/Icon";
 
 export function SearchResultPage() {
   const T = useT();
   const setModalRoom = useModal();
-  usePage();
   const { query } = useSearch();
 
-  const ALL_ROOMS: Room[] = [
-    ...ROOM_POOL,
-    ...REC_ROOMS.map((r) => ({ ...r, id: r.id + 50 })),
-  ];
-  const q = query.toLowerCase();
-  const results = ALL_ROOMS.filter(
-    (r, idx, self) =>
-      self.findIndex((x) => x.id === r.id) === idx &&
-      (r.title.toLowerCase().includes(q) || r.cat.toLowerCase().includes(q))
-  );
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
 
-  // 최신순: live > recent > 나머지
-  const sorted = [...results].sort((a, b) => {
-    if (a.live && !b.live) return -1;
-    if (!a.live && b.live) return 1;
-    if (a.recent && !b.recent) return -1;
-    if (!a.recent && b.recent) return 1;
-    return 0;
-  });
+  useEffect(() => {
+    if (!query.trim()) { setRooms([]); return; }
+    setLoading(true);
+    setError(false);
+    listRoomCards({ keyword: query.trim() })
+      .then((res) => setRooms(res.rooms))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, [query]);
 
   return (
     <section style={{ paddingBottom: 48 }}>
@@ -38,12 +31,16 @@ export function SearchResultPage() {
         <h1 style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
           "{query}" 검색 결과
         </h1>
-        {sorted.length > 0 && (
-          <span style={{ fontSize: 13, color: T.text3 }}>총 {sorted.length}개</span>
+        {!loading && rooms.length > 0 && (
+          <span style={{ fontSize: 13, color: T.text3 }}>총 {rooms.length}개</span>
         )}
       </div>
 
-      {sorted.length === 0 ? (
+      {loading ? (
+        <div style={{ textAlign: "center", color: T.text3, padding: "60px 0" }}>검색 중...</div>
+      ) : error ? (
+        <div style={{ textAlign: "center", color: T.text3, padding: "60px 0" }}>검색 중 오류가 발생했습니다.</div>
+      ) : rooms.length === 0 ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", minHeight: "calc(100vh - 360px)", padding: "40px 0" }}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
             <Icon name="search" size={44} color={T.text3} strokeWidth={1.5} />
@@ -59,7 +56,7 @@ export function SearchResultPage() {
         <>
           <style>{`.srch-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px 16px;}@media(max-width:1100px){.srch-grid{grid-template-columns:repeat(4,1fr);}}@media(max-width:820px){.srch-grid{grid-template-columns:repeat(3,1fr);}}`}</style>
           <div className="srch-grid">
-            {sorted.map((r) => {
+            {rooms.map((r) => {
               const full = !r.overCapacity && r.members >= r.max;
               const isNew = r.createdDaysAgo != null && r.createdDaysAgo <= 10;
               const showLive = r.live && r.members >= 1;
@@ -85,74 +82,31 @@ export function SearchResultPage() {
                     e.currentTarget.style.borderColor = T.border;
                   }}
                 >
-                  <div style={{
-                    position: "relative",
-                    aspectRatio: "4/3",
-                    overflow: "hidden",
-                    background: T.surface2,
-                  }}>
+                  <div style={{ position: "relative", aspectRatio: "4/3", overflow: "hidden", background: T.surface2 }}>
                     <img
                       src={r.img}
                       alt={r.title}
-                      style={{
-                        width: "100%", height: "100%",
-                        objectFit: "cover",
-                        transition: "transform 0.3s",
-                      }}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.3s" }}
                       onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.04)")}
                       onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                     />
-                    <div style={{
-                      position: "absolute",
-                      inset: 0,
-                      background: "linear-gradient(to top,rgba(0,0,0,.5) 0%,transparent 55%)",
-                    }} />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(0,0,0,.5) 0%,transparent 55%)" }} />
                     {showLive && (
-                      <div style={{
-                        position: "absolute", top: 10, left: 10,
-                        display: "flex", alignItems: "center", gap: 5,
-                        background: T.red, color: "#fff",
-                        fontSize: 12, fontWeight: 800,
-                        padding: "4px 10px", borderRadius: 6,
-                      }}>
-                        <span style={{
-                          width: 6, height: 6, borderRadius: "50%",
-                          background: "#fff", display: "inline-block",
-                          animation: "blink 1.2s ease-in-out infinite",
-                        }} />
+                      <div style={{ position: "absolute", top: 10, left: 10, display: "flex", alignItems: "center", gap: 5, background: T.red, color: "#fff", fontSize: 12, fontWeight: 800, padding: "4px 10px", borderRadius: 6 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff", display: "inline-block", animation: "blink 1.2s ease-in-out infinite" }} />
                         LIVE
                       </div>
                     )}
                     {isNew && !showLive && (
-                      <div style={{
-                        position: "absolute", top: 10, left: 10,
-                        background: "#2e7d32", color: "#fff",
-                        fontSize: 12, fontWeight: 800,
-                        padding: "4px 10px", borderRadius: 6,
-                      }}>
-                        NEW
-                      </div>
+                      <div style={{ position: "absolute", top: 10, left: 10, background: "#2e7d32", color: "#fff", fontSize: 12, fontWeight: 800, padding: "4px 10px", borderRadius: 6 }}>NEW</div>
                     )}
                     {full && (
                       <div style={{ position: "absolute", top: 10, right: 10 }}>
-                        <span style={{
-                          background: "#424242", color: "#fff",
-                          fontSize: 11, fontWeight: 700,
-                          padding: "4px 9px", borderRadius: 6,
-                        }}>마감</span>
+                        <span style={{ background: "#424242", color: "#fff", fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 6 }}>마감</span>
                       </div>
                     )}
-                    <div style={{
-                      position: "absolute",
-                      bottom: 0, left: 0, right: 0,
-                      padding: "14px 10px 8px",
-                      background: "linear-gradient(to top,rgba(0,0,0,.45) 0%,transparent 60%)",
-                      display: "flex", alignItems: "flex-end", justifyContent: "space-between",
-                    }}>
-                      <div style={{
-                        color: "#fff", fontSize: 12, fontWeight: 500,
-                        display: "flex", alignItems: "center", gap: 4,
-                      }}>
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "14px 10px 8px", background: "linear-gradient(to top,rgba(0,0,0,.45) 0%,transparent 60%)", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+                      <div style={{ color: "#fff", fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }}>
                         <Icon name="users" size={12} color="#fff" strokeWidth={1.8} />
                         {r.members}/{r.max}명
                         {r.type === "PREMIUM" && (
@@ -164,14 +118,7 @@ export function SearchResultPage() {
                     </div>
                   </div>
                   <div style={{ padding: "12px 14px 14px", background: T.surface }}>
-                    <div style={{
-                      fontSize: 15, fontWeight: 700,
-                      color: T.text,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      marginBottom: 4,
-                    }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 4 }}>
                       {r.title}
                     </div>
                     <div style={{ fontSize: 12, color: T.text3 }}>
@@ -187,3 +134,4 @@ export function SearchResultPage() {
     </section>
   );
 }
+

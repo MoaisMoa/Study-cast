@@ -59,6 +59,25 @@ public class UserServiceImpl implements UserService{
         return result;
     }
 
+    @Override
+    @Transactional
+    public void updateProfile(UUID userUuid, UserDTO dto) {
+        if (userUuid == null) {
+            throw new IllegalArgumentException("사용자 정보가 없습니다.");
+        }
+        dto.setUserUuid(userUuid);
+        userMapper.updateProfile(dto);
+
+        if (dto.getCategories() != null) {
+            userMapper.deleteUserInterests(userUuid);
+            for (String category : dto.getCategories()) {
+                if (category != null && !category.isBlank()) {
+                    userMapper.insertUserInterest(userUuid, category);
+                }
+            }
+        }
+    }
+
     private void validateSignup(SignupRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("회원 정보가 없습니다.");

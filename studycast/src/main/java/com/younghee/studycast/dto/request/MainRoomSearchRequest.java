@@ -22,6 +22,9 @@ public class MainRoomSearchRequest {
     // 4. 바로 참여 가능한 방만 조회
     private Boolean joinableOnly;
 
+    // 6. 키워드 검색 (방 제목 / 카테고리명)
+    private String keyword;
+
     // 5. 페이지네이션
     private Integer page;
     private Integer size;
