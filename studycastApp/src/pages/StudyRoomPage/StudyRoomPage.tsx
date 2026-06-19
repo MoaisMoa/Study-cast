@@ -5,7 +5,7 @@ import { useT, useThemeCtx } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { fmtT, nowDate, nowT } from "@/data/studyRoom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchRoom, leaveRoom, getTodayStudySeconds, subscribeMembers, MEMBER_COLORS, saveNotice, kickMember as svcKickMember, type MemberEvent } from "@/services/studyRoomService";
+import { fetchRoom, leaveRoom, getTodayStudySeconds, subscribeMembers, subscribeChat, sendMessage, MEMBER_COLORS, saveNotice, kickMember as svcKickMember, type MemberEvent } from "@/services/studyRoomService";
 import { API_BASE_URL } from "@/services/apiClient";
 import { registerSession, unregisterSession } from "@/utils/roomSession";
 import { useLiveKit } from "@/hooks/useLiveKit";
@@ -205,6 +205,17 @@ export default function StudyRoomPage() {
     return unsub;
   }, [roomId]);
 
+  // 실시간 채팅 구독
+  useEffect(() => {
+    if (!roomId) return;
+    const unsub = subscribeChat(
+      roomId,
+      () => myUuidRef.current,
+      (msg) => setMsgs((prev) => [...prev, msg])
+    );
+    return unsub;
+  }, [roomId]);
+
   // 카메라 OFF 시 자동 일시정지
   useEffect(() => {
     if (!cam && timerState === "running") setTimerState("paused");
@@ -224,17 +235,22 @@ export default function StudyRoomPage() {
   const handleTimerResume = () => { if (!cam) { setCamWarn(true); setTimeout(() => setCamWarn(false), 3000); return; } setTimerState("running"); };
   const handleTimerReset = () => { setTimerSec(0); setTimerState("idle"); };
 
-  const send = () => {
+  const send = async () => {
     if (!inp.trim()) { setSendError("메시지를 입력해주세요."); return; }
     if (inp.length > 50) { setSendError("메시지는 최대 50자까지 입력할 수 있습니다."); return; }
-    if (isSending) return;
-    setIsSending(true);
-    setSendError(null);
-    const d = new Date();
-    const t = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-    setMsgs((m) => [...m, { id: Date.now(), name: "나", text: inp, time: t, mine: true, isHost: true }]);
+    if (isSending || !roomId) return;
+    const text = inp.trim();
     setInp("");
-    setIsSending(false);
+    setSendError(null);
+    setIsSending(true);
+    try {
+      await sendMessage(roomId, text, myUuidRef.current);
+    } catch {
+      setSendError("메시지 전송에 실패했습니다.");
+      setInp(text);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const doKick = async () => {
