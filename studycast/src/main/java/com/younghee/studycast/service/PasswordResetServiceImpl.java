@@ -164,11 +164,11 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         // 8. 새 비밀번호 BCrypt 암호화
         String encodedPassword = passwordEncoder.encode(request.getNewPassword());
         // 9. users 비밀번호 변경
-        // int result = userMapper.updatePassword(user.getUserUuid(), encodedPassword);
+        int result = userMapper.updatePassword(user.getUserUuid(), encodedPassword);
 
-        // if (result != 1) {
-        //     throw new IllegalStateException("비밀번호 변경에 실패했습니다.");
-        // }
+        if (result != 1) {
+            throw new IllegalStateException("비밀번호 변경에 실패했습니다.");
+        }
         // 확장2) 비밀번호 변경 후 기존 Refresh Token 전체 폐기
         refreshTokenMapper.revokeAllByUserUuid(user.getUserUuid());
         
