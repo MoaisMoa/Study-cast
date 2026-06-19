@@ -30,6 +30,7 @@ export interface SettingModalProps {
   expiredAt?: string;
   setExpiredAt?: (v: string) => void;
   roomNotice?: string | null;
+  roomPrivate?: boolean;
 }
 
 const GREEN = "#2e7d32";
@@ -55,6 +56,7 @@ export function SettingModal(props: SettingModalProps) {
     categoryNo, setCategoryNo,
     expiredAt, setExpiredAt,
     roomNotice,
+    roomPrivate = false,
   } = props;
 
   const T = useT();
@@ -222,8 +224,15 @@ export function SettingModal(props: SettingModalProps) {
               <span style={{ fontSize: 10, color: T.text3, background: T.surface2, padding: "2px 8px", borderRadius: 5 }}>변경 불가</span>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <div style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${T.border}`, color: T.text3, fontSize: 13, textAlign: "center", opacity: 0.4 }}>공개</div>
-              <div style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${T.text3}`, background: T.surface2, color: T.text2, fontWeight: 700, fontSize: 13, textAlign: "center" }}>비공개</div>
+              {([false, true] as const).map((isPrivate) => {
+                const label = isPrivate ? "비공개" : "공개";
+                const selected = roomPrivate === isPrivate;
+                return (
+                  <div key={label} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${selected ? T.text2 : T.border}`, background: selected ? T.surface2 : "none", color: selected ? T.text2 : T.text3, fontWeight: selected ? 700 : 400, fontSize: 13, textAlign: "center", opacity: selected ? 1 : 0.4 }}>
+                    {label}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

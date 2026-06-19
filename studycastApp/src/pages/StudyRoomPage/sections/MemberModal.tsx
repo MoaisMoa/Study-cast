@@ -2,9 +2,11 @@ import { useState } from "react";
 import type { RoomMember } from "@/types/studyRoom";
 import { useT } from "@/theme";
 import { fmtT, secToHM } from "@/data/studyRoom";
+import { inviteByEmail } from "@/services/studyRoomService";
 import { Av, XIc, PlusIc, MailIc, MicOn, MicOff, CamOn, CamOff, CheckIc } from "../components/RoomIcons";
 
 export interface MemberModalProps {
+  roomId?: string;
   members: RoomMember[];
   elapsed: Record<number, number>;
   /** 본인(HOST) 장치 상태 — 첫 행 표시용 */
@@ -22,12 +24,14 @@ export interface MemberModalProps {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function MemberModal({
-  members, elapsed, mic = true, cam = true, joinElapsed = 0, isHost, isPrivate = false, joinCode, onClose, onKickRequest,
+  roomId, members, elapsed, mic = true, cam = true, joinElapsed = 0, isHost, isPrivate = false, joinCode, onClose, onKickRequest,
 }: MemberModalProps) {
   const T = useT();
   const [showInvite, setShowInvite] = useState(false);
   const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   // HOST 최상단, 나머지 이름 오름차순
   const sortedMembers: RoomMember[] = [
@@ -172,11 +176,26 @@ export function MemberModal({
                   />
                   {email && !emailValid && <span style={{ fontSize: 11, color: T.red }}>이메일 형식으로 입력해주세요.</span>}
                 </div>
+                {sendError && (
+                  <span style={{ fontSize: 11, color: T.red }}>{sendError}</span>
+                )}
                 <button
-                  onClick={() => { if (emailValid) setSent(true); }}
-                  disabled={!emailValid}
-                  style={{ background: emailValid ? T.red : T.surface2, color: emailValid ? "#fff" : T.text3, border: "none", borderRadius: 8, padding: 10, fontSize: 13, fontWeight: 600, cursor: emailValid ? "pointer" : "not-allowed", fontFamily: "inherit", width: "100%" }}>
-                  초대 링크 전송
+                  onClick={async () => {
+                    if (!emailValid || sending || !roomId) return;
+                    setSending(true);
+                    setSendError(null);
+                    try {
+                      await inviteByEmail(roomId, email);
+                      setSent(true);
+                    } catch {
+                      setSendError("이메일 전송에 실패했습니다. 다시 시도해주세요.");
+                    } finally {
+                      setSending(false);
+                    }
+                  }}
+                  disabled={!emailValid || sending}
+                  style={{ background: emailValid && !sending ? T.red : T.surface2, color: emailValid && !sending ? "#fff" : T.text3, border: "none", borderRadius: 8, padding: 10, fontSize: 13, fontWeight: 600, cursor: emailValid && !sending ? "pointer" : "not-allowed", fontFamily: "inherit", width: "100%" }}>
+                  {sending ? "전송 중..." : "초대 링크 전송"}
                 </button>
               </>
             )}

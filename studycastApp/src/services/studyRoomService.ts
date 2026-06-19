@@ -140,6 +140,11 @@ export async function kickMember(roomId: string, targetUuid: string): Promise<{ 
   return { ok: true };
 }
 
+/** 멤버 이메일 초대 (방장 전용) */
+export async function inviteByEmail(roomId: string, toEmail: string): Promise<void> {
+  await apiClient.post(`/api/rooms/${roomId}/invite`, { toEmail });
+}
+
 /** 공지 등록/수정/삭제 */
 export async function saveNotice(roomId: string, notice: string | null): Promise<{ ok: boolean; notice: string | null }> {
   const res = await apiClient.patch<{ notice: string | null }>(`/api/rooms/${roomId}/notice`, { notice });
@@ -225,6 +230,7 @@ export function subscribeChat(
           text: data.message,
           time: data.sentAt ? formatSentAt(data.sentAt) : nowT(),
           mine: data.userUuid === getMyUuid(),
+          userUuid: data.userUuid,
         });
       } catch { /* ignore malformed messages */ }
     });

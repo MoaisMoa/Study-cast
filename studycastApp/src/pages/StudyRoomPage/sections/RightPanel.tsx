@@ -41,6 +41,7 @@ export function RightPanel(props: RightPanelProps) {
   const c2 = T.text2;
   const c3 = T.text3;
   const greenBg = T.dark ? "rgba(76,175,80,.16)" : "#E8F5E9";
+  const hostUuid = members.find((m) => m.role === "HOST")?.userUuid;
 
   return (
     <>
@@ -84,6 +85,9 @@ export function RightPanel(props: RightPanelProps) {
                     {!msg.mine && (
                       <div style={{ display: "flex", alignItems: "center", gap: 4, paddingLeft: 2 }}>
                         <span style={{ fontSize: 11, color: c2, fontWeight: 500 }}>{msg.name}</span>
+                        {hostUuid && msg.userUuid === hostUuid && (
+                          <span style={{ fontSize: 9, fontWeight: 700, color: T.red, background: T.redLight, padding: "1px 5px", borderRadius: 4, flexShrink: 0 }}>HOST</span>
+                        )}
                       </div>
                     )}
                     <div style={{ background: msg.mine ? T.red : T.surface2, color: msg.mine ? "#fff" : T.text, borderRadius: msg.mine ? "12px 12px 2px 12px" : "2px 12px 12px 12px", padding: "8px 12px", fontSize: 13, lineHeight: 1.4, wordBreak: "break-word" }}>{msg.text}</div>
@@ -127,14 +131,16 @@ export function RightPanel(props: RightPanelProps) {
 
       {chatTab === "멤버" && (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
-            <div style={{ padding: "8px 14px 3px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: c2 }}>참여중</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: GREEN, display: "inline-block" }} />
-                <span style={{ fontSize: 11, color: c3 }}>{members.length} / {maxMembers}명</span>
-              </div>
+          {/* 인원 수 — 상단 고정 */}
+          <div style={{ flexShrink: 0, padding: "8px 14px 6px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", background: T.surface }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: c2 }}>참여중</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: GREEN, display: "inline-block" }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: T.red }}>{members.length}</span>
+              <span style={{ fontSize: 11, color: c3 }}>/ {maxMembers}명</span>
             </div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
             {members.map((m) => {
               const isSelf = m.id === 1;
               const micState = isSelf ? mic : m.mic;

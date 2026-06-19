@@ -170,6 +170,20 @@
         WHERE room_no = #{roomNo}
     </select>
 
+    <!-- 방 종료 — expired_at을 현재 시각으로 설정 -->
+    <update id="closeRoom">
+        UPDATE rooms
+        SET expired_at = NOW(),
+            updated_at = NOW()
+        WHERE room_no = #{roomNo}
+    </update>
+
+    <!-- 방 삭제 (hard delete) -->
+    <delete id="deleteRoom">
+        DELETE FROM rooms
+        WHERE room_no = #{roomNo}
+    </delete>
+
     <!-- 공지사항만 업데이트 -->
     <update id="updateRoomNotice">
         UPDATE rooms

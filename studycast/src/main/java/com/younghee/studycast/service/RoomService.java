@@ -40,4 +40,11 @@ public interface RoomService {
     String saveNotice(Long roomNo, UUID userUuid, String notice);
     // 멤버 추방 (방장 전용)
     void kickMember(Long roomNo, UUID hostUuid, UUID targetUuid);
+
+    // 이메일 초대 (방장 전용)
+    void inviteMember(Long roomNo, UUID hostUuid, String toEmail);
+    // 방 종료 (방장 전용)
+    void closeRoom(Long roomNo, UUID userUuid);
+    // 방 삭제 (방장 전용)
+    void deleteRoom(Long roomNo, UUID userUuid);
 }

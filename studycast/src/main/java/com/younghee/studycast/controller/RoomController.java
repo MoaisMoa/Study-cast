@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.younghee.studycast.dto.request.LeaveRoomRequest;
+import com.younghee.studycast.dto.request.RoomInviteRequest;
 import com.younghee.studycast.dto.request.RoomCreateRequest;
 import com.younghee.studycast.dto.request.RoomJoinRequest;
 import com.younghee.studycast.dto.request.RoomUpdateRequest;
@@ -153,6 +154,52 @@ public class RoomController {
         UUID userUuid = getUserUuid(authentication);
         RoomUpdateResponse response = roomService.updateRoomSettings(roomNo, userUuid, request, image);
         return ResponseEntity.ok(response);
+    }
+
+    // 방 종료 (방장 전용)
+    @PatchMapping("/{roomNo}/close")
+    public ResponseEntity<Void> closeRoom(
+        @PathVariable Long roomNo,
+        Authentication authentication
+    ) {
+        UUID userUuid = getUserUuid(authentication);
+        roomService.closeRoom(roomNo, userUuid);
+        return ResponseEntity.ok().build();
+    }
+
+    // 방 삭제 (방장 전용)
+    @DeleteMapping("/{roomNo}")
+    public ResponseEntity<Void> deleteRoom(
+        @PathVariable Long roomNo,
+        Authentication authentication
+    ) {
+        UUID userUuid = getUserUuid(authentication);
+        roomService.deleteRoom(roomNo, userUuid);
+        return ResponseEntity.noContent().build();
+    }
+
+    // 공지사항 저장/삭제 (방장 전용) — notice: null이면 삭제
+    @PatchMapping("/{roomNo}/notice")
+    public ResponseEntity<java.util.Map<String, Object>> saveNotice(
+        @PathVariable Long roomNo,
+        @RequestBody java.util.Map<String, String> body,
+        Authentication authentication
+    ) {
+        UUID userUuid = getUserUuid(authentication);
+        String saved = roomService.saveNotice(roomNo, userUuid, body.get("notice"));
+        return ResponseEntity.ok(java.util.Map.of("notice", saved != null ? saved : ""));
+    }
+
+    // 멤버 이메일 초대 (방장 전용)
+    @PostMapping("/{roomNo}/invite")
+    public ResponseEntity<Void> inviteMember(
+        @PathVariable Long roomNo,
+        @RequestBody RoomInviteRequest request,
+        Authentication authentication
+    ) {
+        UUID hostUuid = getUserUuid(authentication);
+        roomService.inviteMember(roomNo, hostUuid, request.getToEmail());
+        return ResponseEntity.ok().build();
     }
 
     // 인증 객체에서 로그인 사용자 UUID 추출

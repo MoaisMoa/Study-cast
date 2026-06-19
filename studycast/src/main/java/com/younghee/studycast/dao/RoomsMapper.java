@@ -42,4 +42,8 @@ public interface RoomsMapper {
         @Param("roomNo") Long roomNo,
         @Param("notice") String notice
     );
+    // 방 종료 — expired_at을 현재 시각으로 설정
+    int closeRoom(@Param("roomNo") Long roomNo);
+    // 방 삭제 (hard delete — cascade)
+    int deleteRoom(@Param("roomNo") Long roomNo);
 }

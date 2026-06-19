@@ -49,6 +49,10 @@ public class RoomServiceImpl implements RoomService {
     private final StudyLogService studyLogService;
     private final RoomVisitHistoriesService roomVisitHistoriesService;
     private final SubscriptionService subscriptionService;
+    private final EmailService emailService;
+
+    @org.springframework.beans.factory.annotation.Value("${app.frontend-url}")
+    private String frontendUrl;
 
     @Override
     @Transactional
@@ -392,6 +396,55 @@ public class RoomServiceImpl implements RoomService {
         roomsMapper.syncNowUsersByActiveParticipants(roomNo);
     }
 
+    @Override
+    @Transactional
+    public void closeRoom(Long roomNo, UUID userUuid) {
+        RoomsDTO room = roomsMapper.findRoomByRoomNo(roomNo);
+        if (room == null) {
+            throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
+        }
+        if (!userUuid.equals(room.getUserUuid())) {
+            throw new SecurityException("방장만 스터디방을 종료할 수 있습니다.");
+        }
+        roomsMapper.closeRoom(roomNo);
+    }
+
+    @Override
+    @Transactional
+    public void deleteRoom(Long roomNo, UUID userUuid) {
+        RoomsDTO room = roomsMapper.findRoomByRoomNo(roomNo);
+        if (room == null) {
+            throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
+        }
+        if (!userUuid.equals(room.getUserUuid())) {
+            throw new SecurityException("방장만 스터디방을 삭제할 수 있습니다.");
+        }
+        String thumbnail = room.getRoomThumbnail();
+        roomsMapper.deleteRoom(roomNo);
+        if (thumbnail != null) {
+            deleteStoredImageQuietly(thumbnail);
+        }
+    }
+
+    @Override
+    public void inviteMember(Long roomNo, UUID hostUuid, String toEmail) {
+        RoomsDTO room = roomsMapper.findRoomByRoomNo(roomNo);
+        if (room == null) {
+            throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
+        }
+        if (!hostUuid.equals(room.getUserUuid())) {
+            throw new SecurityException("방장만 초대할 수 있습니다.");
+        }
+        if (toEmail == null || toEmail.isBlank()) {
+            throw new IllegalArgumentException("이메일 주소를 입력해주세요.");
+        }
+
+        String roomLink = frontendUrl + "/rooms/" + roomNo;
+        String joinCode = Boolean.TRUE.equals(room.getRoomPrivate()) ? room.getRoomPassword() : null;
+
+        emailService.sendRoomInvitation(toEmail.trim(), room.getRoomTitle(), roomLink, joinCode);
+    }
+
     private void validateUserUuid(UUID userUuid) {
         if (userUuid == null) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
@@ -470,11 +523,11 @@ public class RoomServiceImpl implements RoomService {
 
         LocalDate today = LocalDate.now();
 
-        if (!expiredAt.isAfter(today)) {
+        if (expiredAt.isBefore(today)) {
             throw new IllegalArgumentException("종료일은 오늘 이후 날짜로 설정해야 합니다.");
         }
 
-        long periodDays = ChronoUnit.DAYS.between(today, expiredAt) + 1;
+        long periodDays = ChronoUnit.DAYS.between(today, expiredAt);
 
         if (periodDays > MAX_PERIOD_DAYS) {
             throw new IllegalArgumentException("스터디 기간은 최대 90일까지 설정할 수 있습니다.");
