@@ -166,54 +166,10 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalStateException("사용할 수 없는 계정입니다.");
         }
 
-        user.setCategories(userMapper.selectCategoryNamesByUserUuid(userUuid));
         // 비밀번호는 응답에 포함되면 안되므로 제거
         user.setUserPassword(null);
 
         return user;
-    }
-
-    @Override
-    @Transactional
-    public void changePassword(UUID userUuid, String currentPassword, String newPassword) {
-        if (currentPassword == null || currentPassword.isBlank()) {
-            throw new IllegalArgumentException("현재 비밀번호를 입력해 주세요.");
-        }
-        if (newPassword == null || newPassword.isBlank()) {
-            throw new IllegalArgumentException("새 비밀번호를 입력해 주세요.");
-        }
-        if (currentPassword.equals(newPassword)) {
-            throw new IllegalArgumentException("새 비밀번호는 기존 비밀번호와 다르게 입력해 주세요.");
-        }
-
-        UserDTO user = userMapper.findByUuid(userUuid);
-        if (user == null) {
-            throw new NoSuchElementException("사용자를 찾을 수 없습니다.");
-        }
-        if (!passwordEncoder.matches(currentPassword, user.getUserPassword())) {
-            throw new SecurityException("현재 비밀번호가 올바르지 않습니다.");
-        }
-
-        user.setUserPassword(passwordEncoder.encode(newPassword));
-        userMapper.updatePassword(user);
-    }
-
-    @Override
-    @Transactional
-    public void withdraw(UUID userUuid, String password) {
-        if (password == null || password.isBlank()) {
-            throw new IllegalArgumentException("비밀번호를 입력해 주세요.");
-        }
-
-        UserDTO user = userMapper.findByUuid(userUuid);
-        if (user == null) {
-            throw new NoSuchElementException("사용자를 찾을 수 없습니다.");
-        }
-        if (!passwordEncoder.matches(password, user.getUserPassword())) {
-            throw new SecurityException("현재 비밀번호가 일치하지 않습니다.");
-        }
-
-        userMapper.updatedUserStatus("WITHDRAWN", userUuid);
     }
 
     private void saveRefreshToken(UUID userUuid, String refreshToken) {

@@ -148,7 +148,7 @@ export default function StudyRoomPage() {
           const idx = prev.length;
           const newMember: RoomMember = {
             id: idx + 1,
-            userUuid: event.userUuid,
+            userUuid: event.userUuid ?? "",
             name: event.userName ?? "Unknown",
             short: (event.userName ?? "?").slice(0, 2),
             email: "",
