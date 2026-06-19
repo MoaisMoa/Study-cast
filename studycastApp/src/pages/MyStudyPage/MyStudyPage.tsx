@@ -33,7 +33,14 @@ export default function MyStudyPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile(768);        // 헤더/탭바 전환 기준 (MainPage와 통일)
   const cardMobile = useWindowWidth() < 480; // 카드 컴포넌트(16:9) 전환 기준
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+
+  // 비로그인 접근 시 로그인 페이지로 리다이렉트
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/login", { replace: true });
+    }
+  }, [authLoading, user, navigate]);
 
   const [rooms, setRooms] = useState<MyStudyRoom[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -55,7 +62,10 @@ export default function MyStudyPage() {
       .then((data) => { setRooms(data); setLoadState("loaded"); })
       .catch(() => setLoadState("error"));
   }
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => {
+    if (!authLoading && user) load();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [authLoading, user]);
 
   // 정렬 + 필터
   const filtered = useMemo(() => {
@@ -123,6 +133,9 @@ export default function MyStudyPage() {
   }
 
   const headerName = user?.name ?? "";
+
+  // 인증 확인 전 렌더링 방지
+  if (authLoading || !user) return null;
 
   // 그리드 CSS — 원본 반응형 기준 유지
   // >1100: 5열 / 1001~1100: 4열 / 769~1000: 3열 / 601~768: 2열 / ≤600: 1열
