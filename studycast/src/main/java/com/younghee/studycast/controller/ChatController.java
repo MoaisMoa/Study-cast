@@ -1,15 +1,19 @@
 package com.younghee.studycast.controller;
 
-import java.security.Principal;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
-import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
-import com.younghee.studycast.dto.ChatRequest;
-import com.younghee.studycast.service.ChatService;
 
+import com.younghee.studycast.service.ChatsService;
+
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,23 +22,28 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ChatController {
 
-    private final ChatService chatService;
+    private final ChatsService chatsService;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    @MessageMapping("/rooms/{roomNo}/chat")
-    public void sendMessage(
-        @DestinationVariable("roomNo") Long roomNo,
-        ChatRequest request,
-        Principal principal
-    ) {
-        if (principal == null || principal.getName() == null ){
-            log.error("채팅 전송 실패: 인증되지 않은 사용자 요청입니다!! (roomNo={})", roomNo);
-            throw new IllegalArgumentException("로그인이 필요한 서비스입니다.");
-        } try {
-            UUID userUuid = UUID.fromString(principal.getName());
-            chatService.publishChat(roomNo, userUuid, request.getMessage());
-        } catch (IllegalArgumentException e) {
-            log.error("채팅 전송 실패! : 유효하지 않은 UUID 형식! string={}", principal.getName(), e);
-            throw e;
-        }
+    @MessageMapping("/chat/message")
+    public void handleMessage(ChatMessageRequest request) {
+        Map<String, Object> response = chatsService.sendMessage(
+            request.getRoomNo(),
+            UUID.fromString(request.getUserUuid()),
+            request.getMessage()
+        );
+        messagingTemplate.convertAndSend("/sub/chat/room/" + request.getRoomNo(), response);
+    }
+
+    @GetMapping("/{roomNo}")
+    public List<Map<String, Object>> getChatHistory(@PathVariable Long roomNo) {
+        return chatsService.getChatHistory(roomNo);
+    }
+
+    @Data
+    public static class ChatMessageRequest {
+        private Long roomNo;
+        private String userUuid;
+        private String message;
     }
 }

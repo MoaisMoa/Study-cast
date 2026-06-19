@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import type { ChatMessage, RoomMember, RoomModal, TimerState } from "@/types/studyRoom";
@@ -7,7 +8,7 @@ import { useT, useThemeCtx } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { fmtT, nowDate, nowT } from "@/data/studyRoom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchRoom, leaveRoom } from "@/services/studyRoomService";
+import { fetchRoom, leaveRoom, getTodayStudySeconds, subscribeMembers, MEMBER_COLORS, saveNotice, kickMember as svcKickMember, type MemberEvent } from "@/services/studyRoomService";
 import { API_BASE_URL } from "@/services/apiClient";
 import { registerSession, unregisterSession } from "@/utils/roomSession";
 import { useLiveKit } from "@/hooks/useLiveKit";
@@ -56,6 +57,9 @@ export default function StudyRoomPage() {
   const exitedRef = useRef(false);
   // pagehide 핸들러가 최신 timerSec을 읽을 수 있도록 ref로 추적
   const timerSecRef = useRef(0);
+  // WebSocket 이벤트 핸들러에서 최신 members를 읽기 위한 ref
+  const myUuidRef = useRef<string>("");
+  const membersRef = useRef<RoomMember[]>([]);
   const [modal, setModal] = useState<RoomModal>(null);
   const [kickTarget, setKickTarget] = useState<RoomMember | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -88,10 +92,16 @@ export default function StudyRoomPage() {
     if (!roomId) return;
     registerSession(roomId);
     let cancelled = false;
-    fetchRoom(roomId, user?.name ?? "", user?.profileImage).then((snap) => {
+    Promise.all([
+      fetchRoom(roomId, user?.name ?? "", user?.profileImage),
+      getTodayStudySeconds(),
+    ]).then(([snap, todaySeconds]) => {
       if (cancelled) return;
       setMembers(snap.members);
+      myUuidRef.current = snap.members[0]?.userUuid ?? "";
+      membersRef.current = snap.members;
       setElapsed(Object.fromEntries(snap.members.map((m) => [m.id, m.sec])));
+      setTotalSec(todaySeconds);
       setRoomTitle(snap.title);
       setMaxMembers(snap.maxMembers);
       setNoticeMsg(snap.notice);
@@ -125,6 +135,77 @@ export default function StudyRoomPage() {
 
   // timerSec ref 동기화 (pagehide 핸들러용)
   useEffect(() => { timerSecRef.current = timerSec; }, [timerSec]);
+
+  // membersRef 동기화 (WebSocket 이벤트 핸들러가 최신 members를 읽을 수 있도록)
+  useEffect(() => { membersRef.current = members; }, [members]);
+
+  // 멤버 입퇴장 실시간 구독
+  useEffect(() => {
+    if (!roomId) return;
+    const unsub = subscribeMembers(roomId, (event: MemberEvent) => {
+      if (event.type === "JOINED") {
+        if (event.userUuid === myUuidRef.current) return; // 자신 입장 이벤트 무시
+        setMembers((prev) => {
+          if (prev.some((m) => m.userUuid === event.userUuid)) return prev;
+          const idx = prev.length;
+          const newMember: RoomMember = {
+            id: idx + 1,
+            userUuid: event.userUuid,
+            name: event.userName ?? "Unknown",
+            short: (event.userName ?? "?").slice(0, 2),
+            email: "",
+            role: event.owner ? "HOST" : "MEMBER",
+            color: MEMBER_COLORS[idx % MEMBER_COLORS.length],
+            sec: 0,
+            joinMin: 0,
+            mic: event.micStatus ?? false,
+            cam: event.cameraStatus ?? true,
+          };
+          const next = [...prev, newMember];
+          membersRef.current = next;
+          return next;
+        });
+        setMsgs((prev) => [
+          ...prev,
+          { id: Date.now(), type: "system", text: `${event.userName ?? "누군가"}님이 입장했습니다.`, time: nowT() },
+        ]);
+      } else if (event.type === "LEFT") {
+        const leaving = membersRef.current.find((m) => m.userUuid === event.userUuid);
+        setMembers((prev) => {
+          const next = prev.filter((m) => m.userUuid !== event.userUuid);
+          membersRef.current = next;
+          return next;
+        });
+        if (leaving) {
+          setMsgs((prev) => [
+            ...prev,
+            { id: Date.now(), type: "system", text: `${leaving.name}님이 퇴장했습니다.`, time: nowT() },
+          ]);
+        }
+      } else if (event.type === "KICKED") {
+        if (event.userUuid === myUuidRef.current) {
+          // 자신이 추방됨 → 퇴장 처리 없이 창 닫기
+          window.close();
+          return;
+        }
+        const kicked = membersRef.current.find((m) => m.userUuid === event.userUuid);
+        setMembers((prev) => {
+          const next = prev.filter((m) => m.userUuid !== event.userUuid);
+          membersRef.current = next;
+          return next;
+        });
+        if (kicked) {
+          setMsgs((prev) => [
+            ...prev,
+            { id: Date.now(), type: "system", text: `${kicked.name}님이 추방되었습니다.`, time: nowT() },
+          ]);
+        }
+      } else if (event.type === "NOTICE") {
+        setNoticeMsg(event.notice ?? null);
+      }
+    });
+    return unsub;
+  }, [roomId]);
 
   // 카메라 OFF 시 자동 일시정지
   useEffect(() => {
@@ -165,13 +246,17 @@ export default function StudyRoomPage() {
       .finally(() => { setIsSending(false); });
   };
 
-  const doKick = () => {
-    if (!kickTarget) return;
-    setMembers((m) => m.filter((x) => x.id !== kickTarget.id));
-    setKickedMsg(kickTarget.name);
-    setTimeout(() => setKickedMsg(null), 3000);
-    setMsgs((m) => [...m, { id: Date.now(), type: "system", text: `${kickTarget.name} 님이 퇴장했습니다.`, time: nowT() }]);
+  const doKick = async () => {
+    if (!kickTarget || !roomId) return;
     setKickTarget(null);
+    try {
+      await svcKickMember(roomId, kickTarget.userUuid);
+      // 추방 배너 표시 (멤버 목록 갱신은 KICKED WebSocket 이벤트가 처리)
+      setKickedMsg(kickTarget.name);
+      setTimeout(() => setKickedMsg(null), 3000);
+    } catch {
+      // 추방 실패 시 무시
+    }
   };
 
   const doExit = async () => {
@@ -221,7 +306,7 @@ export default function StudyRoomPage() {
       {modal === "cal" && <LearningPlannerModal open onClose={() => setModal(null)} />}
       {modal === "members" && <MemberModal members={members} elapsed={{ ...elapsed, 1: totalSec }} mic={mic} cam={cam} joinElapsed={timerSec} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
       {modal === "settings" && <SettingModal onClose={() => setModal(null)} isHost={isHost} roomTitle={roomTitle} setRoomTitle={setRoomTitle} settingCamOn={settingCamOn} setSettingCamOn={setSettingCamOn} settingMicOn={settingMicOn} setSettingMicOn={setSettingMicOn} maxMembers={maxMembers} setMaxMembers={setMaxMembers} roomThumbnail={roomThumbnail} setRoomThumbnail={setRoomThumbnail} roomId={roomId} categoryNo={categoryNo} setCategoryNo={setCategoryNo} expiredAt={expiredAt} setExpiredAt={setExpiredAt} roomNotice={noticeMsg} />}
-      {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={setNoticeMsg} noticeMsg={noticeMsg} isHost={isHost} />}
+      {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={async (msg) => { try { const r = await saveNotice(roomId!, msg); setNoticeMsg(r.notice); } catch { setNoticeMsg(msg); } }} noticeMsg={noticeMsg} isHost={isHost} />}
       {kickTarget && <KickConfirm member={kickTarget} onConfirm={doKick} onCancel={() => setKickTarget(null)} />}
       {showExitConfirm && <ExitConfirm onConfirm={doExit} onCancel={() => setShowExitConfirm(false)} />}
     </>

@@ -48,7 +48,7 @@ interface ParticipantResponse {
   joinedAt: string;
 }
 
-const MEMBER_COLORS = ["#E53935", "#2DA58E", "#C07A3A", "#1976D2", "#7B1FA2", "#388E3C", "#D32F2F"];
+export const MEMBER_COLORS = ["#E53935", "#2DA58E", "#C07A3A", "#1976D2", "#7B1FA2", "#388E3C", "#D32F2F"];
 
 function nowT(): string {
   const d = new Date();
@@ -135,29 +135,128 @@ export async function updateRoom(
 }
 
 /** 멤버 추방 */
-export async function kickMember(_roomId: string, _memberId: number): Promise<{ ok: boolean }> {
+export async function kickMember(roomId: string, targetUuid: string): Promise<{ ok: boolean }> {
+  await apiClient.delete(`/api/rooms/${roomId}/participants/${targetUuid}`);
   return { ok: true };
 }
 
 /** 공지 등록/수정/삭제 */
-export async function saveNotice(_roomId: string, notice: string | null): Promise<{ ok: boolean; notice: string | null }> {
-  return { ok: true, notice };
+export async function saveNotice(roomId: string, notice: string | null): Promise<{ ok: boolean; notice: string | null }> {
+  const res = await apiClient.patch<{ notice: string | null }>(`/api/rooms/${roomId}/notice`, { notice });
+  return { ok: true, notice: res.data.notice };
 }
 
-/** 채팅 메시지 전송 */
-export async function sendMessage(_roomId: string, text: string): Promise<ChatMessage> {
-  const now = new Date();
-  const time = [now.getHours(), now.getMinutes(), now.getSeconds()]
+// ── STOMP / WebSocket ──────────────────────────────────────────────────────
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
+
+let stompClient: Client | null = null;
+const pendingOnConnect: Array<() => void> = [];
+
+function getClient(): Client {
+  if (!stompClient) {
+    stompClient = new Client({
+      webSocketFactory: () => new SockJS("http://localhost:8080/ws"),
+      reconnectDelay: 5000,
+      onConnect: () => {
+        [...pendingOnConnect].forEach((fn) => fn());
+        pendingOnConnect.length = 0;
+      },
+    });
+  }
+  return stompClient;
+}
+
+function whenConnected(fn: () => void): void {
+  const c = getClient();
+  if (c.connected) {
+    fn();
+  } else {
+    pendingOnConnect.push(fn);
+    if (!c.active) c.activate();
+  }
+}
+
+function formatSentAt(sentAt: string): string {
+  const d = new Date(sentAt);
+  return [d.getHours(), d.getMinutes(), d.getSeconds()]
     .map((v) => String(v).padStart(2, "0")).join(":");
-  return { id: Date.now(), name: "나", text, time, mine: true, isHost: true };
 }
 
-/** 실시간 채팅 구독 (WebSocket 연동 전 no-op) */
+export interface MemberEvent {
+  type: "JOINED" | "LEFT" | "KICKED" | "NOTICE";
+  userUuid?: string;
+  userName?: string;
+  profileImage?: string | null;
+  owner?: boolean;
+  cameraStatus?: boolean;
+  micStatus?: boolean;
+  notice?: string | null;
+}
+
+/** 채팅 메시지 전송 (WebSocket) */
+export async function sendMessage(roomId: string, text: string, userUuid: string): Promise<void> {
+  await new Promise<void>((resolve) => {
+    whenConnected(() => {
+      getClient().publish({
+        destination: "/pub/chat/message",
+        body: JSON.stringify({ roomNo: parseInt(roomId), userUuid, message: text }),
+      });
+      resolve();
+    });
+  });
+}
+
+/** 실시간 채팅 구독 (WebSocket) */
 export function subscribeChat(
-  _roomId: string,
-  _onMessage: (msg: ChatMessage) => void
+  roomId: string,
+  getMyUuid: () => string,
+  onMessage: (msg: ChatMessage) => void
 ): () => void {
-  return () => {};
+  let sub: ReturnType<Client["subscribe"]> | null = null;
+
+  whenConnected(() => {
+    sub = getClient().subscribe(`/sub/chat/room/${roomId}`, (frame) => {
+      try {
+        const data = JSON.parse(frame.body);
+        onMessage({
+          id: data.chatNo ?? Date.now(),
+          name: data.userName ?? "Unknown",
+          text: data.message,
+          time: data.sentAt ? formatSentAt(data.sentAt) : nowT(),
+          mine: data.userUuid === getMyUuid(),
+        });
+      } catch { /* ignore malformed messages */ }
+    });
+  });
+
+  return () => {
+    sub?.unsubscribe();
+    stompClient?.deactivate();
+    stompClient = null;
+  };
+}
+
+/** 멤버 입퇴장 실시간 구독 (WebSocket) */
+export function subscribeMembers(
+  roomId: string,
+  onEvent: (event: MemberEvent) => void
+): () => void {
+  let sub: ReturnType<Client["subscribe"]> | null = null;
+
+  whenConnected(() => {
+    sub = getClient().subscribe(`/sub/room/${roomId}/members`, (frame) => {
+      try {
+        onEvent(JSON.parse(frame.body));
+      } catch { /* ignore malformed */ }
+    });
+  });
+
+  return () => {
+    sub?.unsubscribe();
+    stompClient?.deactivate();
+    stompClient = null;
+  };
 }
 
 /** 공부 타이머 보고 (no-op) */

@@ -37,4 +37,9 @@ public interface RoomsMapper {
         @Param("req") RoomUpdateRequest req,
         @Param("thumbnail") String thumbnail
     );
+    // 공지사항만 업데이트
+    int updateRoomNotice(
+        @Param("roomNo") Long roomNo,
+        @Param("notice") String notice
+    );
 }

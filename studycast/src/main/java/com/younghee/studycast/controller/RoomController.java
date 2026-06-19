@@ -1,20 +1,5 @@
 package com.younghee.studycast.controller;
 
-import java.util.UUID;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
-
 import com.younghee.studycast.dto.request.LeaveRoomRequest;
 import com.younghee.studycast.dto.request.RoomCreateRequest;
 import com.younghee.studycast.dto.request.RoomJoinRequest;
@@ -29,69 +14,66 @@ import com.younghee.studycast.dto.response.RoomUpdateResponse;
 import com.younghee.studycast.service.LiveKitTokenService;
 import com.younghee.studycast.dto.response.RoomSnapshotResponse;
 import com.younghee.studycast.service.RoomService;
-
 import lombok.RequiredArgsConstructor;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/rooms")
 public class RoomController {
-    
+
     private final RoomService roomService;
     private final LiveKitTokenService liveKitTokenService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RoomCreateResponse> createRoom(
         Authentication authentication,
         @RequestPart("request") RoomCreateRequest request,
-        @RequestPart(value = "image", required = false)
-        MultipartFile image
+        @RequestPart(value = "image", required = false) MultipartFile image
     ) {
-        // 1. JWT 인증 정보에서 로그인 사용자 UUID 조회
         UUID userUuid = getUserUuid(authentication);
-        // 2. RoomService.createRoom() 호출
-        UUID userUuid = (UUID) authentication.getPrincipal();
         RoomCreateResponse response = roomService.createRoom(userUuid, request, image);
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    // 참여 코드 중복 확인
     @GetMapping("/check-code")
     public ResponseEntity<JoinCodeCheckResponse> checkJoinCodeDuplicate(
         @RequestParam("code") String code
     ) {
-        JoinCodeCheckResponse response = roomService.checkJoinCodeDuplicate(code);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(roomService.checkJoinCodeDuplicate(code));
     }
 
-    // 추가) 스터디방 상세 페이지
-    // 스터디방 상세 페이지 헤더 조회
+    // 스터디방 상세 조회
     @GetMapping("/{roomNo}")
     public ResponseEntity<RoomDetailResponse> getRoomDetail(
         @PathVariable long roomNo,
         Authentication authentication
     ) {
         UUID userUuid = getUserUuid(authentication);
-
-        RoomDetailResponse response = roomService.getRoomDetail(roomNo, userUuid);
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(roomService.getRoomDetail(roomNo, userUuid));
     }
 
     // 스터디방 입장 처리
@@ -99,23 +81,36 @@ public class RoomController {
     public ResponseEntity<RoomJoinResponse> joinRoom(
         @PathVariable Long roomNo,
         @RequestBody(required = false) RoomJoinRequest request,
-        Authentication authentication    
+        Authentication authentication
     ) {
         UUID userUuid = getUserUuid(authentication);
-
         RoomJoinResponse response = roomService.joinRoom(roomNo, userUuid, request);
+
+        // 입장한 사용자 정보를 방 전체에 브로드캐스트
+        roomService.getActiveParticipants(roomNo).stream()
+            .filter(p -> userUuid.equals(p.getUserUuid()))
+            .findFirst()
+            .ifPresent(p -> {
+                Map<String, Object> event = new HashMap<>();
+                event.put("type", "JOINED");
+                event.put("userUuid", p.getUserUuid().toString());
+                event.put("userName", p.getUserName());
+                event.put("profileImage", p.getProfileImage());
+                event.put("owner", p.getOwner());
+                event.put("cameraStatus", p.getCameraStatus());
+                event.put("micStatus", p.getMicStatus());
+                messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", event);
+            });
 
         return ResponseEntity.ok(response);
     }
-    
+
     // 스터디방 active 참여자 목록 조회
     @GetMapping("/{roomNo}/participants")
     public ResponseEntity<List<RoomParticipantResponse>> getActiveParticipants(
         @PathVariable Long roomNo
     ) {
-        List<RoomParticipantResponse> response = roomService.getActiveParticipants(roomNo);
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(roomService.getActiveParticipants(roomNo));
     }
 
     // LiveKit 접속 토큰 발급
@@ -125,13 +120,9 @@ public class RoomController {
         Authentication authentication
     ) {
         UUID userUuid = getUserUuid(authentication);
-
-        LiveKitTokenResponse response =
-            liveKitTokenService.issueRoomToken(roomNo, userUuid);
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(liveKitTokenService.issueRoomToken(roomNo, userUuid));
     }
-    
+
     // 스터디방 퇴장 처리 + 공부시간 저장
     @DeleteMapping("/{roomNo}/leave")
     public ResponseEntity<Void> leaveRoom(
@@ -145,10 +136,55 @@ public class RoomController {
             : 0;
         roomService.leaveRoom(roomNo, userUuid, studiedSeconds);
 
+        // 퇴장 이벤트를 남은 멤버들에게 브로드캐스트
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "LEFT");
+        event.put("userUuid", userUuid.toString());
+        messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", event);
+
         return ResponseEntity.noContent().build();
     }
 
-    
+    // 공지사항 저장/삭제 (방장 전용)
+    @PatchMapping("/{roomNo}/notice")
+    public ResponseEntity<Map<String, Object>> saveNotice(
+        @PathVariable Long roomNo,
+        @RequestBody Map<String, String> body,
+        Authentication authentication
+    ) {
+        UUID userUuid = getUserUuid(authentication);
+        String saved = roomService.saveNotice(roomNo, userUuid, body.get("notice"));
+
+        // 방 전체에 공지 변경 브로드캐스트
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "NOTICE");
+        event.put("notice", saved);
+        messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", event);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("notice", saved);
+        return ResponseEntity.ok(response);
+    }
+
+    // 멤버 추방 (방장 전용)
+    @DeleteMapping("/{roomNo}/participants/{targetUuid}")
+    public ResponseEntity<Void> kickMember(
+        @PathVariable Long roomNo,
+        @PathVariable UUID targetUuid,
+        Authentication authentication
+    ) {
+        UUID hostUuid = getUserUuid(authentication);
+        roomService.kickMember(roomNo, hostUuid, targetUuid);
+
+        // 추방 이벤트 브로드캐스트 (추방된 사람은 KICKED 수신 후 자동 퇴장)
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "KICKED");
+        event.put("userUuid", targetUuid.toString());
+        messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", event);
+
+        return ResponseEntity.noContent().build();
+    }
+
     // 스터디방 설정 업데이트 (방장 전용)
     @PatchMapping(value = "/{roomNo}/settings", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RoomUpdateResponse> updateRoomSettings(
@@ -158,16 +194,13 @@ public class RoomController {
         Authentication authentication
     ) {
         UUID userUuid = getUserUuid(authentication);
-        RoomUpdateResponse response = roomService.updateRoomSettings(roomNo, userUuid, request, image);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(roomService.updateRoomSettings(roomNo, userUuid, request, image));
     }
 
-    // 인증 객체에서 로그인 사용자 UUID 추출
     private UUID getUserUuid(Authentication authentication) {
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new SecurityException("인증 사용자 정보가 없습니다.");
         }
-
         return (UUID) authentication.getPrincipal();
     }
 }

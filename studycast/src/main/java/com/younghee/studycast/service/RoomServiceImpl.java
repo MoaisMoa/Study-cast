@@ -356,6 +356,38 @@ public class RoomServiceImpl implements RoomService {
         return new RoomUpdateResponse(roomNo, thumbnailPath);
     }
 
+    @Override
+    @Transactional
+    public String saveNotice(Long roomNo, UUID userUuid, String notice) {
+        RoomsDTO room = roomsMapper.findRoomByRoomNo(roomNo);
+        if (room == null) {
+            throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
+        }
+        if (!userUuid.equals(room.getUserUuid())) {
+            throw new SecurityException("방장만 공지를 수정할 수 있습니다.");
+        }
+        String trimmed = (notice != null && !notice.trim().isEmpty()) ? notice.trim() : null;
+        roomsMapper.updateRoomNotice(roomNo, trimmed);
+        return trimmed;
+    }
+
+    @Override
+    @Transactional
+    public void kickMember(Long roomNo, UUID hostUuid, UUID targetUuid) {
+        RoomsDTO room = roomsMapper.findRoomByRoomNo(roomNo);
+        if (room == null) {
+            throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
+        }
+        if (!hostUuid.equals(room.getUserUuid())) {
+            throw new SecurityException("방장만 멤버를 추방할 수 있습니다.");
+        }
+        if (hostUuid.equals(targetUuid)) {
+            throw new IllegalArgumentException("자신을 추방할 수 없습니다.");
+        }
+        roomParticipantsMapper.leaveParticipant(roomNo, targetUuid);
+        roomsMapper.syncNowUsersByActiveParticipants(roomNo);
+    }
+
     private void validateUserUuid(UUID userUuid) {
         if (userUuid == null) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
