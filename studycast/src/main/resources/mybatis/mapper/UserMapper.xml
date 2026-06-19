@@ -129,4 +129,13 @@
             updated_at = CURRENT_TIMESTAMP
         WHERE user_uuid = #{userUuid}
     </update>
+
+    <!-- 프로필 이미지 변경 -->
+    <update id="updateProfileImage">
+        UPDATE users
+        SET
+            user_profile_image = #{userProfileImage},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_uuid = #{userUuid}
+    </update>
 </mapper>

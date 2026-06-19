@@ -83,21 +83,35 @@ export function ProfileMenu({ avatarSize = 36, caretSize = 16 }: ProfileMenuProp
         onMouseEnter={(e) => (e.currentTarget.style.background = T.bg)}
         onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
       >
-        <div style={{
-          width: avatarSize,
-          height: avatarSize,
-          borderRadius: "50%",
-          background: T.red,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#fff",
-          fontWeight: 700,
-          fontSize: avatarSize >= 36 ? 15 : 13,
-          flexShrink: 0,
-        }}>
-          {avatarText}
-        </div>
+        {user?.profileImage ? (
+          <img
+            src={user.profileImage}
+            alt={user.name}
+            style={{
+              width: avatarSize,
+              height: avatarSize,
+              borderRadius: "50%",
+              objectFit: "cover",
+              flexShrink: 0,
+            }}
+          />
+        ) : (
+          <div style={{
+            width: avatarSize,
+            height: avatarSize,
+            borderRadius: "50%",
+            background: T.red,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: avatarSize >= 36 ? 15 : 13,
+            flexShrink: 0,
+          }}>
+            {avatarText}
+          </div>
+        )}
         <Icon name="chevDown" size={caretSize} color={T.text3} />
       </button>
       {open && (

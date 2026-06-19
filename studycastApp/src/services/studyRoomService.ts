@@ -1,22 +1,5 @@
-/**
- * 스터디룸 서비스 — 현재는 더미 데이터 기준 mock 구현.
- *
- * API/WebSocket/WebRTC 연동 시 이 파일의 함수 본문만 교체하면 되도록,
- * 컴포넌트는 항상 이 서비스 함수만 호출한다 (데이터 직접 import 금지).
- *
- *   - REST  : fetchRoom / updateRoom / kickMember / postNotice ...
- *   - 채팅  : subscribeChat (WebSocket onmessage 로 교체)
- *   - 타이머: reportTimer (서버 시간 동기화로 교체)
- *   - 캠    : (WebRTC) CamGrid의 getUserMedia 자리 그대로 사용
- */
-
 import type { ChatMessage, RoomMember } from "@/types/studyRoom";
-import {
-  ALL_INIT, INITIAL_MESSAGES, ROOM_MAX_MEMBERS, ROOM_TITLE_DEFAULT,
-} from "@/data/studyRoom";
-import { apiClient, mockRequest } from "./apiClient";
-// import SockJS from "sockjs-client";
-import { Client } from "@stomp/stompjs";
+import { apiClient } from "./apiClient";
 
 /** 방 입장 시 한 번에 받아오는 초기 스냅샷 */
 export interface RoomSnapshot {
@@ -26,310 +9,186 @@ export interface RoomSnapshot {
   members: RoomMember[];
   messages: ChatMessage[];
   notice: string | null;
-  /** 본인이 방장인지 */
   isHost: boolean;
+  isPrivate: boolean;
+  joinCode: string | null;
+  camOn: boolean;
+  micOn: boolean;
+  thumbnail: string | null;
+  categoryNo: number;
+  expiredAt: string;
 }
 
-const WS_BASE_URL = "http://localhost:8080";
-const WS_ENDPOINT = "/ws";
-const STOMP_DESTINATION_PREFIX = "/pub";
-const STOMP_SUBSCRIBE_PREFIX = "/sub";
-
-let stompClient: Client | null = null;
-let stompSubscription: any = null;
-let activeRoomId: string | null = null;
-
-function getAccessToken(): string | null {
-  const token = sessionStorage.getItem("sc_access_token");
-  if (!token) {
-    console.warn("[AUTH] Access token is missing from sessionStorage for WebSocket authentication.");
-    console.warn("[AUTH] sessionStorage keys:", Object.keys(sessionStorage));
-  } else {
-    console.log("[AUTH] Access token found, length:", token.length);
-  }
-  return token;
+interface RoomDetailResponse {
+  roomNo: number;
+  roomTitle: string;
+  roomNotice: string | null;
+  roomThumbnail: string | null;
+  categoryNo: number;
+  categoryName: string;
+  currentUsers: number;
+  maxUsers: number;
+  roomPrivate: boolean;
+  roomPassword: string | null;
+  owner: boolean;
+  expired: boolean;
+  cameraStatus: boolean;
+  micStatus: boolean;
+  createdAt: string;
+  expiredAt: string;
 }
 
-function formatTime(date: Date): string {
-  return [date.getHours(), date.getMinutes(), date.getSeconds()]
-    .map((value) => String(value).padStart(2, "0"))
-    .join(":");
+interface ParticipantResponse {
+  userUuid: string;
+  userName: string;
+  profileImage: string | null;
+  owner: boolean;
+  cameraStatus: boolean;
+  micStatus: boolean;
+  joinedAt: string;
 }
 
-function buildStompClient(): Client {
-  const token = getAccessToken();
-  const wsUrl = `${WS_BASE_URL}${WS_ENDPOINT}`.replace(/^http/, "ws");
-  
-  console.log("[STOMP] buildStompClient: token present =", !!token);
-  if (token) {
-    console.log("[STOMP] Authorization header will be sent: Bearer [token...]");
-    console.log("[STOMP] Token length:", token.length);
-  }
-  
-  const client = new Client({
-    // webSocketFactory: () => new SockJS(`${WS_BASE_URL}${WS_ENDPOINT}`),
-    brokerURL: wsUrl,
-    connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
-    reconnectDelay: 5000,
-    heartbeatIncoming: 0,
-    heartbeatOutgoing: 20000,
-    debug: (msg: string) => {
-      console.log("[STOMP DEBUG]", msg);
-    },
-  });
-  
-  client.onConnect = (frame) => {
-    console.log("[STOMP] Connected successfully", frame);
-  };
-  
-  client.onStompError = (frame) => {
-    console.error("[STOMP] STOMP error:", frame?.body, frame);
-  };
-  
-  client.onWebSocketError = (event) => {
-    console.error("[STOMP] WebSocket error:", event);
-  };
-  
-  return client;
+const MEMBER_COLORS = ["#E53935", "#2DA58E", "#C07A3A", "#1976D2", "#7B1FA2", "#388E3C", "#D32F2F"];
+
+function nowT(): string {
+  const d = new Date();
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
-async function ensureStompConnected(): Promise<void> {
-  if (!getAccessToken()) {
-    throw new Error("로그인이 필요합니다.");
-  }
-  if (stompClient && stompClient.active && stompClient.connected) {
-    console.log("[STOMP] Already connected, reusing existing connection");
-    return;
-  }
-  if (stompClient) {
-    console.log("[STOMP] Deactivating existing client");
-    stompClient.deactivate();
-    stompClient = null;
-  }
-
-  const client = buildStompClient();
-  const ready = new Promise<void>((resolve, reject) => {
-    client.onConnect = () => {
-      console.log("[STOMP] onConnect fired - connection established and authenticated");
-      stompClient = client;
-      resolve();
-    };
-    client.onStompError = (frame) => {
-      console.error("[STOMP] onStompError fired:", frame?.body, frame);
-      reject(new Error(frame?.body || "STOMP error"));
-    };
-    client.onWebSocketError = (event) => {
-      console.error("[STOMP] onWebSocketError fired during connect:", event);
-      reject(new Error("WebSocket error during connection"));
-    };
-  });
-  console.log("[STOMP] Calling client.activate()");
-  client.activate();
-  return ready;
-}
-
-function toChatMessage(payload: any): ChatMessage {
-  const sentAt = payload.sentAt ? new Date(payload.sentAt) : new Date();
+function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean, myProfileImage?: string): RoomMember {
+  const joinedAt = p.joinedAt ? new Date(p.joinedAt) : new Date();
+  const joinMin = Math.max(0, Math.floor((Date.now() - joinedAt.getTime()) / 60_000));
   return {
-    id: Number(payload.id ?? Date.now()),
-    name: payload.userName ?? "알 수 없음",
-    text: payload.message ?? String(payload.text ?? ""),
-    time: formatTime(sentAt),
-    mine: false,
-    isHost: false,
-  };
-}
-
-/** 방 입장 — 초기 스냅샷 조회 (GET /rooms/:id) */
-const AVATAR_COLORS = [
-  "#E53935", "#8E24AA", "#1E88E5", "#00897B",
-  "#43A047", "#FB8C00", "#6D4C41", "#546E7A",
-];
-
-function memberColor(index: number): string {
-  return AVATAR_COLORS[index % AVATAR_COLORS.length];
-}
-
-export async function fetchRoom(roomId: string): Promise<RoomSnapshot> {
-  const res = await apiClient.get(`/api/rooms/${roomId}`);
-  const data = res.data;
-
-  const members: RoomMember[] = (data.members ?? []).map((m: any, i: number) => ({
-    id: i + 1,
-    name: m.userName ?? "알 수 없음",
-    short: (m.userName ?? "?").charAt(0).toUpperCase(),
-    email: m.userEmail ?? "",
-    role: m.isHost ? "HOST" : "MEMBER",
-    color: memberColor(i),
+    id: index + 1,
+    userUuid: p.userUuid,
+    name: isMe ? "나" : p.userName,
+    short: isMe ? "나" : p.userName.slice(0, 2),
+    email: "",
+    role: p.owner ? "HOST" : "MEMBER",
+    color: isMe ? MEMBER_COLORS[0] : MEMBER_COLORS[(index % (MEMBER_COLORS.length - 1)) + 1],
     sec: 0,
-    joinMin: 0,
-    mic: m.micStatus ?? false,
-    cam: m.cameraStatus ?? false,
-  }));
-
-  const messages: ChatMessage[] = (data.messages ?? []).map((c: any) => {
-    const sentAt = c.sentAt ? new Date(c.sentAt) : new Date();
-    return {
-      id: Number(c.chatNo ?? Date.now()),
-      name: c.userName ?? "알 수 없음",
-      text: c.message ?? "",
-      time: formatTime(sentAt),
-      mine: false,
-    };
-  });
-
-  return {
-    roomId: String(data.roomId),
-    title: data.title ?? "",
-    maxMembers: data.maxMembers ?? 4,
-    members,
-    messages,
-    notice: data.notice ?? null,
-    isHost: data.isHost ?? false,
+    joinMin,
+    mic: p.micStatus,
+    cam: p.cameraStatus,
+    profileImage: isMe ? myProfileImage : undefined,
   };
 }
 
-/** 방 설정 변경 (PUT /rooms/:id) */
+/** 방 입장 + 초기 스냅샷 조회 */
+export async function fetchRoom(roomId: string, myName: string, myProfileImage?: string): Promise<RoomSnapshot> {
+  // 입장 처리 (이미 active 상태면 백엔드가 중복 처리)
+  await apiClient.post(`/api/rooms/${roomId}/join`);
+
+  const [detailRes, participantsRes] = await Promise.all([
+    apiClient.get<RoomDetailResponse>(`/api/rooms/${roomId}`),
+    apiClient.get<ParticipantResponse[]>(`/api/rooms/${roomId}/participants`),
+  ]);
+
+  const detail = detailRes.data;
+
+  // 나를 항상 index 0(id=1)으로 정렬
+  const sorted = [...participantsRes.data].sort((a) => (a.userName === myName ? -1 : 1));
+  const members = sorted.map((p, i) => toRoomMember(p, i, p.userName === myName, myProfileImage));
+
+  return {
+    roomId,
+    title: detail.roomTitle,
+    maxMembers: detail.maxUsers,
+    members,
+    messages: [{ id: 0, type: "system", text: "스터디룸에 입장했습니다.", time: nowT() }],
+    notice: detail.roomNotice ?? null,
+    isHost: detail.owner,
+    isPrivate: detail.roomPrivate,
+    joinCode: detail.roomPassword ?? null,
+    camOn: detail.cameraStatus ?? true,
+    micOn: detail.micStatus ?? false,
+    thumbnail: detail.roomThumbnail ?? null,
+    categoryNo: detail.categoryNo,
+    expiredAt: detail.expiredAt,
+  };
+}
+
+export interface RoomUpdatePayload {
+  roomTitle: string;
+  maxUsers: number;
+  categoryNo: number;
+  expiredAt: string;
+  cameraStatus: boolean;
+  micStatus: boolean;
+  roomNotice: string | null;
+}
+
+/** 방 설정 변경 */
 export async function updateRoom(
-  _roomId: string,
-  _patch: Partial<Pick<RoomSnapshot, "title" | "maxMembers">>
-): Promise<{ ok: boolean }> {
-  return mockRequest({ ok: true }, { latency: 400 });
+  roomId: string,
+  payload: RoomUpdatePayload,
+  image?: File | null
+): Promise<{ thumbnail: string | null }> {
+  const formData = new FormData();
+  formData.append("request", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+  if (image) formData.append("image", image);
+  const res = await apiClient.patch<{ roomNo: number; roomThumbnail: string | null }>(
+    `/api/rooms/${roomId}/settings`,
+    formData
+  );
+  return { thumbnail: res.data.roomThumbnail ?? null };
 }
 
-/** 멤버 추방 (DELETE /rooms/:id/members/:memberId) */
+/** 멤버 추방 */
 export async function kickMember(_roomId: string, _memberId: number): Promise<{ ok: boolean }> {
-  return mockRequest({ ok: true }, { latency: 300 });
+  return { ok: true };
 }
 
-/** 공지 등록/수정/삭제 (PUT /rooms/:id/notice) — null 이면 삭제 */
-export async function saveNotice(roomId: string, notice: string | null): Promise<{ ok: boolean; notice: string | null }> {
-  if (notice === null || notice.trim() === "") {
-    await apiClient.delete(`/api/rooms/${roomId}/notice`);
-    return { ok: true, notice: null };
-  }
-  await apiClient.post(`/api/rooms/${roomId}/notice`, { roomNotice: notice });
+/** 공지 등록/수정/삭제 */
+export async function saveNotice(_roomId: string, notice: string | null): Promise<{ ok: boolean; notice: string | null }> {
   return { ok: true, notice };
 }
 
-/** 채팅 메시지 전송 (WebSocket send 또는 POST /rooms/:id/messages) */
+/** 채팅 메시지 전송 */
 export async function sendMessage(_roomId: string, text: string): Promise<ChatMessage> {
-  if (!_roomId) {
-    throw new Error("roomId is required for sendMessage");
-  }
-  
-  console.log("[STOMP CHAT] Sending message to room", _roomId);
-  
-  await ensureStompConnected();
-  if (!stompClient || !stompClient.connected) {
-    throw new Error("WebSocket not connected");
-  }
-  
-  const destination = `${STOMP_DESTINATION_PREFIX}/rooms/${_roomId}/chat`;
-  console.log("[STOMP CHAT] Publishing to destination:", destination);
-  
-  stompClient.publish({
-    destination,
-    body: JSON.stringify({ message: text }),
-  });
-
-  console.log("[STOMP CHAT] Message published successfully");
-
-  return {
-    id: Date.now(),
-    name: "나",
-    text,
-    time: formatTime(new Date()),
-    mine: true,
-    isHost: true,
-  };
+  const now = new Date();
+  const time = [now.getHours(), now.getMinutes(), now.getSeconds()]
+    .map((v) => String(v).padStart(2, "0")).join(":");
+  return { id: Date.now(), name: "나", text, time, mine: true, isHost: true };
 }
 
-/**
- * 실시간 채팅 구독 — 현재는 mock(no-op).
- * WebSocket 연동 시: ws.onmessage = (e) => onMessage(JSON.parse(e.data));
- * 반환값은 구독 해제 함수.
- */
+/** 실시간 채팅 구독 (WebSocket 연동 전 no-op) */
 export function subscribeChat(
   _roomId: string,
   _onMessage: (msg: ChatMessage) => void
 ): () => void {
-  if (!_roomId) {
-    console.warn("[STOMP CHAT] subscribeChat called with empty roomId");
-    return () => {};
-  }
-
-  let active = true;
-  let subscription: any = null;
-  const cleanup = () => {
-    console.log("[STOMP CHAT] Cleanup called for room", _roomId);
-    active = false;
-    if (subscription) {
-      subscription.unsubscribe();
-      subscription = null;
-    }
-    if (stompClient && activeRoomId === _roomId) {
-      console.log("[STOMP CHAT] Deactivating STOMP client");
-      stompClient.deactivate();
-      stompClient = null;
-      activeRoomId = null;
-    }
-  };
-
-  ensureStompConnected()
-    .then(() => {
-      if (!active || !stompClient) {
-        console.warn("[STOMP CHAT] Connection lost or cleanup called during connect");
-        return;
-      }
-      if (activeRoomId && activeRoomId !== _roomId && stompSubscription) {
-        console.log("[STOMP CHAT] Unsubscribing from previous room:", activeRoomId);
-        stompSubscription.unsubscribe();
-        stompSubscription = null;
-      }
-      activeRoomId = _roomId;
-      const destination = `${STOMP_SUBSCRIBE_PREFIX}/rooms/${_roomId}`;
-      console.log("[STOMP CHAT] Subscribing to:", destination);
-      
-      subscription = stompClient.subscribe(
-        destination,
-        (frame) => {
-          if (!frame.body) {
-            console.warn("[STOMP CHAT] Empty frame body received");
-            return;
-          }
-          try {
-            const payload = JSON.parse(frame.body);
-            console.log("[STOMP CHAT] Message received:", payload);
-            _onMessage(toChatMessage(payload));
-          } catch (err) {
-            console.error("[STOMP CHAT] Failed to parse message:", err, frame.body);
-          }
-        }
-      );
-      stompSubscription = subscription;
-      console.log("[STOMP CHAT] Subscription successful for room", _roomId);
-    })
-    .catch((error) => {
-      console.error("[STOMP CHAT] WebSocket 구독 실패:", error);
-    });
-
-  return cleanup;
+  return () => {};
 }
 
-/**
- * 공부 타이머 보고 — 현재는 mock(no-op).
- * 서버 시간 동기화 시: POST /rooms/:id/timer { state, sec }
- */
+/** 공부 타이머 보고 (no-op) */
 export async function reportTimer(
   _roomId: string,
   _state: "running" | "paused" | "idle",
   _sec: number
-): Promise<void> {
-  // TODO(API 연결): await request(`/rooms/${_roomId}/timer`, { method: "POST", body: ... });
+): Promise<void> {}
+
+/** 방 나가기 */
+export async function leaveRoom(roomId: string, studiedSeconds = 0): Promise<{ ok: boolean }> {
+  await apiClient.delete(`/api/rooms/${roomId}/leave`, {
+    data: { studiedSeconds },
+  });
+  return { ok: true };
 }
 
-/** 방 나가기 (POST /rooms/:id/leave) */
-export async function leaveRoom(_roomId: string): Promise<{ ok: boolean }> {
-  return mockRequest({ ok: true }, { latency: 150 });
+/** 오늘 누적 공부 시간 조회 (초 단위) */
+export async function getTodayStudySeconds(): Promise<number> {
+  const res = await apiClient.get<{ totalSeconds: number }>("/api/study-logs/today");
+  return res.data.totalSeconds;
+}
+
+export interface LiveKitToken {
+  url: string;
+  roomName: string;
+  token: string;
+}
+
+/** LiveKit 접속 토큰 발급 */
+export async function fetchLiveKitToken(roomId: string): Promise<LiveKitToken> {
+  const res = await apiClient.get<LiveKitToken>(`/api/rooms/${roomId}/token`);
+  return res.data;
 }

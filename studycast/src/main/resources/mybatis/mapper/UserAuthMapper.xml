@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.younghee.studycast.dao.UserAuthMapper">
+    <resultMap id="UserAuthResultMap" type="com.younghee.studycast.dto.UserAuthDTO">
+        <id property="authNo" column="auth_no"/>
+        <result property="userUuid" column="user_uuid"/>
+        <result property="provider" column="provider"/>
+        <result property="providerUserId" column="provider_user_id"/>
+        <result property="providerEmail" column="provider_email"/>
+        <result property="providerName" column="provider_name"/>
+        <result property="providerProfileImage" column="provider_profile_image"/>
+        <result property="connectedAt" column="connected_at"/>
+        <result property="lastLoginAt" column="last_login_at"/>
+    </resultMap>
+
+    <!-- provider + provider_user_id로 소셜 연동 정보 조회 -->
+    <select id="findByProviderAndProviderUserId" resultMap="UserAuthResultMap">
+        SELECT *
+        FROM user_auths
+        WHERE provider = #{provider}
+          AND provider_user_id = #{providerUserId}
+        LIMIT 1
+    </select>
+
+    <!-- 특정 사용자의 소셜 연동 목록 조회 -->
+    <select id="findByUserUuid" resultMap="UserAuthResultMap">
+        SELECT *
+        FROM user_auths
+        WHERE user_uuid = #{userUuid}
+        ORDER BY connected_at DESC
+    </select>
+
+    <!-- 소셜 연동 정보 저장 -->
+    <insert id="insertUserAuth"
+            parameterType="com.younghee.studycast.dto.UserAuthDTO"
+            useGeneratedKeys="true"
+            keyProperty="authNo"
+            keyColumn="auth_no">
+        INSERT INTO user_auths (
+            user_uuid,
+            provider,
+            provider_user_id,
+            provider_email,
+            provider_name,
+            provider_profile_image,
+            connected_at
+        ) VALUES (
+            #{userUuid},
+            #{provider},
+            #{providerUserId},
+            #{providerEmail},
+            #{providerName},
+            #{providerProfileImage},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!-- 소셜 로그인 마지막 로그인 시간 갱신 -->
+    <update id="updateLastLoginAt">
+        UPDATE user_auths
+        SET last_login_at = CURRENT_TIMESTAMP
+        WHERE auth_no = #{authNo}
+    </update>
+</mapper>

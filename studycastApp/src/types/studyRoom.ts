@@ -4,6 +4,7 @@ export type DeviceError = null | "denied" | "unavailable";
 
 export interface RoomMember {
   id: number;
+  userUuid: string;
   name: string;
   short: string;
   email: string;
@@ -13,6 +14,7 @@ export interface RoomMember {
   joinMin: number;   // 참석 시간(분)
   mic: boolean;
   cam: boolean;
+  profileImage?: string;
 }
 
 export interface ChatMessage {

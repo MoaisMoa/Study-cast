@@ -81,8 +81,20 @@ export const WarnIc = ({ s = 28, c = "currentColor" }: IcProps) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
 );
 
-/** 아바타 (이니셜 원형) */
-export function Av({ name, color, size = 30 }: { name: string; color: string; size?: number }) {
+/** 아바타 (프로필 이미지 우선, 없으면 이니셜 원형) */
+export function Av({ name, color, size = 30, profileImage }: { name: string; color: string; size?: number; profileImage?: string }) {
+  if (profileImage) {
+    return (
+      <img
+        src={profileImage}
+        alt={name}
+        style={{
+          width: size, height: size, borderRadius: "50%",
+          objectFit: "cover", flexShrink: 0,
+        }}
+      />
+    );
+  }
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%", background: color,

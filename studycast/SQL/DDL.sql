@@ -21,13 +21,17 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE IF NOT EXISTS users (
     user_uuid UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     user_email VARCHAR(255) NOT NULL UNIQUE,
-    user_password VARCHAR(255) NOT NULL,
+    -- 소셜 전용 가입자 비밀번호X / 일반 로그인 비밀번호O
+    user_password VARCHAR(255),
     user_name VARCHAR(255) NOT NULL,
     user_gender VARCHAR(50) NOT NULL DEFAULT '설정 안 함' CHECK (user_gender IN ('남자', '여자', '설정 안 함')),
     user_birth_date DATE,
     user_profile_image TEXT,
     user_motto VARCHAR(255),
     user_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE' CHECK (user_status IN ('ACTIVE', 'WITHDRAWN')),
+    user_profile_image VARCHAR(255),
+    user_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+    user_study_resolution VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL
@@ -52,14 +56,36 @@ CREATE TABLE IF NOT EXISTS categories (
 COMMENT ON COLUMN categories.category_no IS '카테고리 고유 번호';
 COMMENT ON COLUMN categories.category_name IS '카테고리 이름';
 
--- 3. 소셜 연동 정보
+-- 3. 소셜 연동 정보 (수정)
 CREATE TABLE IF NOT EXISTS user_auths (
-    social_no BIGSERIAL PRIMARY KEY,
+    auth_no BIGSERIAL PRIMARY KEY,
     user_uuid UUID NOT NULL,
+
+    provider VARCHAR(20) NOT NULL,
+    provider_user_id VARCHAR(255) NOT NULL,
+    provider_email VARCHAR(255),
+    provider_name VARCHAR(255),
+    provider_profile_image VARCHAR(255),
+
+    connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP,
     social_type VARCHAR(20) NOT NULL,
     social_id VARCHAR(255) NOT NULL UNIQUE,
     connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+    CONSTRAINT fk_user_auths_user_uuid --users 테이블 외래 키 설정
+        FOREIGN KEY (user_uuid)
+        REFERENCES users(user_uuid)
+        ON DELETE CASCADE,
+    -- provider + provider_user_id 복합 UNIQUE
+    CONSTRAINT uq_user_auths_provider_user_id
+        UNIQUE (provider, provider_user_id),
+    -- provider 소셜 검증
+    CONSTRAINT ck_user_auths_provider
+        CHECK (provider IN ('GOOGLE', 'KAKAO'))
+);
+CREATE INDEX IF NOT EXISTS idx_user_auths_user_uuid
+ON user_auths(user_uuid);
     CONSTRAINT fk_user_uuid FOREIGN KEY (user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE
 );
 COMMENT ON COLUMN user_auths.social_no IS '소셜 연동 식별 번호';
@@ -121,6 +147,10 @@ ON rooms (room_password)
 WHERE room_private = TRUE
     AND room_password IS NOT NULL;
 
+-- 6-2. 장치 설정 기본값 (방 생성 시 설정한 카메라/마이크 on/off)
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS camera_status BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS mic_status    BOOLEAN NOT NULL DEFAULT FALSE;
+
 -- 7. 룸 참여자 정보
 CREATE TABLE IF NOT EXISTS room_participants (
     part_no BIGSERIAL PRIMARY KEY,
@@ -133,6 +163,27 @@ CREATE TABLE IF NOT EXISTS room_participants (
     CONSTRAINT fk_participant_room FOREIGN KEY (room_no) REFERENCES rooms(room_no) ON DELETE CASCADE,
     CONSTRAINT uq_user_in_room UNIQUE (user_uuid, room_no)
 );
+-- 7-1. 방 상세 페이지 위한 보강 쿼리
+ALTER TABLE room_participants
+ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE room_participants
+ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE room_participants
+ADD COLUMN IF NOT EXISTS left_at TIMESTAMP;
+
+ALTER TABLE room_participants
+ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE room_participants
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+-- 7-2. 참여자 목록 조회, 현재 인원 재계산, active 여부 확인 -> 자주 사용(인덱스)
+CREATE INDEX IF NOT EXISTS idx_room_participants_room_active
+ON room_participants(room_no, active);
+
+CREATE INDEX IF NOT EXISTS idx_room_participants_user_active
+ON room_participants(user_uuid, active);
 COMMENT ON COLUMN room_participants.part_no IS '참여 식별 번호';
 COMMENT ON COLUMN room_participants.user_uuid IS '참여 회원 UUID';
 COMMENT ON COLUMN room_participants.room_no IS '참여 중인 방 번호';

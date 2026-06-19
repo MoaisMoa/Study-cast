@@ -3,10 +3,18 @@ import { useNavigate } from "react-router-dom";
 import type { MyStudyRoom } from "@/types/myStudy";
 import { useT } from "@/theme";
 import { Icon } from "@/components/ui/Icon";
-import { StatusBadge } from "@/components/study/StatusBadge";
-import { calcRoomStatus, fmtDateFull } from "@/utils/myStudyDate";
-import { verifyJoinCode } from "@/services/myStudyService";
+import { calcRoomStatus } from "@/utils/myStudyDate";
+import { joinRoom } from "@/services/visitedRoomService";
 import { openStudyRoom } from "@/utils/openStudyRoom";
+import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
+
+const CODE_RE = /^[0-9]{4,6}$/;
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
 
 export interface MyStudyDetailModalProps {
   room: MyStudyRoom | null;
@@ -16,41 +24,56 @@ export interface MyStudyDetailModalProps {
 export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   const T = useT();
   const navigate = useNavigate();
-  const [code, setCode] = useState("");
-  const [codeError, setCodeError] = useState("");
+  const [codeStep, setCodeStep] = useState(false);
+  const [codeVal, setCodeVal] = useState("");
+  const [codeError, setCodeError] = useState<null | "format" | "wrong">(null);
   const [verifying, setVerifying] = useState(false);
+  const [entering, setEntering] = useState(false);
+  const [entryBlocked, setEntryBlocked] = useState(false);
 
   if (!room) return null;
 
-  const runStatus = calcRoomStatus(room);
-  const isEnded = runStatus === "종료";
-  const needCode = room.visibility === "private";
+  const isEnded = calcRoomStatus(room) === "종료";
+  const isPrivate = room.visibility === "private";
+  const full = !isEnded && room.members >= room.maxMembers;
 
-  async function handleEnter() {
-    if (!room) return;
-    if (isEnded) return;
-    if (needCode) {
-      if (code.trim().length < 4) {
-        setCodeError("참여 코드 4자리를 입력해주세요.");
-        return;
-      }
-      setVerifying(true);
-      setCodeError("");
-      const ok = await verifyJoinCode(room.id, code);
-      setVerifying(false);
-      if (!ok) {
-        setCodeError("참여 코드가 일치하지 않습니다.");
-        return;
-      }
-    }
-    // 새 창으로 스터디룸 상세 페이지 열기
-    openStudyRoom(room.id);
+  const createdMs = room.periodStart ? new Date(room.periodStart).getTime() : null;
+  const expiredMs = room.periodEnd ? new Date(room.periodEnd).getTime() : null;
+  const totalDays = createdMs && expiredMs ? Math.ceil((expiredMs - createdMs) / 86_400_000) : null;
+
+  const handleClose = () => {
+    setCodeStep(false);
+    setCodeVal("");
+    setCodeError(null);
+    setEntryBlocked(false);
     onClose();
-  }
+  };
+
+  const handleEnterClick = async () => {
+    if (isPrivate) { setCodeStep(true); return; }
+    setEntering(true);
+    const allowed = await canEnterRoom();
+    setEntering(false);
+    if (!allowed) { setEntryBlocked(true); return; }
+    setPendingEntry(String(room.id));
+    openStudyRoom(room.id);
+    handleClose();
+  };
+
+  const handleCodeSubmit = async () => {
+    if (!CODE_RE.test(codeVal.trim())) { setCodeError("format"); return; }
+    setVerifying(true);
+    const allowed = await canEnterRoom();
+    if (!allowed) { setVerifying(false); setEntryBlocked(true); setCodeStep(false); return; }
+    const ok = await joinRoom(Number(room.id), codeVal.trim());
+    setVerifying(false);
+    if (ok) { setPendingEntry(String(room.id)); openStudyRoom(room.id); handleClose(); return; }
+    setCodeError("wrong");
+  };
 
   return (
     <div
-      onClick={onClose}
+      onClick={handleClose}
       style={{
         position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", zIndex: 9999,
         display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
@@ -70,7 +93,7 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
           <img src={room.img} alt={room.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(0,0,0,.45) 0%,transparent 50%)" }} />
           <button
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="닫기"
             style={{
               position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%",
@@ -80,17 +103,46 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
           >
             ✕
           </button>
-          <div style={{ position: "absolute", top: 12, left: 12 }}>
-            <StatusBadge status={runStatus} />
-          </div>
+          {room.isLive && (
+            <div style={{
+              position: "absolute", top: 12, left: 12,
+              display: "flex", alignItems: "center", gap: 5,
+              background: T.red, color: "#fff", fontSize: 12, fontWeight: 800,
+              padding: "4px 10px", borderRadius: 6,
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff", display: "inline-block", animation: "blink 1.2s ease-in-out infinite" }} />
+              LIVE
+            </div>
+          )}
         </div>
 
         <div style={{ padding: "22px 24px 28px" }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: T.text, marginBottom: 16, lineHeight: 1.3 }}>
-            {room.title}
+          <div style={{
+            fontSize: 22, fontWeight: 800, color: T.text,
+            marginBottom: 16, lineHeight: 1.3,
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
+            {room.title.replace(/ \(비공개\)$/, "")}
+            {isPrivate && <Icon name="lock" size={18} color={T.text3} strokeWidth={1.8} />}
           </div>
 
-          <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 13, color: T.text2, fontWeight: 500 }}>스터디 기간</span>
+              {totalDays != null && (
+                <span style={{ background: "#FFF3E0", color: "#E65100", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20 }}>
+                  총 {totalDays}일
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: T.text }}>
+              {formatDate(room.periodStart)} ~ {formatDate(room.periodEnd)}
+            </div>
+          </div>
+
+          <div style={{ height: 1, background: T.border, marginBottom: 14 }} />
+
+          <div style={{ display: "flex", gap: 12, marginBottom: 22, marginTop: 14 }}>
             <div style={{ flex: 1, background: T.bg, borderRadius: 10, padding: "10px 14px" }}>
               <div style={{ fontSize: 11, color: T.text3, marginBottom: 3 }}>카테고리</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{room.category}</div>
@@ -100,51 +152,81 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
               <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{room.members} / {room.maxMembers} 명</div>
             </div>
             <div style={{ flex: 1, background: T.bg, borderRadius: 10, padding: "10px 14px" }}>
-              <div style={{ fontSize: 11, color: T.text3, marginBottom: 3 }}>공개 여부</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{room.visibility === "public" ? "공개" : "비공개"}</div>
+              <div style={{ fontSize: 11, color: T.text3, marginBottom: 3 }}>평균 시간</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{room.avgStudyTime}</div>
             </div>
           </div>
 
-          <div style={{ fontSize: 13, color: T.text2, marginBottom: needCode && !isEnded ? 16 : 18, display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon name="calendar" size={14} color={T.text3} />
-            {fmtDateFull(room.periodStart)} ~ {fmtDateFull(room.periodEnd)}
-          </div>
-
-          {needCode && !isEnded && (
-            <div style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 12, color: T.text2, marginBottom: 6 }}>참여 코드 (비공개 방)</div>
+          {codeStep ? (
+            <>
+              <div style={{ fontSize: 13, color: T.text2, textAlign: "center", marginBottom: 12 }}>
+                비공개 스터디방입니다. 참여 코드가 필요합니다.
+              </div>
               <input
-                value={code}
-                onChange={(e) => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setCodeError(""); }}
-                placeholder="숫자 4~6자리"
-                inputMode="numeric"
+                type="text"
+                value={codeVal}
+                onChange={(e) => { setCodeVal(e.target.value.replace(/\D/g, "").slice(0, 6)); setCodeError(null); }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleCodeSubmit(); }}
+                placeholder="참여 코드 입력 (4~6자리 숫자)"
+                maxLength={6}
                 style={{
-                  width: "100%", height: 44, padding: "0 14px",
-                  border: `1px solid ${codeError ? T.red : T.border}`,
-                  borderRadius: 8, fontSize: 15, outline: "none",
-                  background: T.bg, color: T.text, letterSpacing: "0.2em", fontWeight: 700,
-                  boxSizing: "border-box", fontFamily: "'Noto Sans KR',sans-serif",
+                  width: "100%", padding: "12px 14px", borderRadius: 10,
+                  border: `1.5px solid ${codeError ? T.red : T.border}`,
+                  fontSize: 15, outline: "none", background: T.bg, color: T.text,
+                  marginBottom: 6, fontFamily: "'Noto Sans KR', sans-serif",
+                  boxSizing: "border-box", letterSpacing: "0.15em", fontWeight: 700,
                 }}
               />
-              {codeError && <div style={{ fontSize: 12, color: T.red, marginTop: 5 }}>{codeError}</div>}
-            </div>
+              {codeError === "format" && <div style={{ fontSize: 12, color: T.red, marginBottom: 10 }}>4~6자리 숫자를 입력해주세요.</div>}
+              {codeError === "wrong" && <div style={{ fontSize: 12, color: T.red, marginBottom: 10 }}>참여 코드가 올바르지 않습니다.</div>}
+              {!codeError && <div style={{ marginBottom: 10 }} />}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => { setCodeStep(false); setCodeVal(""); setCodeError(null); }}
+                  style={{ flex: 1, padding: "13px 0", borderRadius: 12, border: `1.5px solid ${T.border}`, background: "none", color: T.text2, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleCodeSubmit}
+                  disabled={verifying}
+                  style={{ flex: 1, padding: "13px 0", borderRadius: 12, border: "none", background: T.red, color: "#fff", fontSize: 15, fontWeight: 800, cursor: verifying ? "not-allowed" : "pointer", opacity: verifying ? 0.7 : 1 }}
+                >
+                  {verifying ? "확인 중..." : "입장하기"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, color: entryBlocked ? T.red : T.text3, textAlign: "center", marginBottom: 14 }}>
+                {entryBlocked
+                  ? "이미 입장 중인 방이 있습니다."
+                  : isEnded
+                    ? "운영이 종료된 스터디방입니다."
+                    : full
+                      ? "정원이 마감된 스터디방입니다."
+                      : isPrivate
+                        ? "비공개 스터디방입니다. 참여 코드가 필요합니다."
+                        : "설정한 내용으로 스터디에 참여하시겠어요?"}
+              </div>
+              <button
+                disabled={isEnded || full || entering}
+                onClick={handleEnterClick}
+                style={{
+                  width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
+                  background: isEnded || full ? "#9e9e9e" : T.red,
+                  color: "#fff", fontSize: 16, fontWeight: 800,
+                  cursor: isEnded || full || entering ? "not-allowed" : "pointer",
+                  transition: "opacity 0.15s", letterSpacing: ".02em",
+                  opacity: entering ? 0.7 : 1,
+                }}
+                onMouseEnter={(e) => { if (!isEnded && !full && !entering) e.currentTarget.style.opacity = ".85"; }}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = entering ? "0.7" : "1")}
+              >
+                {isEnded ? "종료된 스터디" : full ? "참여 마감" : entering ? "확인 중..." : isPrivate ? "코드 입력 후 입장" : "참여하기"}
+              </button>
+            </>
           )}
-
-          <button
-            disabled={isEnded || verifying}
-            onClick={handleEnter}
-            style={{
-              width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
-              background: isEnded ? "#9e9e9e" : T.red, color: "#fff",
-              fontSize: 16, fontWeight: 800,
-              cursor: isEnded || verifying ? "not-allowed" : "pointer",
-              opacity: verifying ? 0.7 : 1, transition: "opacity 0.15s", letterSpacing: ".02em",
-            }}
-            onMouseEnter={(e) => { if (!isEnded && !verifying) e.currentTarget.style.opacity = ".85"; }}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          >
-            {isEnded ? "종료된 스터디" : verifying ? "확인 중..." : "입장하기"}
-          </button>
 
           <button
             onClick={() => { onClose(); navigate("/rooms/new"); }}

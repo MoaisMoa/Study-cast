@@ -49,7 +49,7 @@ export function useStudyRoom(roomId: string): UseStudyRoomResult {
   useEffect(() => {
     mounted.current = true;
     setLoading(true);
-    fetchRoom(roomId).then((snap) => {
+    fetchRoom(roomId, "").then((snap) => {
       if (!mounted.current) return;
       setTitle(snap.title);
       setMaxMembers(snap.maxMembers);

@@ -16,6 +16,8 @@
         <result property="roomNotice" column="room_notice"/>
         <result property="roomPrivate" column="room_private"/>
         <result property="roomPremium" column="room_premium"/>
+        <result property="cameraStatus" column="camera_status"/>
+        <result property="micStatus" column="mic_status"/>
         <result property="roomThumbnail" column="room_thumbnail"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -37,6 +39,8 @@
             room_password,
             room_notice,
             room_private,
+            camera_status,
+            mic_status,
             room_thumbnail,
             expired_at
         ) VALUES (
@@ -48,6 +52,8 @@
             #{roomPassword},
             #{roomNotice},
             #{roomPrivate},
+            #{cameraStatus},
+            #{micStatus},
             #{roomThumbnail},
             #{expiredAt}
         )
@@ -82,6 +88,86 @@
             WHERE room_private = TRUE
             AND room_password = #{roomPassword}
         )
+    </select>
+
+    <!-- 추가) 방 상세페이지 -->
+    <!-- 스터디방 상세 페이지 헤더 조회 -->
+    <select id="findRoomDetailByRoomNo" resultType="RoomDetailResponse">
+        SELECT
+            r.room_no AS roomNo,
+            r.room_title AS roomTitle,
+            r.room_notice AS roomNotice,
+            r.room_thumbnail AS roomThumbnail,
+            r.category_no AS categoryNo,
+            c.category_name AS categoryName,
+            r.now_users AS currentUsers,
+            r.max_users AS maxUsers,
+            r.room_private AS roomPrivate,
+            <!-- 방장에게만 초대 코드 반환 -->
+            CASE
+                WHEN r.user_uuid = #{userUuid} THEN r.room_password
+                ELSE NULL
+            END AS roomPassword,
+            <!-- 로그인 사용자와 방 생성자가 같으면 owner = true -->
+            CASE
+                WHEN r.user_uuid = #{userUuid} THEN TRUE
+                ELSE FALSE
+            END AS owner,
+            <!-- 만료된 방인지 확인 -->
+            CASE
+                WHEN r.expired_at IS NOT NULL AND r.expired_at &lt; NOW() THEN TRUE
+                ELSE FALSE
+            END AS expired,
+            r.camera_status AS cameraStatus,
+            r.mic_status AS micStatus,
+            r.created_at AS createdAt,
+            r.expired_at AS expiredAt
+        FROM rooms r
+        LEFT JOIN categories c ON r.category_no = c.category_no
+        WHERE r.room_no = #{roomNo}
+    </select>
+
+    <!-- 스터디방 입장/권한 검증용 조회 -->
+    <select id="findRoomByRoomNo" resultMap="RoomsResultMap">
+        SELECT *
+        FROM rooms
+        WHERE room_no = #{roomNo}
+    </select>
+
+    <!-- 방 설정 업데이트 -->
+    <update id="updateRoom">
+        UPDATE rooms
+        SET
+            room_title     = #{req.roomTitle},
+            max_users      = #{req.maxUsers},
+            category_no    = #{req.categoryNo},
+            expired_at     = #{req.expiredAt},
+            camera_status  = #{req.cameraStatus},
+            mic_status     = #{req.micStatus},
+            room_notice    = #{req.roomNotice},
+            room_thumbnail = #{thumbnail},
+            updated_at     = NOW()
+        WHERE room_no = #{roomNo}
+    </update>
+
+    <!-- 현재 인원 재계산 -->
+    <update id="syncNowUsersByActiveParticipants">
+        UPDATE rooms
+        SET
+            now_users = (
+                SELECT COUNT(*)
+                FROM room_participants
+                WHERE room_no = #{roomNo}
+                  AND active = TRUE
+            ),
+            updated_at = NOW()
+        WHERE room_no = #{roomNo}
+    </update>
+    <!-- 현재 인원 조회 -->
+    <select id="findNowUsersByRoomNo" resultType="int">
+        SELECT now_users
+        FROM rooms
+        WHERE room_no = #{roomNo}
     </select>
 
     <!-- 방 공지사항 업데이트 -->

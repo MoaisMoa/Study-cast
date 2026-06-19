@@ -1,7 +1,8 @@
 CREATE TABLE IF NOT EXISTS users (
     user_uuid UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     user_email VARCHAR(255) NOT NULL UNIQUE,
-    user_password VARCHAR(255) NOT NULL,
+    -- 소셜 전용 가입자 비밀번호X / 일반 로그인 비밀번호O
+    user_password VARCHAR(255),
     user_name VARCHAR(255) NOT NULL,
     user_gender VARCHAR(50) NOT NULL DEFAULT '설정 안 함' CHECK (user_gender IN ('남자', '여자', '설정 안 함')),
     user_profile_image TEXT,

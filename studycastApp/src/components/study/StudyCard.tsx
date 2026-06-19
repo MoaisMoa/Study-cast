@@ -69,8 +69,8 @@ export function StudyCard({ room }: { room: Room }) {
             LIVE
           </div>
         )}
-        <div style={{ position: "absolute", top: 8, right: 8 }}>
-          {full ? (
+        {full && (
+          <div style={{ position: "absolute", top: 8, right: 8 }}>
             <div style={{
               background: "rgba(40,40,40,.85)",
               color: "#fff",
@@ -81,25 +81,38 @@ export function StudyCard({ room }: { room: Room }) {
             }}>
               마감
             </div>
-          ) : null}
-        </div>
+          </div>
+        )}
         <div style={{
           position: "absolute",
-          bottom: 6,
-          left: 8,
-          color: "#fff",
-          fontSize: 11,
-          fontWeight: 500,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: "14px 8px 6px",
           display: "flex",
-          alignItems: "center",
-          gap: 4,
+          alignItems: "flex-end",
+          justifyContent: "space-between",
         }}>
-          <Icon name="users" size={12} color="#fff" />
-          {room.members}/{room.max}명
-          {room.type === "PREMIUM" && (
-            <svg width={18} height={18} viewBox="0 0 24 24" fill="#FFD54F" style={{ display: "inline-block", verticalAlign: "middle", marginLeft: 4, flexShrink: 0 }}>
-              <path d="M5 16L3 5l5.5 5L12 2l3.5 8L21 5l-2 11H5zm0 2h14v2H5v-2z" />
-            </svg>
+          <div style={{
+            color: "#fff",
+            fontSize: 11,
+            fontWeight: 500,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}>
+            <Icon name="users" size={12} color="#fff" />
+            {room.members}/{room.max}명
+            {room.type === "PREMIUM" && (
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="#FFD54F" style={{ display: "inline-block", verticalAlign: "middle", marginLeft: 4, flexShrink: 0 }}>
+                <path d="M5 16L3 5l5.5 5L12 2l3.5 8L21 5l-2 11H5zm0 2h14v2H5v-2z" />
+              </svg>
+            )}
+          </div>
+          {room.isPrivate && (
+            <div style={{ color: "#fff", fontSize: 11, fontWeight: 500, display: "flex", alignItems: "center", gap: 3 }}>
+              <Icon name="lock" size={11} color="#fff" strokeWidth={1.8} />비공개
+            </div>
           )}
         </div>
       </div>
@@ -113,7 +126,7 @@ export function StudyCard({ room }: { room: Room }) {
           whiteSpace: "nowrap",
           marginBottom: 4,
         }}>
-          {room.title}
+          {room.title.replace(/ \(비공개\)$/, "")}
         </div>
         <div style={{ fontSize: 10, color: T.text3 }}>
           {room.cat} · 평균 {room.time}

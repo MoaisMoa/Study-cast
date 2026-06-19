@@ -36,4 +36,4 @@ export interface VisitedRoom {
 export type VisitedCatFilter = "전체" | RoomCategory;
 
 /** 운영 상태 필터 옵션 */
-export type VisitedStatusFilter = "전체 상태" | "입장 가능" | "정원 마감" | "운영 종료";
+export type VisitedStatusFilter = "전체" | "입장 가능" | "정원 마감" | "운영 종료";

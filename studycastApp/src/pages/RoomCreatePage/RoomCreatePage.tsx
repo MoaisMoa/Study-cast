@@ -11,6 +11,7 @@ import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Row } from "@/components/ui/Row";
 import { offsetDate, todayStr } from "@/utils/date";
 import { createRoom } from "@/services/roomService";
+import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
 import { ThumbnailUploader } from "./sections/ThumbnailUploader";
 import { VisibilitySelector } from "./sections/VisibilitySelector";
 import { JoinCodeField } from "./sections/JoinCodeField";
@@ -201,15 +202,19 @@ export default function RoomCreatePage() {
     setCreateError("");
   };
 
-  const enterCreatedRoom = () => {
-  if (createdRoomId != null) {
-    // 스터디방 상세는 새 창(탭)으로 — 생성 페이지는 그대로 유지
-    const url = `${window.location.origin}/rooms/${createdRoomId}`;
-    window.open(url, "_blank", "noopener,noreferrer");   // ← 새 탭으로 열기
-  } else {
-    navigate("/");
-  }
-};
+  const enterCreatedRoom = async () => {
+    if (createdRoomId != null) {
+      const allowed = await canEnterRoom();
+      if (!allowed) {
+        setCreateError("이미 입장 중인 방이 있습니다.");
+        return;
+      }
+      setPendingEntry(String(createdRoomId));
+      window.open(`${window.location.origin}/rooms/${createdRoomId}`, "_blank", "noopener,noreferrer");
+    } else {
+      navigate("/");
+    }
+  };
 
   // ── 스타일 ──────────────────────────────────────
   const page = {

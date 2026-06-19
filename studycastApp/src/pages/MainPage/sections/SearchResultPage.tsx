@@ -9,7 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 export function SearchResultPage() {
   const T = useT();
   const setModalRoom = useModal();
-  const { setPage } = usePage();
+  usePage();
   const { query } = useSearch();
 
   const ALL_ROOMS: Room[] = [
@@ -133,32 +133,21 @@ export function SearchResultPage() {
                         NEW
                       </div>
                     )}
-                    <div style={{ position: "absolute", top: 10, right: 10 }}>
-                      {full ? (
+                    {full && (
+                      <div style={{ position: "absolute", top: 10, right: 10 }}>
                         <span style={{
                           background: "#424242", color: "#fff",
                           fontSize: 11, fontWeight: 700,
                           padding: "4px 9px", borderRadius: 6,
                         }}>마감</span>
-                      ) : r.type === "PREMIUM" ? (
-                        <span style={{
-                          background: "#E65100", color: "#fff",
-                          fontSize: 11, fontWeight: 700,
-                          padding: "4px 9px", borderRadius: 6,
-                        }}>PREMIUM</span>
-                      ) : (
-                        <span style={{
-                          background: "#424242", color: "#fff",
-                          fontSize: 11, fontWeight: 700,
-                          padding: "4px 9px", borderRadius: 6,
-                        }}>FREE</span>
-                      )}
-                    </div>
+                      </div>
+                    )}
                     <div style={{
                       position: "absolute",
                       bottom: 0, left: 0, right: 0,
                       padding: "14px 10px 8px",
                       background: "linear-gradient(to top,rgba(0,0,0,.45) 0%,transparent 60%)",
+                      display: "flex", alignItems: "flex-end", justifyContent: "space-between",
                     }}>
                       <div style={{
                         color: "#fff", fontSize: 12, fontWeight: 500,
@@ -166,6 +155,11 @@ export function SearchResultPage() {
                       }}>
                         <Icon name="users" size={12} color="#fff" strokeWidth={1.8} />
                         {r.members}/{r.max}명
+                        {r.type === "PREMIUM" && (
+                          <svg width={18} height={18} viewBox="0 0 24 24" fill="#FFD54F" style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0 }}>
+                            <path d="M5 16L3 5l5.5 5L12 2l3.5 8L21 5l-2 11H5zm0 2h14v2H5v-2z" />
+                          </svg>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -1,47 +1,25 @@
-import { useState } from "react";
 import { useAT } from "@/theme";
 import { SocialButton } from "@/components/ui/SocialButton";
+import { API_BASE_URL } from "@/services/apiClient";
 
 export interface SocialButtonsProps {
   label?: string;
 }
 
-const KAKAO_CLIENT_ID = "YOUR_KAKAO_CLIENT_ID";
-const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID";
-
 /** 카카오 + 구글 OAuth 버튼 묶음 */
 export function SocialButtons({ label = "계속하기" }: SocialButtonsProps) {
   const T = useAT();
-  const [kakaoError, setKakaoError] = useState("");
-  const [googleError, setGoogleError] = useState("");
 
   function handleKakao() {
-    setKakaoError("");
-    try {
-      const redirect = encodeURIComponent(window.location.origin + "/oauth/kakao/callback");
-      window.location.href =
-        `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${redirect}&response_type=code`;
-    } catch {
-      setKakaoError("카카오 로그인 처리 중 오류가 발생했습니다.");
-    }
+    window.location.href = `${API_BASE_URL}/oauth2/authorization/kakao`;
   }
 
   function handleGoogle() {
-    setGoogleError("");
-    try {
-      const redirect = encodeURIComponent(window.location.origin + "/oauth/google/callback");
-      window.location.href =
-        `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirect}&response_type=code&scope=openid%20email%20profile`;
-    } catch {
-      setGoogleError("구글 로그인 처리 중 오류가 발생했습니다.");
-    }
+    window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {kakaoError && (
-        <div style={{ fontSize: 11, color: T.red, textAlign: "center" }}>{kakaoError}</div>
-      )}
       <SocialButton variant="kakao" onClick={handleKakao}>
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
           <path
@@ -53,9 +31,6 @@ export function SocialButtons({ label = "계속하기" }: SocialButtonsProps) {
         </svg>
         카카오로 {label}
       </SocialButton>
-      {googleError && (
-        <div style={{ fontSize: 11, color: T.red, textAlign: "center" }}>{googleError}</div>
-      )}
       <SocialButton variant="google" onClick={handleGoogle}>
         <svg width="18" height="18" viewBox="0 0 18 18">
           <path d="M16.51 8H9.09v2.87h4.2c-.19 1-.76 1.85-1.62 2.41v2h2.61c1.53-1.41 2.41-3.49 2.41-5.94 0-.4-.04-.79-.18-1.34z" fill="#4285F4" />

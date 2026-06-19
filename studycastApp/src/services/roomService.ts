@@ -1,60 +1,80 @@
 /**
  * 스터디룸 관련 서비스
+ * 1. 백엔드 API 호출
+ * 2. 요청 파라미터 전달
+ * 3. 응답 데이터 반환
+ * 4. multipart/form-data 구성
+ * 5. 화면에서 직접 apiClient를 몰라도 되게 감싸는 계층
  */
 
-import type { CreateRoomPayload, CreateRoomResponse, JoinCodeCheckResponse, Room, MyRoom } from "@/types";
-import { MY_ROOMS_RAW, REC_ROOMS, ROOM_POOL } from "@/data/rooms";
-import { getUserInterestCats } from "@/data/interestStore";
-import { apiClient, mockRequest } from "./apiClient";
+import { CreateRoomPayload, CreateRoomResponse, JoinCodeCheckResponse, MainRoomPageResponse, MainRoomResponse, MainRoomSearchParams, MainSummaryResponse, Room, MyRoom } from "@/types";
+import { apiClient } from "./apiClient";
+import { getDefaultRoomImage } from "@/utils/roomImage";
 
-/** 라이브 스터디 풀 (Browse 그리드용 — 동일 데이터를 4배로 늘려 페이지네이션 테스트) */
-export async function listRooms(): Promise<Room[]> {
-  const pool: Room[] = [
-    ...ROOM_POOL,
-    ...ROOM_POOL.map((r) => ({ ...r, id: r.id + 100 })),
-    ...ROOM_POOL.map((r) => ({ ...r, id: r.id + 200 })),
-    ...ROOM_POOL.map((r) => ({ ...r, id: r.id + 300 })),
-  ];
-  return mockRequest(pool, { latency: 200 });
+/** 공개 스터디 목록 API 응답 원본 조회 */
+export async function listRooms(
+  params?: MainRoomSearchParams
+): Promise<MainRoomPageResponse> {
+  const response = await apiClient.get<MainRoomPageResponse>(
+    "/api/main/rooms",
+    { params }
+  );
+  return response.data;
 }
 
-/** 추천 스터디 — 관심 카테고리 + 마감 제외 + 최근 활동순 */
-export async function listRecommended(): Promise<Room[]> {
-  let list: Room[] = [...ROOM_POOL, ...REC_ROOMS];
-  // id 기준 중복 제거
-  const seen = new Set<number>();
-  list = list.filter((r) => {
-    if (seen.has(r.id)) return false;
-    seen.add(r.id);
-    return true;
-  });
-  // 마감 제외
-  list = list.filter((r) => r.members < r.max);
-  // 관심 카테고리 적용 (프로필에서 선택한 값 — 비어 있으면 전체)
-  const interestCats = getUserInterestCats();
-  if (interestCats.length > 0) {
-    list = list.filter((r) => interestCats.includes(r.cat));
-  }
-  // 정렬: live > recent > else → 동순위 제목 오름차순
-  list.sort((a, b) => {
-    const score = (r: Room) => (r.live ? 2 : r.recent ? 1 : 0);
-    if (score(b) !== score(a)) return score(b) - score(a);
-    return a.title.localeCompare(b.title, "ko");
-  });
-  return mockRequest(list.slice(0, 10), { latency: 250 });
+/** 추천 스터디
+ *  - 로그인: 관심 카테고리 + 마감 제외 + 최근 활동순 10개
+ *  - 비로그인(guest): 관심사 무시 + 마감 제외 + 최근 활동순 10개 (전체 대상)
+ */
+export async function listRecommended(opts?: { guest?: boolean }): Promise<Room[]> {
+  const guest = opts?.guest ?? false;
+  
+  const url = guest
+    ? "/api/main/guest-recommendations"
+    : "/api/main/recommendations";
+
+  const response = await apiClient.get<MainRoomResponse[]>(url);
+
+  return response.data.map(toRoom);
 }
 
 /** 내 스터디 (최대 3개, 생성방 1순위 → 최근 접속순) */
 export async function listMyRooms(): Promise<MyRoom[]> {
-  const sorted = [...MY_ROOMS_RAW]
-    .sort((a, b) => {
-      if (a.createdAt && !b.createdAt) return -1;
-      if (!a.createdAt && b.createdAt) return 1;
-      return (a.visitedAt || 99) - (b.visitedAt || 99);
-    })
-    .slice(0, 3);
-  return mockRequest(sorted, { latency: 150 });
+  const response = await apiClient.get<MainRoomResponse[]> (
+    "/api/main/my-studies"
+  );
+
+  return response.data.map(toMyRoom);
 }
+
+/** 개인 학습 요약 조회 */
+export async function getMainSummary(): Promise<MainSummaryResponse> {
+  const response = await apiClient.get<MainSummaryResponse>(
+    "/api/main/summary"
+  );
+
+  return response.data;
+}
+
+/**
+ * 공개 스터디 목록 조회 후 화면용 Room 타입으로 변환
+ */
+export async function listRoomCards(
+  params?: MainRoomSearchParams
+): Promise<{ rooms: Room[]; page: number; size: number; last: boolean }> {
+  const response = await apiClient.get<MainRoomPageResponse>(
+    "/api/main/rooms",
+    { params }
+  );
+
+  return {
+    rooms: response.data.rooms.map(toRoom),
+    page: response.data.page,
+    size: response.data.size,
+    last: response.data.last,
+  };
+}
+
 /**
  * 스터디방 생성
  * 방 생성 정보와 썸네일 이미지를 multipart/form-data로 함께 전송한다.
@@ -117,28 +137,72 @@ export async function createRoom(
   return response.data;
 }
 
-export async function updateRoomNotice(
-  roomId: number,
-  notice: string | null
-): Promise<{ ok: boolean; notice?: string | null }> {
-  try {
-    await apiClient.put(
-      `/api/rooms/${roomId}/notice`,
-      { notice }
-    );
-    return { ok: true, notice };
-  } catch (error) {
-    console.error("공지사항 업데이트 실패:", error);
-    return { ok: false };
-  }
+/**
+ * 초 단위 공부 시간을 화면 표시용 문자열로 변환
+ */
+function formatStudyTime(seconds: number | null): string {
+  if (seconds == null) return "-";
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h`;
+  return `${minutes}m`;
 }
 
-export async function deleteRoomNotice(roomId: number): Promise<{ ok: boolean }> {
-  try {
-    await apiClient.delete(`/api/rooms/${roomId}/notice`);
-    return { ok: true };
-  } catch (error) {
-    console.error("공지사항 삭제 실패 : ", error);
-    return { ok: false };
-  }
+/**
+ * 메인페이지 API 응답을 기존 화면용 Room 타입으로 변환
+ * - Browse / MobileBrowse의 기존 카드 UI를 그대로 사용하기 위한 변환 함수
+ */
+function toRoom(response: MainRoomResponse): Room {
+  const createdAt = response.createdAt ? new Date(response.createdAt).getTime() : null;
+  const createdDaysAgo =
+    createdAt == null
+      ? undefined
+      : Math.floor((Date.now() - createdAt) / (1000 * 60 * 60 * 24));
+
+  return {
+    id: response.roomNo,
+    title: response.roomTitle,
+    cat: response.categoryName,
+    time: formatStudyTime(response.averageStudySeconds),
+    members: response.currentUsers,
+    max: response.maxUsers,
+    img: response.roomThumbnail || getDefaultRoomImage(response.roomNo),
+    live: response.live,
+    type: response.premium ? "PREMIUM" : "FREE",
+    recent: response.newRoom,
+    createdDaysAgo,
+    overCapacity: response.currentUsers > response.maxUsers,
+    isPrivate: response.roomPrivate,
+    createdAt: response.createdAt ?? null,
+    expiredAt: response.expiredAt ?? null,
+  };
+}
+
+/**
+ * 메인페이지 API 응답을 기존 화면용 MyRoom 타입으로 변환
+ * - Dashboard / MobileDashboard 의 기존 카드 UI를 그대로 사용하기 위한 변환 함수
+ */
+function toMyRoom(response: MainRoomResponse): MyRoom {
+  return {
+    id: response.roomNo,
+    title: response.roomTitle,
+    cat: response.categoryName,
+    type: response.premium ? "PREMIUM" : "FREE",
+    members: response.currentUsers,
+    max: response.maxUsers,
+    img: response.roomThumbnail || getDefaultRoomImage(response.roomNo),
+    live: response.live,
+    isPrivate: response.roomPrivate,
+    time: formatStudyTime(response.averageStudySeconds),
+    createdAt: response.createdAt
+      ? new Date(response.createdAt).getTime()
+      : null,
+    expiredAt: response.expiredAt ?? null,
+    visitedAt: response.lastVisitedAt
+      ? new Date(response.lastVisitedAt).getTime()
+      : null,
+  };
 }

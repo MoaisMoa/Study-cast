@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { RoomMember } from "@/types/studyRoom";
 import { useT } from "@/theme";
 import { fmtT, secToHM } from "@/data/studyRoom";
-import { Av, XIc, PlusIc, MailIc, MicOn, MicOff, CamOn, CamOff, CheckIc, BanIc } from "../components/RoomIcons";
+import { Av, XIc, PlusIc, MailIc, MicOn, MicOff, CamOn, CamOff, CheckIc } from "../components/RoomIcons";
 
 export interface MemberModalProps {
   members: RoomMember[];
@@ -13,6 +13,8 @@ export interface MemberModalProps {
   /** 멤버별 경과 시간 가산(초) — 참석 시간 누적 */
   joinElapsed?: number;
   isHost: boolean;
+  isPrivate?: boolean;
+  joinCode?: string;
   onClose: () => void;
   onKickRequest: (m: RoomMember) => void;
 }
@@ -20,13 +22,12 @@ export interface MemberModalProps {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function MemberModal({
-  members, elapsed, mic = true, cam = true, joinElapsed = 0, isHost, onClose, onKickRequest,
+  members, elapsed, mic = true, cam = true, joinElapsed = 0, isHost, isPrivate = false, joinCode, onClose, onKickRequest,
 }: MemberModalProps) {
   const T = useT();
   const [showInvite, setShowInvite] = useState(false);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
-  const [inviteCode] = useState(() => String(Math.floor(1000 + Math.random() * 900000)).slice(0, 6));
 
   // HOST 최상단, 나머지 이름 오름차순
   const sortedMembers: RoomMember[] = [
@@ -76,7 +77,7 @@ export function MemberModal({
             return (
               <div key={m.id} style={{ display: "grid", gridTemplateColumns: colTpl, alignItems: "center", padding: "14px 22px", borderBottom: i < sortedMembers.length - 1 ? `1px solid ${T.border}` : "none" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                  <div style={{ flexShrink: 0 }}><Av name={m.short} color={m.color} size={40} /></div>
+                  <div style={{ flexShrink: 0 }}><Av name={m.short} color={m.color} size={40} profileImage={m.profileImage} /></div>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{m.name}</span>
@@ -149,10 +150,12 @@ export function MemberModal({
                       {typeof window !== "undefined" ? window.location.href : "/rooms"}
                     </div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: T.text3, marginBottom: 4 }}>초대 코드 <span style={{ color: T.text3, fontWeight: 400 }}>(숫자 {inviteCode.length}자리)</span></div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: T.red, letterSpacing: "0.3em", fontFamily: "'JetBrains Mono',monospace", background: T.bg, borderRadius: 6, padding: "8px 10px", border: `1px solid ${T.border}`, textAlign: "center" }}>{inviteCode}</div>
-                  </div>
+                  {isPrivate && joinCode && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: T.text3, marginBottom: 4 }}>초대 코드 <span style={{ color: T.text3, fontWeight: 400 }}>(숫자 {joinCode.length}자리)</span></div>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: T.red, letterSpacing: "0.3em", fontFamily: "'JetBrains Mono',monospace", background: T.bg, borderRadius: 6, padding: "8px 10px", border: `1px solid ${T.border}`, textAlign: "center" }}>{joinCode}</div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

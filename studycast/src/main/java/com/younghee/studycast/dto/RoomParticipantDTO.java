@@ -1,5 +1,6 @@
 package com.younghee.studycast.dto;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -14,9 +15,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RoomParticipantDTO {
-    private Long partNo;            // 참여 이력 식별자
-    private UUID userUuid;          // 회원 고유 번호
-    private Long roomNo;            // 방 고유 번호
-    private boolean cameraStatus;   // 카메라 상태
-    private boolean micStatus;      // 마이크 상태
+
+    private Long partNo;
+    private UUID userUuid;
+    private Long roomNo;
+
+    private Boolean cameraStatus;
+    private Boolean micStatus;
+
+    // 방 상세페이지 추가
+    private Boolean active;             // 현재 참여 중인지 확인
+    private LocalDateTime joinedAt;     // 입장 시간 저장, 공부시간 계산
+    private LocalDateTime leftAt;       // 퇴장 시간 저장
+    private LocalDateTime createdAt;    // 최초 참여 이력
+    private LocalDateTime updatedAt;    // 재입장/퇴장 갱신 시간
 }

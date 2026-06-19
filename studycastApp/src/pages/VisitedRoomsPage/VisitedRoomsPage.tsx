@@ -11,13 +11,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
 import { MobileTabBar } from "@/pages/MainPage/sections/MobileTabBar";
-import { fetchVisitedRooms } from "@/services/visitedRoomService";
+import {
+  fetchRecentVisitedRooms,
+  fetchFrequentVisitedRooms,
+} from "@/services/visitedRoomService";
 import { FilterRow } from "./sections/FilterRow";
 import { VisitedRoomCard } from "./sections/VisitedRoomCard";
 import { EntryModal } from "./sections/EntryModal";
 import { EmptyState } from "./sections/EmptyState";
 
 type LoadState = "loading" | "loaded" | "error";
+
+const PAGE = 10;
 
 /** 방문한 방 — 반응형 기준 MyStudyPage와 동일 (480 헤더 전환 + 그리드 600/768/1000/1100) */
 export default function VisitedRoomsPage() {
@@ -27,30 +32,46 @@ export default function VisitedRoomsPage() {
 
   const [tab, setTab] = useState<VisitedTab>("recent");
   const [catFilter, setCatFilter] = useState<RoomCategory[]>([]);
-  const [statusFilter, setStatusFilter] = useState<VisitedStatusFilter>("전체 상태");
+  const [statusFilter, setStatusFilter] = useState<VisitedStatusFilter>("전체");
 
   const [recentRooms, setRecentRooms] = useState<VisitedRoom[]>([]);
+  const [recentPage, setRecentPage] = useState(0);
+  const [recentLast, setRecentLast] = useState(false);
+
   const [frequentRooms, setFrequentRooms] = useState<VisitedRoom[]>([]);
+  const [frequentPage, setFrequentPage] = useState(0);
+  const [frequentLast, setFrequentLast] = useState(false);
+
   const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [modalRoom, setModalRoom] = useState<VisitedRoom | null>(null);
 
   useEffect(() => {
+    if (!isLoggedIn) return;
     setLoadState("loading");
-    fetchVisitedRooms()
-      .then(({ recentRooms, frequentRooms }) => {
-        setRecentRooms(recentRooms);
-        setFrequentRooms(frequentRooms);
+    Promise.all([
+      fetchRecentVisitedRooms(0, PAGE),
+      fetchFrequentVisitedRooms(0, PAGE),
+    ])
+      .then(([recent, frequent]) => {
+        setRecentRooms(recent.rooms);
+        setRecentPage(recent.page);
+        setRecentLast(recent.last);
+        setFrequentRooms(frequent.rooms);
+        setFrequentPage(frequent.page);
+        setFrequentLast(frequent.last);
         setLoadState("loaded");
       })
       .catch(() => setLoadState("error"));
-  }, []);
+  }, [isLoggedIn]);
 
   const hasAnyData = recentRooms.length > 0 || frequentRooms.length > 0;
 
   const applyFilters = (list: VisitedRoom[]): VisitedRoom[] => {
     let result = [...list];
-    if (catFilter.length > 0) result = result.filter((r) => catFilter.includes(r.cat as RoomCategory));
-    if (statusFilter !== "전체 상태") {
+    if (catFilter.length > 0)
+      result = result.filter((r) => catFilter.includes(r.cat as RoomCategory));
+    if (statusFilter !== "전체") {
       const map: Record<string, (r: VisitedRoom) => boolean> = {
         "입장 가능": (r) => r.status === "open",
         "정원 마감": (r) => r.status === "full",
@@ -67,6 +88,30 @@ export default function VisitedRoomsPage() {
     return applyFilters(base);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, recentRooms, frequentRooms, catFilter, statusFilter]);
+
+  const hasMore = tab === "recent" ? !recentLast : !frequentLast;
+
+  const loadMore = async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      if (tab === "recent") {
+        const result = await fetchRecentVisitedRooms(recentPage + 1, PAGE);
+        setRecentRooms((prev) => [...prev, ...result.rooms]);
+        setRecentPage(result.page);
+        setRecentLast(result.last);
+      } else {
+        const result = await fetchFrequentVisitedRooms(frequentPage + 1, PAGE);
+        setFrequentRooms((prev) => [...prev, ...result.rooms]);
+        setFrequentPage(result.page);
+        setFrequentLast(result.last);
+      }
+    } catch {
+      // 기존 데이터 유지
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   const gridCss = `
     .visited-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px 16px;margin-bottom:28px;}
@@ -138,7 +183,7 @@ export default function VisitedRoomsPage() {
 
             <FilterRow
               tab={tab}
-              onTabChange={(t) => { setTab(t); setCatFilter([]); setStatusFilter("전체 상태"); }}
+              onTabChange={(t) => { setTab(t); setCatFilter([]); setStatusFilter("전체"); }}
               catFilter={catFilter}
               setCatFilter={setCatFilter}
               statusFilter={statusFilter}
@@ -148,11 +193,49 @@ export default function VisitedRoomsPage() {
             {displayRooms.length === 0 ? (
               <EmptyState tab={tab} />
             ) : (
-              <div className="visited-grid">
-                {displayRooms.map((r) => (
-                  <VisitedRoomCard key={r.id} room={r} tab={tab} onCardClick={setModalRoom} />
-                ))}
-              </div>
+              <>
+                <div className="visited-grid">
+                  {displayRooms.map((r) => (
+                    <VisitedRoomCard key={r.id} room={r} tab={tab} onCardClick={setModalRoom} />
+                  ))}
+                </div>
+
+                <div style={{ textAlign: "center" }}>
+                  <button
+                    onClick={loadMore}
+                    disabled={!hasMore || isLoadingMore}
+                    style={{
+                      padding: "10px 40px",
+                      borderRadius: 6,
+                      border: `1.5px solid ${hasMore && !isLoadingMore ? T.border : T.borderStrong}`,
+                      background: T.surface,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: hasMore && !isLoadingMore ? T.text2 : T.text3,
+                      transition: "all 0.15s",
+                      cursor: hasMore && !isLoadingMore ? "pointer" : "not-allowed",
+                      opacity: hasMore && !isLoadingMore ? 1 : 0.55,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (hasMore && !isLoadingMore) {
+                        e.currentTarget.style.borderColor = T.red;
+                        e.currentTarget.style.color = T.red;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (hasMore && !isLoadingMore) {
+                        e.currentTarget.style.borderColor = T.border;
+                        e.currentTarget.style.color = T.text2;
+                      }
+                    }}
+                  >
+                    {isLoadingMore ? "불러오는 중..." : "더 많은 스터디 보기"}
+                  </button>
+                  {!hasMore && (
+                    <div style={{ marginTop: 10, fontSize: 12, color: T.text3 }}>모든 항목을 불러왔습니다.</div>
+                  )}
+                </div>
+              </>
             )}
           </>
         )}
