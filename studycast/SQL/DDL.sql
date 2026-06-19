@@ -18,6 +18,15 @@ CASCADE;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+CREATE TABLE refresh_tokens (
+    token_id SERIAL PRIMARY KEY,
+    user_uuid UUID NOT NULL,
+    token_hash VARCHAR(255) NOT NULL,
+    expiry_date TIMESTAMP NOT NULL,
+    revoked BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 1. 회원 정보 테이블
 CREATE TABLE IF NOT EXISTS users (
     user_uuid UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -26,6 +35,9 @@ CREATE TABLE IF NOT EXISTS users (
     user_password VARCHAR(255),
     user_name VARCHAR(255) NOT NULL,
     user_profile_image VARCHAR(255),
+    user_gender VARCHAR(20),
+    user_birth_date DATE,
+    user_bio VARCHAR(20),
     user_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
     user_study_resolution VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -33,7 +45,7 @@ CREATE TABLE IF NOT EXISTS users (
     deleted_at TIMESTAMP
 );
 
--- 2. 카테고리 (다른 테이블들이 참조하므로 먼저 생성)
+-- 2. 카테고리
 CREATE TABLE IF NOT EXISTS categories (
     category_no INT NOT NULL PRIMARY KEY,
     category_name VARCHAR(50) NOT NULL UNIQUE
@@ -84,7 +96,7 @@ CREATE TABLE IF NOT EXISTS user_interests (
     category_no INT NOT NULL, -- 타입 일치
 
     CONSTRAINT fk_user_interest FOREIGN KEY(user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE,
-    CONSTRAINT fk_category_no FOREIGN KEY(category_no) REFERENCES categories(category_no) ON DELETE CASCADE -- 참조 컬럼 수정
+    CONSTRAINT fk_category_no FOREIGN KEY(category_no) REFERENCES categories(category_no) ON DELETE CASCADE
 );
 
 -- 6. 스터디룸
@@ -200,7 +212,6 @@ CREATE TABLE IF NOT EXISTS ddays (
     CONSTRAINT fk_ddays_user FOREIGN KEY(user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE
 );
 
--- COMMENT 설정 (생략된 부분 보완)
 COMMENT ON COLUMN users.user_uuid IS '회원 식별 번호';
 COMMENT ON COLUMN roles.role_code IS '권한 식별 번호';
 COMMENT ON COLUMN categories.category_no IS '카테고리 고유 번호';

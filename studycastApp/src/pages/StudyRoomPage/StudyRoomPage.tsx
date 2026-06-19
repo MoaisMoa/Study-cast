@@ -6,7 +6,7 @@ import { useT, useThemeCtx } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { fmtT, nowDate, nowT } from "@/data/studyRoom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchRoom, leaveRoom, getTodayStudySeconds, subscribeMembers, MEMBER_COLORS, type MemberEvent } from "@/services/studyRoomService";
+import { fetchRoom, leaveRoom, getTodayStudySeconds, subscribeMembers, MEMBER_COLORS, saveNotice, kickMember as svcKickMember, type MemberEvent } from "@/services/studyRoomService";
 import { API_BASE_URL } from "@/services/apiClient";
 import { registerSession, unregisterSession } from "@/utils/roomSession";
 import { useLiveKit } from "@/hooks/useLiveKit";
@@ -181,6 +181,26 @@ export default function StudyRoomPage() {
             { id: Date.now(), type: "system", text: `${leaving.name}님이 퇴장했습니다.`, time: nowT() },
           ]);
         }
+      } else if (event.type === "KICKED") {
+        if (event.userUuid === myUuidRef.current) {
+          // 자신이 추방됨 → 퇴장 처리 없이 창 닫기
+          window.close();
+          return;
+        }
+        const kicked = membersRef.current.find((m) => m.userUuid === event.userUuid);
+        setMembers((prev) => {
+          const next = prev.filter((m) => m.userUuid !== event.userUuid);
+          membersRef.current = next;
+          return next;
+        });
+        if (kicked) {
+          setMsgs((prev) => [
+            ...prev,
+            { id: Date.now(), type: "system", text: `${kicked.name}님이 추방되었습니다.`, time: nowT() },
+          ]);
+        }
+      } else if (event.type === "NOTICE") {
+        setNoticeMsg(event.notice ?? null);
       }
     });
     return unsub;
@@ -218,13 +238,17 @@ export default function StudyRoomPage() {
     setIsSending(false);
   };
 
-  const doKick = () => {
-    if (!kickTarget) return;
-    setMembers((m) => m.filter((x) => x.id !== kickTarget.id));
-    setKickedMsg(kickTarget.name);
-    setTimeout(() => setKickedMsg(null), 3000);
-    setMsgs((m) => [...m, { id: Date.now(), type: "system", text: `${kickTarget.name} 님이 퇴장했습니다.`, time: nowT() }]);
+  const doKick = async () => {
+    if (!kickTarget || !roomId) return;
     setKickTarget(null);
+    try {
+      await svcKickMember(roomId, kickTarget.userUuid);
+      // 추방 배너 표시 (멤버 목록 갱신은 KICKED WebSocket 이벤트가 처리)
+      setKickedMsg(kickTarget.name);
+      setTimeout(() => setKickedMsg(null), 3000);
+    } catch {
+      // 추방 실패 시 무시
+    }
   };
 
   const doExit = async () => {
@@ -276,7 +300,7 @@ export default function StudyRoomPage() {
       {modal === "cal" && <LearningPlannerModal open onClose={() => setModal(null)} />}
       {modal === "members" && <MemberModal members={members} elapsed={{ ...elapsed, 1: totalSec }} mic={mic} cam={cam} joinElapsed={timerSec} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
       {modal === "settings" && <SettingModal onClose={() => setModal(null)} isHost={isHost} roomTitle={roomTitle} setRoomTitle={setRoomTitle} settingCamOn={settingCamOn} setSettingCamOn={setSettingCamOn} settingMicOn={settingMicOn} setSettingMicOn={setSettingMicOn} maxMembers={maxMembers} setMaxMembers={setMaxMembers} roomThumbnail={roomThumbnail} setRoomThumbnail={setRoomThumbnail} roomId={roomId} categoryNo={categoryNo} setCategoryNo={setCategoryNo} expiredAt={expiredAt} setExpiredAt={setExpiredAt} roomNotice={noticeMsg} />}
-      {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={setNoticeMsg} noticeMsg={noticeMsg} isHost={isHost} />}
+      {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={async (msg) => { try { const r = await saveNotice(roomId!, msg); setNoticeMsg(r.notice); } catch { setNoticeMsg(msg); } }} noticeMsg={noticeMsg} isHost={isHost} />}
       {kickTarget && <KickConfirm member={kickTarget} onConfirm={doKick} onCancel={() => setKickTarget(null)} />}
       {showExitConfirm && <ExitConfirm onConfirm={doExit} onCancel={() => setShowExitConfirm(false)} />}
     </>

@@ -169,4 +169,12 @@
         FROM rooms
         WHERE room_no = #{roomNo}
     </select>
+
+    <!-- 공지사항만 업데이트 -->
+    <update id="updateRoomNotice">
+        UPDATE rooms
+        SET room_notice = #{notice},
+            updated_at  = NOW()
+        WHERE room_no = #{roomNo}
+    </update>
 </mapper>

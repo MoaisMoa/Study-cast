@@ -36,4 +36,8 @@ public interface RoomService {
     void leaveRoom(Long roomNo, UUID userUuid, int studiedSeconds);
     // 스터디방 설정 업데이트 (방장 전용)
     RoomUpdateResponse updateRoomSettings(Long roomNo, UUID userUuid, RoomUpdateRequest request, MultipartFile image);
+    // 공지사항 저장/삭제 (방장 전용)
+    String saveNotice(Long roomNo, UUID userUuid, String notice);
+    // 멤버 추방 (방장 전용)
+    void kickMember(Long roomNo, UUID hostUuid, UUID targetUuid);
 }

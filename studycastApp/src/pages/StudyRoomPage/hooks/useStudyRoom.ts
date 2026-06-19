@@ -23,7 +23,7 @@ export interface UseStudyRoomResult {
   /** 채팅 전송 (서비스 경유 → 낙관적 추가) */
   sendMessage: (text: string) => Promise<void>;
   /** 멤버 추방 */
-  kickMember: (memberId: number) => Promise<void>;
+  kickMember: (targetUuid: string) => Promise<void>;
   /** 공지 저장/삭제 */
   saveNotice: (msg: string | null) => Promise<void>;
   /** 방 설정 변경 */
@@ -77,9 +77,9 @@ export function useStudyRoom(roomId: string): UseStudyRoomResult {
     await svcSendMessage(roomId, text, myUuidRef.current);
   }, [roomId]);
 
-  const kickMember = useCallback(async (memberId: number) => {
-    await svcKickMember(roomId, memberId);
-    setMembers((prev) => prev.filter((m) => m.id !== memberId));
+  const kickMember = useCallback(async (targetUuid: string) => {
+    await svcKickMember(roomId, targetUuid);
+    setMembers((prev) => prev.filter((m) => m.userUuid !== targetUuid));
   }, [roomId]);
 
   const saveNotice = useCallback(async (msg: string | null) => {

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.younghee.dao.UserInterestsMapper">
+
+    <select id="selectCategoryNosByUserUuid" parameterType="java.util.UUID" resultType="int">
+        SELECT category_no
+        FROM user_interests
+        WHERE user_uuid = #{userUuid}::uuid
+        ORDER BY interest_no ASC
+    </select>
+
+    <delete id="deleteInterestsByUserUuid" parameterType="java.util.UUID">
+        DELETE FROM user_interests
+        WHERE user_uuid = #{userUuid}::uuid
+    </delete>
+
+    <insert id="insertUserInterest" parameterType="map">
+        INSERT INTO user_interests (user_uuid, category_no)
+        VALUES (#{userUuid}::uuid, #{categoryNo})
+    </insert>
+
+</mapper>

@@ -135,13 +135,15 @@ export async function updateRoom(
 }
 
 /** 멤버 추방 */
-export async function kickMember(_roomId: string, _memberId: number): Promise<{ ok: boolean }> {
+export async function kickMember(roomId: string, targetUuid: string): Promise<{ ok: boolean }> {
+  await apiClient.delete(`/api/rooms/${roomId}/participants/${targetUuid}`);
   return { ok: true };
 }
 
 /** 공지 등록/수정/삭제 */
-export async function saveNotice(_roomId: string, notice: string | null): Promise<{ ok: boolean; notice: string | null }> {
-  return { ok: true, notice };
+export async function saveNotice(roomId: string, notice: string | null): Promise<{ ok: boolean; notice: string | null }> {
+  const res = await apiClient.patch<{ notice: string | null }>(`/api/rooms/${roomId}/notice`, { notice });
+  return { ok: true, notice: res.data.notice };
 }
 
 // ── STOMP / WebSocket ──────────────────────────────────────────────────────
@@ -182,13 +184,14 @@ function formatSentAt(sentAt: string): string {
 }
 
 export interface MemberEvent {
-  type: "JOINED" | "LEFT";
-  userUuid: string;
+  type: "JOINED" | "LEFT" | "KICKED" | "NOTICE";
+  userUuid?: string;
   userName?: string;
   profileImage?: string | null;
   owner?: boolean;
   cameraStatus?: boolean;
   micStatus?: boolean;
+  notice?: string | null;
 }
 
 /** 채팅 메시지 전송 (WebSocket) */
