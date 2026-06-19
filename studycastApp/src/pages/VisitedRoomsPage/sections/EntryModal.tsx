@@ -1,8 +1,10 @@
 import { useState } from "react";
 import type { VisitedRoom } from "@/types/visitedRoom";
 import { useT } from "@/theme";
-import { verifyEntryCode } from "@/services/visitedRoomService";
+import { joinRoom } from "@/services/visitedRoomService";
 import { openStudyRoom } from "@/utils/openStudyRoom";
+import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
+import { Icon } from "@/components/ui/Icon";
 
 const CODE_RE = /^[0-9]{4,6}$/;
 
@@ -17,17 +19,24 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
   const [codeVal, setCodeVal] = useState("");
   const [codeError, setCodeError] = useState<null | "format" | "wrong">(null);
   const [verifying, setVerifying] = useState(false);
+  const [entering, setEntering] = useState(false);
+  const [entryBlocked, setEntryBlocked] = useState(false);
 
   if (!room) return null;
   const full = room.members === room.max;
   const isPrivate = room.visibility === "private";
 
   const handleClose = () => {
-    setCodeStep(false); setCodeVal(""); setCodeError(null); onClose();
+    setCodeStep(false); setCodeVal(""); setCodeError(null); setEntryBlocked(false); onClose();
   };
 
-  const handleEnterClick = () => {
+  const handleEnterClick = async () => {
     if (isPrivate) { setCodeStep(true); return; }
+    setEntering(true);
+    const allowed = await canEnterRoom();
+    setEntering(false);
+    if (!allowed) { setEntryBlocked(true); return; }
+    setPendingEntry(String(room.id));
     openStudyRoom(room.id);
     handleClose();
   };
@@ -35,9 +44,11 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
   const handleCodeSubmit = async () => {
     if (!CODE_RE.test(codeVal.trim())) { setCodeError("format"); return; }
     setVerifying(true);
-    const ok = await verifyEntryCode(room.id, codeVal);
+    const allowed = await canEnterRoom();
+    if (!allowed) { setVerifying(false); setEntryBlocked(true); setCodeStep(false); return; }
+    const ok = await joinRoom(room.id, codeVal.trim());
     setVerifying(false);
-    if (ok) { openStudyRoom(room.id); handleClose(); return; }
+    if (ok) { setPendingEntry(String(room.id)); openStudyRoom(room.id); handleClose(); return; }
     setCodeError("wrong");
   };
 
@@ -70,7 +81,10 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
         </div>
 
         <div style={{ padding: "22px 24px 28px" }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: T.text, marginBottom: 16, lineHeight: 1.3 }}>{room.title}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: T.text, marginBottom: 16, lineHeight: 1.3, display: "flex", alignItems: "center", gap: 8 }}>
+            {room.title.replace(/ \(비공개\)$/, "")}
+            {isPrivate && <Icon name="lock" size={18} color={T.text3} strokeWidth={1.8} />}
+          </div>
 
           <div style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -124,7 +138,7 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
                 <button
                   onClick={handleCodeSubmit}
                   disabled={verifying}
-                  style={{ flex: 2, padding: "13px 0", borderRadius: 12, border: "none", background: T.red, color: "#fff", fontSize: 15, fontWeight: 800, cursor: verifying ? "not-allowed" : "pointer", opacity: verifying ? 0.7 : 1 }}
+                  style={{ flex: 1, padding: "13px 0", borderRadius: 12, border: "none", background: T.red, color: "#fff", fontSize: 15, fontWeight: 800, cursor: verifying ? "not-allowed" : "pointer", opacity: verifying ? 0.7 : 1 }}
                 >
                   {verifying ? "확인 중..." : "입장하기"}
                 </button>
@@ -132,23 +146,25 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
             </>
           ) : (
             <>
-              <div style={{ fontSize: 12, color: T.text3, textAlign: "center", marginBottom: 14 }}>
-                {room.status === "ended"
-                  ? "운영이 종료된 스터디방입니다."
-                  : full
-                    ? "정원이 마감된 스터디방입니다."
-                    : isPrivate
-                      ? "비공개 스터디방입니다. 참여 코드가 필요합니다."
-                      : "설정한 내용으로 스터디에 참여하시겠어요?"}
+              <div style={{ fontSize: 12, color: entryBlocked ? T.red : T.text3, textAlign: "center", marginBottom: 14 }}>
+                {entryBlocked
+                  ? "이미 입장 중인 방이 있습니다."
+                  : room.status === "ended"
+                    ? "운영이 종료된 스터디방입니다."
+                    : full
+                      ? "정원이 마감된 스터디방입니다."
+                      : isPrivate
+                        ? "비공개 스터디방입니다. 참여 코드가 필요합니다."
+                        : "설정한 내용으로 스터디에 참여하시겠어요?"}
               </div>
               <button
-                disabled={full || room.status === "ended"}
+                disabled={full || room.status === "ended" || entering}
                 onClick={handleEnterClick}
-                style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: full || room.status === "ended" ? "#9e9e9e" : T.red, color: "#fff", fontSize: 16, fontWeight: 800, cursor: full || room.status === "ended" ? "not-allowed" : "pointer", transition: "opacity 0.15s", letterSpacing: ".02em" }}
-                onMouseEnter={(e) => { if (!full && room.status !== "ended") e.currentTarget.style.opacity = ".85"; }}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: full || room.status === "ended" ? "#9e9e9e" : T.red, color: "#fff", fontSize: 16, fontWeight: 800, cursor: full || room.status === "ended" || entering ? "not-allowed" : "pointer", transition: "opacity 0.15s", letterSpacing: ".02em", opacity: entering ? 0.7 : 1 }}
+                onMouseEnter={(e) => { if (!full && room.status !== "ended" && !entering) e.currentTarget.style.opacity = ".85"; }}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = entering ? "0.7" : "1")}
               >
-                {room.status === "ended" ? "종료된 스터디" : full ? "참여 마감" : isPrivate ? "코드 입력 후 입장" : "참여하기"}
+                {room.status === "ended" ? "종료된 스터디" : full ? "참여 마감" : entering ? "확인 중..." : isPrivate ? "코드 입력 후 입장" : "참여하기"}
               </button>
             </>
           )}

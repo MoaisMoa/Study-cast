@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.younghee.studycast.dao.StudyLogMapper">
+    <!-- 오늘 공부 시간 누적 저장 -->
+    <insert id="upsertTodayStudySeconds">
+        INSERT INTO study_logs (
+            user_uuid,
+            study_date,
+            total_seconds,
+            updated_at
+        ) VALUES (
+            #{userUuid},
+            CURRENT_DATE,
+            #{studySeconds},
+            NOW()
+        )
+        ON CONFLICT (user_uuid, study_date)
+        DO UPDATE SET
+            total_seconds = study_logs.total_seconds + EXCLUDED.total_seconds,
+            updated_at = NOW()
+    </insert>
+
+    <!-- 오늘 누적 공부 시간 조회 -->
+    <select id="findTodayStudySeconds" resultType="int">
+        SELECT COALESCE(total_seconds, 0)
+        FROM study_logs
+        WHERE user_uuid = #{userUuid}
+          AND study_date = CURRENT_DATE
+    </select>
+</mapper>

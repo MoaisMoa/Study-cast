@@ -3,6 +3,8 @@ package com.younghee.studycast.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -16,8 +18,14 @@ import com.younghee.studycast.domain.RoomCategory;
 import com.younghee.studycast.dto.RoomParticipantDTO;
 import com.younghee.studycast.dto.RoomsDTO;
 import com.younghee.studycast.dto.request.RoomCreateRequest;
+import com.younghee.studycast.dto.request.RoomJoinRequest;
+import com.younghee.studycast.dto.request.RoomUpdateRequest;
 import com.younghee.studycast.dto.response.JoinCodeCheckResponse;
 import com.younghee.studycast.dto.response.RoomCreateResponse;
+import com.younghee.studycast.dto.response.RoomDetailResponse;
+import com.younghee.studycast.dto.response.RoomJoinResponse;
+import com.younghee.studycast.dto.response.RoomParticipantResponse;
+import com.younghee.studycast.dto.response.RoomUpdateResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,9 +42,12 @@ public class RoomServiceImpl implements RoomService {
     private static final int MAX_PERIOD_DAYS = 90;
 
     private final RoomsMapper roomsMapper;
-    private final RoomParticipantsMapper roomParticipantsMapper;
     private final StudyRoomPolicyProperties studyRoomPolicyProperties;
     private final RoomImageStorageService roomImageStorageService;
+    // 추가) 방 상세
+    private final RoomParticipantsMapper roomParticipantsMapper;
+    private final StudyLogService studyLogService;
+    private final RoomVisitHistoriesService roomVisitHistoriesService;
 
     @Override
     @Transactional
@@ -55,46 +66,36 @@ public class RoomServiceImpl implements RoomService {
         String thumbnailPath = roomImageStorageService.store(image);
 
         try {
-            // 3. 종료일 요청받기
+            // 3. 종료일을 해당 날짜의 마지막 시간으로 변환
             LocalDateTime expiredAt = request.getExpiredAt().atTime(23, 59, 59);
-            // 4. 공개/비공개 여부에 따라 참여 코드 처리
+            // 4. 공개/비공개 여부에 따라 참여 코드 저장값 결정
+            // - 공개방이면 null, 비공개방이면 4~6자리 코드 저장
             String roomPassword = resolveRoomPassword(
                 request.getRoomPrivate(),
                 request.getRoomPassword()
             );
-            // 5. RoomsDTO 생성
+            // 5. 방 생성 RoomsDTO 생성 (now_users는 실제 입장 시점에 증가하므로 0으로 초기화)
             RoomsDTO room = RoomsDTO.builder()
                                     .userUuid(userUuid)
                                     .categoryNo(request.getCategoryNo())
                                     .roomTitle(request.getRoomTitle().trim())
                                     .maxUsers(request.getMaxUsers())
-                                    .nowUsers(1)
+                                    .nowUsers(0)
                                     .roomPassword(roomPassword)
                                     .roomNotice(trimToNull(request.getRoomNotice()))
                                     .roomPrivate(request.getRoomPrivate())
+                                    .cameraStatus(request.getCameraStatus())
+                                    .micStatus(request.getMicStatus())
                                     .roomThumbnail(thumbnailPath)
                                     .expiredAt(expiredAt)
                                     .build();
-            // 6. rooms 테이블에 생성된 roomNo 받기 (핵심)
+            // 6. rooms 테이블에 생성된 방 저장 (핵심)
             int insertedRoomCount = roomsMapper.insertRoom(room);
-            
+
             if (insertedRoomCount != 1 || room.getRoomNo() == null) {
                 throw new IllegalStateException("스터디방 생성에 실패했습니다.");
             }
-            // 7. RoomParticipantDTO 생성
-            RoomParticipantDTO participant = RoomParticipantDTO.builder()
-                                                                .userUuid(userUuid)
-                                                                .roomNo(room.getRoomNo())
-                                                                .cameraStatus(request.getCameraStatus())
-                                                                .micStatus(request.getMicStatus())
-                                                                .build();
-            // 8. room_participants 테이블에 방장 등록 (핵심)
-            int insertedParticipantCount = roomParticipantsMapper.insertRoomParticipant(participant);
-
-            if (insertedParticipantCount != 1) {
-                throw new IllegalStateException("방장 참여자 등록에 실패했습니다.");
-            }
-            // 9. RoomCreateResponse 반환
+            // 7. 생성된 방 번호와 제목 응답 (방 입장은 별도 join API에서 처리)
             return new RoomCreateResponse(
                 room.getRoomNo(),
                 room.getRoomTitle(),
@@ -125,6 +126,234 @@ public class RoomServiceImpl implements RoomService {
                 ? "이미 사용 중인 참여 코드입니다."
                 : "사용 가능한 참여 코드입니다."
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RoomDetailResponse getRoomDetail(Long roomNo, UUID userUuid) {
+        // 1. roomNo 유효성 검증
+        if (roomNo == null || roomNo <= 0) {
+            throw new IllegalArgumentException("유효하지 않은 스터디방 번호입니다.");
+        }
+        // 2. 로그인 사용자 검증
+        if (userUuid == null) {
+            throw new SecurityException("로그인이 필요합니다.");
+        }
+        // 3. 방 상세 헤더 정보 조회
+        // rooms + categories 조인 결과와 owner/expired 계산값을 응답 DTO로 받음
+        RoomDetailResponse response = roomsMapper.findRoomDetailByRoomNo(roomNo, userUuid);
+        // 4. 조회 결과 없으면 존재하지 않는 방
+        if (response == null) {
+            throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
+        }
+        // 5. 상세 페이지 헤더 응답 반환
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public RoomJoinResponse joinRoom(Long roomNo, UUID userUuid, RoomJoinRequest request) {
+        // 1. roomNo 검증
+        if (roomNo == null || roomNo <= 0) {
+            throw new IllegalArgumentException("유효하지 않은 스터디방 번호입니다.");
+        }
+        // 2. 로그인 사용자 UUID 검증
+        if (userUuid == null) {
+            throw new SecurityException("로그인이 필요합니다.");
+        }
+        // 3. 방 존재 여부 확인
+        RoomsDTO room = roomsMapper.findRoomByRoomNo(roomNo);
+        if (room == null) {
+            throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
+        }
+        // 4. 만료된 방 입장 차단
+        if (room.getExpiredAt() != null && room.getExpiredAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalStateException("만료된 스터디방입니다.");
+        }
+        // 5. 이미 active 상태면 코드 검증 없이 중복 입장 처리
+        boolean alreadyActive = roomParticipantsMapper.existsActiveParticipant(roomNo, userUuid);
+
+        if (alreadyActive) {
+            // 5-1. 현재 active 참여자 수 기준으로 rooms.now_users 동기화
+            roomsMapper.syncNowUsersByActiveParticipants(roomNo);
+            // 5-2. 동기화된 현재 인원 조회
+            Integer currentUsers = roomsMapper.findNowUsersByRoomNo(roomNo);
+            // 5-3. 이미 입장 중인 상태로 성공 응답 반환
+            return new RoomJoinResponse(
+                roomNo,
+                true,
+                currentUsers,
+                room.getMaxUsers(),
+                LocalDateTime.now(),
+                "이미 입장 중인 스터디방입니다."
+            );
+        }
+        // 6. 방장 여부 계산
+        // - 방장은 정원이 가득 차도 입장 보장 정책 적용
+        boolean owner = userUuid.equals(room.getUserUuid());
+
+        // 7. 비공개방이면 joinCode 검증 (방장 포함 모든 참여자)
+        if (Boolean.TRUE.equals(room.getRoomPrivate())) {
+            String joinCode = request == null ? null : request.getJoinCode();
+
+            if (joinCode == null || joinCode.trim().isEmpty()) {
+                throw new IllegalArgumentException("비공개 방은 참여 코드가 필요합니다.");
+            }
+
+            if (!joinCode.trim().equals(room.getRoomPassword())) {
+                throw new SecurityException("참여 코드가 일치하지 않습니다.");
+            }
+        }
+        // 8. 기존 참여 이력 조회
+        // 이력 없으면 insert / 이력 있으면 rejoin update 처리
+        RoomParticipantDTO existingParticipant =
+            roomParticipantsMapper.findParticipantByRoomNoAndUserUuid(roomNo, userUuid);
+        // 9. 입장 전 현재 인원 조회
+        Integer currentUsersBeforeJoin = roomsMapper.findNowUsersByRoomNo(roomNo);
+
+        // 10. 정원 체크 (방장 슬롯은 정원 외로 취급 → 5/4 허용)
+        // max_users는 비방장 슬롯 수를 의미하므로, 방장이 현재 active이면 now_users에서 1을 빼고 비교
+        if (!owner && room.getMaxUsers() != null) {
+            boolean hostActive = roomParticipantsMapper.existsActiveParticipant(roomNo, room.getUserUuid());
+            int nonHostCount = (currentUsersBeforeJoin != null ? currentUsersBeforeJoin : 0)
+                               - (hostActive ? 1 : 0);
+            if (nonHostCount >= room.getMaxUsers()) {
+                throw new IllegalStateException("스터디방 정원이 가득 찼습니다.");
+            }
+        }
+
+        // 11. 신규/재입장 참여자 처리
+        // - 기존 참여 이력 없으면 room_participants에 새 row 추가
+        if (existingParticipant == null) {
+            RoomParticipantDTO participant = RoomParticipantDTO.builder()
+                                                              .roomNo(roomNo)
+                                                              .userUuid(userUuid)
+                                                              .cameraStatus(Boolean.TRUE.equals(room.getCameraStatus()))
+                                                              .micStatus(Boolean.TRUE.equals(room.getMicStatus()))
+                                                              .active(true)
+                                                              .build();
+
+            roomParticipantsMapper.insertParticipant(participant);
+        } else {
+            // 12. 재입장 처리
+            // - 기존 row 재사용
+            roomParticipantsMapper.rejoinParticipant(roomNo, userUuid);
+        }
+        // 13. active 참여자 수 기준으로 rooms.now_users 재계산
+        roomsMapper.syncNowUsersByActiveParticipants(roomNo);
+        // 14. 재계산된 현재 인원 조회
+        Integer currentUsers = roomsMapper.findNowUsersByRoomNo(roomNo);
+        // 15. 최근 방문 기록 저장
+        roomVisitHistoriesService.recordVisit(roomNo, userUuid);
+        // 16. 입장 성공 응답 반환
+        return new RoomJoinResponse(
+            roomNo,
+            true,
+            currentUsers,
+            room.getMaxUsers(),
+            LocalDateTime.now(),
+            "스터디방에 입장했습니다."
+        );
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoomParticipantResponse> getActiveParticipants(Long roomNo) {
+        // 1. roomNo 유효성 검증
+        if (roomNo == null || roomNo <= 0) {
+            throw new IllegalArgumentException("유효하지 않은 스터디방 번호입니다.");
+        }
+        // 2. 방 존재 여부 확인
+        RoomsDTO room = roomsMapper.findRoomByRoomNo(roomNo);
+
+        if (room == null) {
+            throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
+        }
+        // 3. active=true 참여자 목록 조회
+        return roomParticipantsMapper.findActiveParticipantsByRoomNo(roomNo);
+    }
+
+    @Override
+    @Transactional
+    public void leaveRoom(Long roomNo, UUID userUuid, int studiedSeconds) {
+        // 1. roomNo 검증
+        if (roomNo == null || roomNo <= 0) {
+            throw new IllegalArgumentException("유효하지 않은 스터디방 번호입니다.");
+        }
+        // 2. 로그인 사용자 UUID 검증
+        if (userUuid == null) {
+            throw new SecurityException("로그인이 필요합니다.");
+        }
+        // 3. 방 존재 여부 확인
+        RoomsDTO room = roomsMapper.findRoomByRoomNo(roomNo);
+
+        if (room == null) {
+            throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
+        }
+        // 4. 현재 사용자의 참여 상태 조회
+        RoomParticipantDTO participant =
+            roomParticipantsMapper.findParticipantByRoomNoAndUserUuid(roomNo, userUuid);
+        // 5. active 상태 아니면 퇴장 처리 불가
+        if (participant == null || !Boolean.TRUE.equals(participant.getActive())) {
+            throw new IllegalStateException("현재 입장 중인 스터디방이 아닙니다.");
+        }
+        // 6. room_participants 퇴장 처리
+        int updated = roomParticipantsMapper.leaveParticipant(roomNo, userUuid);
+
+        if (updated != 1) {
+            throw new IllegalStateException("스터디방 퇴장 처리에 실패했습니다.");
+        }
+        // 7. active 참여자 수 기준으로 rooms.now_users 재계산
+        roomsMapper.syncNowUsersByActiveParticipants(roomNo);
+        // 8. 프론트 타이머 기준 오늘 공부 시간 누적 저장 (독립 트랜잭션 — 실패해도 퇴장 처리 롤백 안 함)
+        if (studiedSeconds > 0) {
+            try {
+                studyLogService.saveTodayStudySeconds(userUuid, studiedSeconds);
+            } catch (Exception e) {
+                log.warn("공부 시간 저장 실패 (퇴장 처리는 완료됨): roomNo={}, userUuid={}", roomNo, userUuid, e);
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public RoomUpdateResponse updateRoomSettings(Long roomNo, UUID userUuid, RoomUpdateRequest request, MultipartFile image) {
+        // 1. 방 존재 확인
+        RoomsDTO room = roomsMapper.findByRoomNo(roomNo);
+        if (room == null) {
+            throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
+        }
+        // 2. 방장 권한 확인
+        if (!userUuid.equals(room.getUserUuid())) {
+            throw new SecurityException("방장만 설정을 변경할 수 있습니다.");
+        }
+        // 3. 요청값 검증
+        validateRoomTitle(request.getRoomTitle());
+        validateMaxUsers(request.getMaxUsers());
+        validateExpiredAt(request.getExpiredAt());
+        validateCategory(request.getCategoryNo());
+        validateDeviceStatus(request.getCameraStatus(), request.getMicStatus());
+        validateRoomNotice(request.getRoomNotice());
+        // 4. 썸네일 처리 — 새 파일이 있을 때만 교체
+        String thumbnailPath = room.getRoomThumbnail();
+        String newThumbnailPath = null;
+        if (image != null && !image.isEmpty()) {
+            newThumbnailPath = roomImageStorageService.store(image);
+            if (thumbnailPath != null) {
+                deleteStoredImageQuietly(thumbnailPath);
+            }
+            thumbnailPath = newThumbnailPath;
+        }
+        // 5. DB 업데이트
+        try {
+            roomsMapper.updateRoom(roomNo, request, thumbnailPath);
+        } catch (RuntimeException e) {
+            if (newThumbnailPath != null) {
+                deleteStoredImageQuietly(newThumbnailPath);
+            }
+            throw e;
+        }
+        return new RoomUpdateResponse(roomNo, thumbnailPath);
     }
 
     private void validateUserUuid(UUID userUuid) {
@@ -285,4 +514,5 @@ public class RoomServiceImpl implements RoomService {
 
         return normalizedCode;
     }
+
 }

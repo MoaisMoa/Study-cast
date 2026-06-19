@@ -70,6 +70,10 @@ public class JwtProvider {
         return parseClaims(token).get("type", String.class);
     }
 
+    public long getAccessTokenValidityMs() {
+        return accessTokenValidityMs;
+    }
+
     public long getRefreshTokenValidityMs() {
         return refreshTokenValidityMs;
     }

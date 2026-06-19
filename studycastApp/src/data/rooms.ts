@@ -37,9 +37,9 @@ export const REC_ROOMS: Room[] = [
 
 /** 내 스터디 슬롯 더미 (정렬 전) */
 export const MY_ROOMS_RAW: MyRoom[] = [
-  { id: 1, title: "CS 코딩테스트 준비 2주차", members: 4, max: 4, img: IMGS[0], live: true,  createdAt: 1,    visitedAt: 1 },
-  { id: 6, title: "JLPT N2 일본어 집중반",    members: 4, max: 4, img: IMGS[9], live: true,  createdAt: null, visitedAt: 2 },
-  { id: 3, title: "삼성·카카오 기술면접 준비",members: 1, max: 4, img: IMGS[6], live: false, createdAt: null, visitedAt: 3 },
+  { id: 1, title: "CS 코딩테스트 준비 2주차", cat: "개발·IT", type: "FREE", members: 4, max: 4, img: IMGS[0], live: true,  isPrivate: false, time: "-", createdAt: 1,    expiredAt: null, visitedAt: 1 },
+  { id: 6, title: "JLPT N2 일본어 집중반",    cat: "어학",   type: "FREE", members: 4, max: 4, img: IMGS[9], live: true,  isPrivate: false, time: "-", createdAt: null, expiredAt: null, visitedAt: 2 },
+  { id: 3, title: "삼성·카카오 기술면접 준비",cat: "취업·면접", type: "FREE", members: 1, max: 4, img: IMGS[6], live: false, isPrivate: false, time: "-", createdAt: null, expiredAt: null, visitedAt: 3 },
 ];
 
 /**

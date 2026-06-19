@@ -1,145 +1,92 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useT } from "@/theme";
-import { MY_ROOMS } from "@/data/rooms";
+import { useAuth } from "@/contexts/AuthContext";
+import type { MyRoom } from "@/types";
+import { listMyRooms, getMainSummary } from "@/services/roomService";
 import { fmtTimer } from "@/utils/time";
+import { useModal } from "@/contexts/ModalContext";
 import { Icon } from "@/components/ui/Icon";
-import { openStudyRoom } from "@/utils/openStudyRoom";
-import type { PlannerSchedule } from "@/data/planner";
-import { SCHED_KEY } from "@/data/planner";
 import { LearningPlannerModal } from "./planner/LearningPlannerModal";
 
 export function MobileDashboard() {
   const T = useT();
   const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
+  const setModalRoom = useModal();
   const [plannerOpen, setPlannerOpen] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const [editRes, setEditRes] = useState(false);
-  const [res, setRes] = useState("오늘도 집중해서 목표 달성!");
-  const [resDraft, setResDraft] = useState(res);
   const [myIdx, setMyIdx] = useState(0);
+  const [rooms, setRooms] = useState<MyRoom[]>([]);
+  // 로그인 사용자 개인 스터디 정보 영역
+  const [todayStudySeconds, setTodayStudySeconds] = useState(0);
+  const [ddayTitle, setDdayTitle] = useState<string | null>(null);
+  const [remainingDays, setRemainingDays] = useState<number | null>(null);
+  const [studyResolution, setStudyResolution] = useState<string | null>(null);
 
-  const rooms = MY_ROOMS;
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setRooms([]);
+      setTodayStudySeconds(0);
+      setDdayTitle(null);
+      setRemainingDays(null);
+      setStudyResolution(null);
+      return;
+    }
+
+    listMyRooms()
+      .then(setRooms)
+      .catch(() => setRooms([]));
+
+    getMainSummary()
+      .then((summary) => {
+        setTodayStudySeconds(summary.todayStudySeconds ?? 0);
+        setDdayTitle(summary.ddayTitle ?? null);
+        setRemainingDays(summary.remainingDays ?? null);
+        setStudyResolution(summary.studyResolution ?? null);
+      })
+      .catch(() => {
+        setTodayStudySeconds(0);
+        setDdayTitle(null);
+        setRemainingDays(null);
+        setStudyResolution(null);
+      });
+  }, [isLoggedIn]);
+
   const hasRooms = rooms.length > 0;
   const curRoom = hasRooms && myIdx < rooms.length ? rooms[myIdx] : null;
 
-  const getInitialSchedules = (): PlannerSchedule[] => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem(SCHED_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const add = (days: number) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + days);
-      return d;
-    };
-    const mk = (title: string, type: string, days: number): PlannerSchedule => {
-      const d = add(days);
-      return {
-        title,
-        type,
-        year: d.getFullYear(),
-        month: d.getMonth(),
-        day: d.getDate(),
-        dday: Math.ceil((d.getTime() - today.getTime()) / 86400000),
-        date: `${d.getMonth() + 1}월 ${d.getDate()}일`,
-      };
-    };
-    return [
-      mk("CS 파이널 시험", "시험", 0),
-      mk("팀 프로젝트 발표", "과제", 5),
-      mk("스터디 최종 발표", "모임", 12),
-    ];
-  };
-
-  const [schedules, setSchedules] = useState<PlannerSchedule[]>(getInitialSchedules);
-
-  useEffect(() => {
-    const t = window.setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => window.clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    if (!plannerOpen) {
-      setSchedules(getInitialSchedules());
-    }
-  }, [plannerOpen]);
-
-  const { h, m } = fmtTimer(elapsed);
-  const pct = Math.min((elapsed / (8 * 3600)) * 100, 100);
-
-  const todayMid = new Date();
-  todayMid.setHours(0, 0, 0, 0);
-  const upcomingDday = [...schedules]
-    .map((s) => ({
-      ...s,
-      dday: Math.ceil((new Date(s.year, s.month, s.day).getTime() - todayMid.getTime()) / 86400000),
-    }))
-    .filter((s) => s.dday >= 0)
-    .sort((a, b) => a.dday - b.dday)[0] ?? null;
+  const { h, m } = fmtTimer(todayStudySeconds);
+  const pct = Math.min((todayStudySeconds / (8 * 3600)) * 100, 100);
 
   return (
     <>
-    <LearningPlannerModal open={plannerOpen} onClose={() => {
-        setPlannerOpen(false);
-        setSchedules(getInitialSchedules());
-      }} />
+    <LearningPlannerModal open={plannerOpen} onClose={() => setPlannerOpen(false)} />
     <section style={{ padding: "14px 16px 0" }}>
+      {/* 내 스터디 */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: T.text }}>내 스터디</h2>
+          {isLoggedIn && (
           <div style={{ display: "flex", gap: 4 }}>
-            <button
-              onClick={() => setMyIdx((i) => Math.max(0, i - 1))}
-              disabled={myIdx === 0}
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 4,
-                border: `1px solid ${T.border}`,
-                background: T.surface,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: myIdx === 0 ? "not-allowed" : "pointer",
-                opacity: myIdx === 0 ? 0.35 : 1,
-              }}
-            >
-              <Icon name="chevLeft" size={13} color={T.text3} />
-            </button>
-            <button
-              onClick={() => setMyIdx((i) => Math.min(rooms.length, i + 1))}
-              disabled={myIdx === rooms.length}
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 4,
-                border: `1px solid ${T.border}`,
-                background: T.surface,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: myIdx === rooms.length ? "not-allowed" : "pointer",
-                opacity: myIdx === rooms.length ? 0.35 : 1,
-              }}
-            >
-              <Icon name="chevRight" size={13} color={T.text3} />
-            </button>
+            <button onClick={() => setMyIdx((i) => Math.max(0, i - 1))} style={{ width: 26, height: 26, borderRadius: 4, border: `1px solid ${T.border}`, background: T.surface, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", opacity: myIdx === 0 ? 0.35 : 1 }}><Icon name="chevLeft" size={13} color={T.text3} /></button>
+            <button onClick={() => setMyIdx((i) => Math.min(rooms.length, i + 1))} style={{ width: 26, height: 26, borderRadius: 4, border: `1px solid ${T.border}`, background: T.surface, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", opacity: myIdx === rooms.length ? 0.35 : 1 }}><Icon name="chevRight" size={13} color={T.text3} /></button>
           </div>
+          )}
         </div>
         <div style={{ position: "relative", borderRadius: T.radius, overflow: "hidden", height: 130, cursor: "pointer" }}>
-          {!hasRooms ? (
+          {!isLoggedIn ? (
             <div style={{ width: "100%", height: "100%", background: T.surface2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, border: `1.5px dashed ${T.border}` }}>
-              <span style={{ fontSize: 12, color: T.text3 }}>스터디방 참여하기</span>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon name="person" size={20} color={T.text3} />
+              </div>
+              <span style={{ fontSize: 13, color: T.text3, textAlign: "center", lineHeight: 1.6 }}>로그인 후 이용해주세요</span>
+            </div>
+          ) : !hasRooms ? (
+            <div onClick={() => navigate("/rooms/new")} style={{ width: "100%", height: "100%", background: T.surface2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, border: `1.5px dashed ${T.border}`, cursor: "pointer" }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon name="plus" size={18} color={T.text3} />
+              </div>
+              <span style={{ fontSize: 12, color: T.text3, textAlign: "center", lineHeight: 1.5 }}>스터디방<br />참여하기</span>
             </div>
           ) : myIdx === rooms.length ? (
             <div onClick={() => navigate("/rooms/new")} style={{ width: "100%", height: "100%", background: T.surface2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, border: `1.5px dashed ${T.border}`, borderRadius: T.radius }}>
@@ -161,11 +108,24 @@ export function MobileDashboard() {
                 <div style={{ fontSize: 10, color: "rgba(255,255,255,.7)", marginBottom: 3 }}>참여 중인 스터디</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{curRoom.title}</div>
                 <button
-                  onClick={() => openStudyRoom(curRoom.id)}
+                  onClick={() => {
+                    setModalRoom({
+                      id: curRoom.id,
+                      title: curRoom.title,
+                      cat: curRoom.cat,
+                      time: curRoom.time,
+                      members: curRoom.members,
+                      max: curRoom.max,
+                      img: curRoom.img,
+                      live: curRoom.live,
+                      type: curRoom.type,
+                      isPrivate: curRoom.isPrivate,
+                      createdAt: curRoom.createdAt ? new Date(curRoom.createdAt).toISOString() : null,
+                      expiredAt: curRoom.expiredAt,
+                    });
+                  }}
                   style={{ padding: "4px 12px", borderRadius: 5, border: "1.5px solid rgba(255,255,255,.6)", background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}
-                >
-                  입장하기 →
-                </button>
+                >입장하기 →</button>
               </div>
             </>
           ) : null}
@@ -226,57 +186,36 @@ export function MobileDashboard() {
             <div style={{ fontSize: 10, color: T.text3, marginBottom: 4 }}>내 디데이</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{
-                border: `1.5px solid ${T.red}`,
+                background: "none",
                 color: T.red,
+                border: `1.5px solid ${T.red}`,
                 borderRadius: 5,
                 padding: "3px 8px",
                 fontFamily: "'JetBrains Mono',monospace",
                 fontWeight: 700,
                 fontSize: 15,
                 flexShrink: 0,
-                background: "transparent",
               }}>
-                {upcomingDday ? (upcomingDday.dday === 0 ? "D-day" : `D-${upcomingDday.dday}`) : "D-?"}
+                {remainingDays === null
+                  ? "D-day"
+                  : remainingDays === 0
+                    ? "D-day"
+                    : `D-${remainingDays}`}
               </div>
               <div style={{
                 fontSize: 11, fontWeight: 500, color: T.text,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>
-                {upcomingDday ? upcomingDday.title : "등록된 D-day 일정이 없습니다."}
+                {ddayTitle ?? "등록된 일정이 없습니다."}
               </div>
             </div>
           </div>
           <div style={{ height: 1, background: T.border }} />
           <div>
             <div style={{ fontSize: 10, color: T.text3, marginBottom: 3 }}>내 각오</div>
-            {editRes ? (
-              <input
-                value={resDraft}
-                onChange={(e) => setResDraft(e.target.value)}
-                onBlur={() => { setRes(resDraft); setEditRes(false); }}
-                autoFocus
-                style={{
-                  width: "100%",
-                  border: `1.5px solid ${T.red}`,
-                  borderRadius: 4,
-                  padding: "3px 6px",
-                  fontSize: 11,
-                  outline: "none",
-                  background: T.surface,
-                  color: T.text,
-                }}
-              />
-            ) : (
-              <div
-                onClick={() => { setResDraft(res); setEditRes(true); }}
-                style={{
-                  fontSize: 11, color: T.text, fontWeight: 500,
-                  lineHeight: 1.4, cursor: "pointer",
-                }}
-              >
-                {res}
-              </div>
-            )}
+            <div style={{ fontSize: 11, color: T.text, fontWeight: 500, lineHeight: 1.4 }}>
+              {studyResolution || "자신만의 각오를 등록해보세요!"}
+            </div>
           </div>
         </div>
       </div>

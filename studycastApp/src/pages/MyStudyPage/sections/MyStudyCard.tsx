@@ -3,7 +3,7 @@ import type { MyStudyRoom } from "@/types/myStudy";
 import { useT } from "@/theme";
 import { Icon } from "@/components/ui/Icon";
 import { StatusBadge } from "@/components/study/StatusBadge";
-import { calcRoomStatus, fmtDateFull, fmtDateShort, isNewRoom } from "@/utils/myStudyDate";
+import { calcRoomStatus, fmtDateShort, isNewRoom } from "@/utils/myStudyDate";
 
 export interface MyStudyCardProps {
   room: MyStudyRoom;
@@ -88,7 +88,7 @@ export function MyStudyCard({ room, onCardClick, selectMode, selected, onToggle,
           <div style={{ color: "#fff", fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }}>
             <Icon name="users" size={12} color="#fff" strokeWidth={1.8} />{room.members}/{room.maxMembers}명
             {room.type === "PREMIUM" && (
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="#FFD54F" style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0 }}>
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="#FFD54F" style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0 }}>
                 <path d="M5 16L3 5l5.5 5L12 2l3.5 8L21 5l-2 11H5zm0 2h14v2H5v-2z" />
               </svg>
             )}
@@ -103,7 +103,7 @@ export function MyStudyCard({ room, onCardClick, selectMode, selected, onToggle,
 
       <div style={{ padding: "11px 13px 13px", background: T.surface }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 4 }}>
-          {room.title}
+          {room.title.replace(/ \(비공개\)$/, "")}
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginTop: 2 }}>
           <div style={{ fontSize: 12, color: T.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

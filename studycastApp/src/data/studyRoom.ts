@@ -2,15 +2,15 @@ import type { ChatMessage, RoomMember } from "@/types/studyRoom";
 
 /** 본인(방장) */
 export const SELF: RoomMember = {
-  id: 1, name: "나", short: "나", email: "me@study.kr",
+  id: 1, userUuid: "", name: "나", short: "나", email: "me@study.kr",
   role: "HOST", color: "#E53935", sec: 8073, joinMin: 180, mic: true, cam: true,
 };
 
 /** 다른 멤버 */
 export const OTHERS_INIT: RoomMember[] = [
-  { id: 2, name: "이준혁", short: "이준", email: "leejh@study.kr", color: "#2DA58E", sec: 6312, joinMin: 105, mic: false, cam: true },
-  { id: 3, name: "박서연", short: "박서", email: "parksy@study.kr", color: "#C07A3A", sec: 3527, joinMin: 58,  mic: true,  cam: true },
-  { id: 4, name: "한수빈", short: "한수", email: "hansb@study.kr", color: "#D32F2F", sec: 4925, joinMin: 82,  mic: true,  cam: false },
+  { id: 2, userUuid: "", name: "이준혁", short: "이준", email: "leejh@study.kr", color: "#2DA58E", sec: 6312, joinMin: 105, mic: false, cam: true },
+  { id: 3, userUuid: "", name: "박서연", short: "박서", email: "parksy@study.kr", color: "#C07A3A", sec: 3527, joinMin: 58,  mic: true,  cam: true },
+  { id: 4, userUuid: "", name: "한수빈", short: "한수", email: "hansb@study.kr", color: "#D32F2F", sec: 4925, joinMin: 82,  mic: true,  cam: false },
 ];
 
 export const ALL_INIT: RoomMember[] = [SELF, ...OTHERS_INIT];

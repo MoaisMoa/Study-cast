@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Room, RoomCategory } from "@/types";
 import { useT } from "@/theme";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,7 +8,7 @@ import { Icon } from "@/components/ui/Icon";
 import { DropdownModal, DropdownModalHeader } from "@/components/ui/Modal";
 import { LiveStudyCard } from "@/components/study/LiveStudyCard";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import { listRooms } from "@/services/roomService";
+import { listRoomCards } from "@/services/roomService";
 
 function getCol(): number {
   if (typeof window === "undefined") return 5;
@@ -23,74 +23,92 @@ function getCol(): number {
 export function Browse() {
   const T = useT();
   const { isLoggedIn } = useAuth();
-
-  const [pool, setPool] = useState<Room[]>([]);
-  useEffect(() => {
-    listRooms().then(setPool);
-  }, []);
-
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [page, setPage] = useState(0);
+  const [last, setLast] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [tab, setTab] = useState(0);
   const [selCats, setSelCats] = useState<RoomCategory[]>([]);
   const [catOpen, setCatOpen] = useState(false);
   const [roomType, setRoomType] = useState<TypeOpt>("전체 스터디");
   const [typeOpen, setTypeOpen] = useState(false);
   const [onlyAvail, setOnlyAvail] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [cols, setCols] = useState<number>(getCol);
+  const PAGE = cols * 4;
+
+  // 필터값 변환 함수
+  const toApiTab = () => (tab === 1 ? "NEW" : "ALL");
+
+  const toApiRoomType = () => {
+    if (roomType === "일반") return "FREE";
+    if (roomType === "프리미엄") return "PREMIUM";
+    return "ALL";
+  };
+
+  const toApiCategoryNos = () => {
+    const map: Record<RoomCategory, number> = {
+      어학: 1,
+      공무원: 2,
+      "개발·IT": 3,
+      자격증: 4,
+      "취업·면접": 5,
+      대학생: 6,
+    };
+    return selCats.map((cat) => map[cat]);
+  }
+
+
+  // 서버 조회 함수
+  const fetchRooms = async (nextPage: number, append: boolean) => {
+    if (isLoading) return;
+
+    setIsLoading(true);
+
+    try {
+      const response = await listRoomCards({
+        tab: toApiTab(),
+        categoryNos: toApiCategoryNos(),
+        roomType: toApiRoomType(),
+        joinableOnly: onlyAvail,
+        page: nextPage,
+        size: PAGE,
+      });
+
+      setRooms((prev) => (append ? [...prev, ...response.rooms] : response.rooms));
+      setPage(response.page);
+      setLast(response.last);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // 필터 변경 시 첫 페이지 재조회
+  useEffect(() => {
+    fetchRooms(0, false);
+  }, [tab, selCats, roomType, onlyAvail, PAGE]);
+
+  // 더보기
+  const loadMore = () => {
+    if (last || isLoading) return;
+    fetchRooms(page + 1, true);
+  }
 
   const catRef = useRef<HTMLDivElement>(null);
   const typeRef = useRef<HTMLDivElement>(null);
   useClickOutside(catRef, () => setCatOpen(false), catOpen);
   useClickOutside(typeRef, () => setTypeOpen(false), typeOpen);
 
-  const [cols, setCols] = useState<number>(getCol);
   useEffect(() => {
     const fn = () => setCols(getCol());
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
   }, []);
-  const PAGE = cols * 4;
-  const [visibleCount, setVisibleCount] = useState<number>(() => getCol() * 4);
-
-  const filtered = useMemo<Room[]>(() => {
-    const list = pool.filter((r) => {
-      if (tab === 1 && (r.createdDaysAgo ?? 99) > 10) return false;
-      if (selCats.length > 0 && !selCats.includes(r.cat)) return false;
-      if (onlyAvail && r.members === r.max) return false;
-      if (roomType === "일반" && r.type !== "FREE") return false;
-      if (roomType === "프리미엄" && r.type !== "PREMIUM") return false;
-      return true;
-    });
-    return list.sort((a, b) => {
-      if (tab === 1) {
-        const av = a.createdDaysAgo ?? 99;
-        const bv = b.createdDaysAgo ?? 99;
-        if (av !== bv) return av - bv;
-        return a.title.localeCompare(b.title, "ko");
-      }
-      const aLive = a.live && a.members >= 1;
-      const bLive = b.live && b.members >= 1;
-      if (aLive !== bLive) return aLive ? -1 : 1;
-      const av = a.createdDaysAgo ?? 99;
-      const bv = b.createdDaysAgo ?? 99;
-      if (av !== bv) return av - bv;
-      return a.title.localeCompare(b.title, "ko");
-    });
-  }, [pool, tab, selCats, onlyAvail, roomType]);
-
-  const visible = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
+  
+  const visible = rooms;
+  const hasMore = !last;
 
   const toggleCat = (c: RoomCategory) =>
     setSelCats((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
-
-  const loadMore = () => {
-    if (!hasMore || isLoading) return;
-    setIsLoading(true);
-    window.setTimeout(() => {
-      setVisibleCount((c) => c + PAGE);
-      setIsLoading(false);
-    }, 400);
-  };
 
   return (
     <section style={{ marginBottom: 40 }}>
@@ -113,7 +131,6 @@ export function Browse() {
               key={t}
               onClick={() => {
                 setTab(i);
-                setVisibleCount(PAGE);
               }}
               style={{
                 padding: "7px 18px",
@@ -156,7 +173,7 @@ export function Browse() {
                 opacity: isLoggedIn ? 1 : 0.5,
               }}
             >
-              관심 설정
+              관심 카테고리
               {selCats.length > 0 && isLoggedIn && (
                 <span style={{
                   background: T.red,
@@ -194,7 +211,6 @@ export function Browse() {
                         key={c}
                         onClick={() => {
                           toggleCat(c);
-                          setVisibleCount(PAGE);
                         }}
                         style={{
                           padding: "9px 12px",
@@ -264,7 +280,6 @@ export function Browse() {
                         onClick={() => {
                           setRoomType(opt);
                           setTypeOpen(false);
-                          setVisibleCount(PAGE);
                         }}
                         style={{
                           padding: "9px 12px",

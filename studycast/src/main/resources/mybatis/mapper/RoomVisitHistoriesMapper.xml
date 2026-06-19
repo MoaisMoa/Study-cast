@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.younghee.studycast.dao.RoomVisitHistoriesMapper">
+    <!-- 방문한 방 카드 공통 ResultMap -->
+    <resultMap id="VisitedRoomResultMap" type="com.younghee.studycast.dto.response.MainRoomResponse">
+        <id property="roomNo" column="room_no"/>
+        <result property="roomTitle" column="room_title"/>
+        <result property="roomThumbnail" column="room_thumbnail"/>
+
+        <result property="categoryNo" column="category_no"/>
+        <result property="categoryName" column="category_name"/>
+
+        <result property="currentUsers" column="current_users"/>
+        <result property="maxUsers" column="max_users"/>
+
+        <result property="live" column="live"/>
+        <result property="newRoom" column="new_room"/>
+        <result property="full" column="full"/>
+        <result property="premium" column="premium"/>
+        <result property="joinable" column="joinable"/>
+        <result property="roomPrivate" column="room_private"/>
+
+        <result property="createdAt" column="created_at"/>
+        <result property="expiredAt" column="expired_at"/>
+        <result property="lastVisitedAt" column="last_visited_at"/>
+        <result property="visitCount" column="visit_count"/>
+
+        <result property="averageStudySeconds" column="average_study_seconds"/>
+    </resultMap>
+
+    <!-- 1. 3개월 지난 방문 기록 삭제 -->
+    <delete id="deleteExpiredVisitHistoriesByUserUuid">
+        DELETE FROM room_visit_histories
+        WHERE user_uuid = #{userUuid}
+          AND last_visited_at &lt; NOW() - INTERVAL '3 months'
+    </delete>
+
+    <!-- 2. 방문 기록 저장 또는 갱신 -->
+    <insert id="upsertVisitHistory">
+        INSERT INTO room_visit_histories (
+            room_no,
+            user_uuid,
+            visit_count,
+            last_visited_at
+        ) VALUES (
+            #{roomNo},
+            #{userUuid},
+            1,
+            NOW()
+        )
+        <!-- 같은 사용자가 같은 방 재방문 시 기존 row 갱신 (CONSTRAINT ~ UNIQUE ~) -->
+        ON CONFLICT (user_uuid, room_no)
+        DO UPDATE SET
+            visit_count = room_visit_histories.visit_count + 1,
+            last_visited_at = NOW()
+    </insert>
+
+    <!-- 3. 최근 방문한 방 조회 -->
+    <select id="findRecentVisitedRooms" resultMap="VisitedRoomResultMap">
+        SELECT
+            <!-- 스터디방 기본 정보 -->
+            r.room_no,
+            r.room_title,
+            r.room_thumbnail,
+            <!-- 카테고리 정보 -->
+            r.category_no,
+            c.category_name,
+            <!-- 참여 인원 정보 -->
+            r.now_users AS current_users,
+            r.max_users,
+            <!-- 카드 상태값 -->
+            (r.now_users &gt; 0) AS live,
+            (r.created_at &gt;= NOW() - INTERVAL '10 days') AS new_room,
+            (r.now_users &gt;= r.max_users) AS full,
+            r.room_premium AS premium,
+            r.room_private,
+            <!-- 바로 참여 가능 여부 -->
+            (
+                r.room_private = FALSE
+                AND r.now_users &lt; r.max_users
+                AND r.expired_at &gt; NOW()
+            ) AS joinable,
+            <!-- 날짜 및 방문 정보 -->
+            r.created_at,
+            r.expired_at,
+            rvh.last_visited_at,
+            rvh.visit_count,
+            <!-- 평균 공부 시간은 스터디방 상세 통계 구현 후 연결 -->
+            NULL::BIGINT AS average_study_seconds
+
+        FROM room_visit_histories rvh
+        <!-- 방문 기록에 해당하는 방 정보 조회 -->
+        INNER JOIN rooms r
+            ON rvh.room_no = r.room_no
+        <!-- 카테고리명 조회 -->
+        INNER JOIN categories c
+            ON r.category_no = c.category_no
+
+        WHERE rvh.user_uuid = #{userUuid}
+
+        <!-- 마지막 방문일 기준 최신순 -->
+        ORDER BY
+            rvh.last_visited_at DESC,
+            r.created_at DESC,
+            r.room_title ASC
+        
+        LIMIT #{limit}
+        OFFSET #{offset}
+    </select>
+
+    <!-- 4. 자주 방문한 방 조회 -->
+    <select id="findFrequentVisitedRooms" resultMap="VisitedRoomResultMap">
+        SELECT
+            <!-- 스터디방 기본 정보 -->
+            r.room_no,
+            r.room_title,
+            r.room_thumbnail,
+            <!-- 카테고리 정보 -->
+            r.category_no,
+            c.category_name,
+            <!-- 참여 인원 정보 -->
+            r.now_users AS current_users,
+            r.max_users,
+            <!-- 카드 상태값 -->
+            (r.now_users &gt; 0) AS live,
+            (r.created_at &gt;= NOW() - INTERVAL '10 days') AS new_room,
+            (r.now_users &gt;= r.max_users) AS full,
+            r.room_premium AS premium,
+            r.room_private,
+            <!-- 바로 참여 가능 여부 -->
+            (
+                r.room_private = FALSE
+                AND r.now_users &lt; r.max_users
+                AND r.expired_at &gt; NOW()
+            ) AS joinable,
+            <!-- 날짜 및 방문 정보 -->
+            r.created_at,
+            r.expired_at,
+            rvh.last_visited_at,
+            rvh.visit_count,
+            <!-- 평균 공부 시간은 스터디방 상세 통계 구현 후 연결 -->
+            NULL::BIGINT AS average_study_seconds
+
+        FROM room_visit_histories rvh
+        <!-- 방문 기록에 해당하는 방 정보 조회 -->
+        INNER JOIN rooms r
+            ON rvh.room_no = r.room_no
+        <!-- 카테고리명 조회 -->
+        INNER JOIN categories c
+            ON r.category_no = c.category_no
+        
+        WHERE rvh.user_uuid = #{userUuid}
+        
+        <!-- 방문 횟수 우선, 동률이면 최근 방문순 -->
+        ORDER BY    
+            rvh.visit_count DESC,
+            rvh.last_visited_at DESC,
+            r.created_at DESC,
+            r.room_title ASC
+        
+        LIMIT #{limit}
+        OFFSET #{offset}
+    </select>
+</mapper>

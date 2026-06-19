@@ -26,4 +26,9 @@ public interface UserMapper {
         @Param("userUuid") UUID userUuid,
         @Param("userPassword") String userPassword
     );
+    // 프로필 이미지 변경
+    int updateProfileImage(
+        @Param("userUuid") UUID userUuid,
+        @Param("userProfileImage") String userProfileImage
+    );
 }

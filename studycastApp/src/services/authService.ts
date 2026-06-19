@@ -1,8 +1,3 @@
-/**
- * 인증 관련 서비스 — 현재는 더미 데이터 기준 mock 구현.
- * 추후 `apiClient.request`로 교체.
- */
-
 import type {
   AuthResult,
   AuthUser,
@@ -16,19 +11,10 @@ import type {
 import { apiClient } from "./apiClient";
 
 const SAVED_EMAIL_KEY = "sc_saved_email";
-const ACCESS_TOKEN_KEY = "sc_access_token";
-const REFRESH_TOKEN_KEY = "sc_refresh_token";
 const USER_KEY = "sc_user";
 
-interface BackendAuthResponse {
-  accessToken: string;
-  refreshToken: string;
-}
-
-/** 세션 저장소 초기화 — 로그아웃 및 인증 재시도 시 사용 */
+/** 세션 저장소 초기화 — 토큰은 쿠키로 관리되므로 사용자 정보만 삭제 */
 export function clearAuthSession(): void {
-  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
   sessionStorage.removeItem(USER_KEY);
 }
 
@@ -40,21 +26,16 @@ interface BackendUser {
   userStatus: string;
 }
 
-/** 로그인 */
+/** 로그인 — 토큰은 백엔드가 httpOnly 쿠키로 설정 */
 export async function login(
   payload: LoginPayload,
   remember: boolean
 ): Promise<AuthResult & { user?: AuthUser }> {
   try {
-    const response = await apiClient.post<BackendAuthResponse>("/api/auth/login", {
+    await apiClient.post("/api/auth/login", {
       userEmail: payload.email,
       userPassword: payload.password,
     });
-
-    const { accessToken, refreshToken } = response.data;
-
-    sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    sessionStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 
     if (remember) {
       localStorage.setItem(SAVED_EMAIL_KEY, payload.email);
@@ -67,6 +48,7 @@ export async function login(
     const user: AuthUser = {
       email: meResponse.data.userEmail,
       name: meResponse.data.userName,
+      profileImage: meResponse.data.userProfileImage ?? undefined,
     };
 
     sessionStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -117,6 +99,7 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
     const user: AuthUser = {
       email: response.data.userEmail,
       name: response.data.userName,
+      profileImage: response.data.userProfileImage ?? undefined,
     };
 
     sessionStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -127,16 +110,10 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
   }
 }
 
-/** 로그아웃 */
+/** 로그아웃 — Refresh Token 쿠키는 백엔드가 폐기 및 삭제 */
 export async function logout(): Promise<void> {
-  const refreshToken = sessionStorage.getItem(REFRESH_TOKEN_KEY);
-
   try {
-    if (refreshToken) {
-      await apiClient.post("/api/auth/logout", {
-        refreshToken
-      });
-    }
+    await apiClient.post("/api/auth/logout");
   } finally {
     clearAuthSession();
   }

@@ -71,21 +71,13 @@ export function LiveStudyCard({ room: r }: { room: Room }) {
             NEW
           </div>
         )}
-        <div style={{ position: "absolute", top: 10, right: 10 }}>
-          {full ? (
-            <span style={{
-              background: "#424242",
-              color: "#fff",
-              fontSize: 11,
-              fontWeight: 700,
-              padding: "4px 9px",
-              borderRadius: 6,
-              display: "inline-block",
-            }}>
+        {full && (
+          <div style={{ position: "absolute", top: 10, right: 10 }}>
+            <span style={{ background: "#424242", color: "#fff", fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 6 }}>
               마감
             </span>
-          ) : null}
-        </div>
+          </div>
+        )}
         <div style={{
           position: "absolute",
           bottom: 0,
@@ -93,6 +85,9 @@ export function LiveStudyCard({ room: r }: { room: Room }) {
           right: 0,
           background: "linear-gradient(to top,rgba(0,0,0,.45) 0%,transparent 60%)",
           padding: "18px 10px 8px",
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
         }}>
           <div style={{
             color: "#fff",
@@ -110,6 +105,11 @@ export function LiveStudyCard({ room: r }: { room: Room }) {
               </svg>
             )}
           </div>
+          {r.isPrivate && (
+            <div style={{ color: "#fff", fontSize: 11, fontWeight: 500, display: "flex", alignItems: "center", gap: 3 }}>
+              <Icon name="lock" size={11} color="#fff" strokeWidth={1.8} />비공개
+            </div>
+          )}
         </div>
       </div>
       <div style={{ padding: "12px 14px 14px", background: T.surface }}>
@@ -123,7 +123,7 @@ export function LiveStudyCard({ room: r }: { room: Room }) {
           marginBottom: 5,
           lineHeight: 1.3,
         }}>
-          {r.title}
+          {r.title.replace(/ \(비공개\)$/, "")}
         </div>
         <div style={{ fontSize: 13, color: T.text3 }}>
           {r.cat} · 평균 {r.time}

@@ -46,6 +46,10 @@ public class AuthServiceImpl implements AuthService {
         if (!"ACTIVE".equals(user.getUserStatus())) {
             throw new IllegalStateException("사용할 수 없는 계정입니다.");
         }
+        // 추가) 소셜 전용 계정 일반 로그인 차단
+        if (user.getUserPassword() == null || user.getUserPassword().isBlank()) {
+            throw new SecurityException("소셜 로그인으로 가입한 계정입니다. 소셜 로그인을 이용해주세요.");
+        }
         // 4. 비밀번호 비교
         if (!passwordEncoder.matches(request.getUserPassword(), user.getUserPassword())) {
             throw new SecurityException("이메일 또는 비밀번호가 올바르지 않습니다.");
@@ -93,7 +97,7 @@ public class AuthServiceImpl implements AuthService {
         }
         // 6. DB 만료 시간 확인
         if (savedToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new IllegalStateException("Refresh Token이 만료되었습니다.");
+            throw new SecurityException("Refresh Token이 만료되었습니다.");
         }
         // 7. 토큰 안의 userUuid와 DB userUuid
         UUID userUuid = jwtProvider.getUserUuid(refreshToken);

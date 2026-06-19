@@ -6,10 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/contexts/ModalContext";
 import { Icon } from "@/components/ui/Icon";
 import { fmtTimer } from "@/utils/time";
-import { listMyRooms } from "@/services/roomService";
-import { openStudyRoom } from "@/utils/openStudyRoom";
-import { fetchNearestDday } from "@/services/plannerService";
-import type { DdayItem } from "@/services/plannerService";
+import { getMainSummary, listMyRooms } from "@/services/roomService";
 import { LearningPlannerModal } from "./planner/LearningPlannerModal";
 
 /** 내 스터디 + 스탯 (각오 / 디데이 / 타이머) */
@@ -21,32 +18,50 @@ export function Dashboard() {
   const [plannerOpen, setPlannerOpen] = useState(false);
 
   const [rooms, setRooms] = useState<MyRoom[]>([]);
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    listMyRooms().then(setRooms);
-  }, [isLoggedIn]);
 
-  const [elapsed, setElapsed] = useState(0);
-  const [editRes, setEditRes] = useState(false);
-  const [res, setRes] = useState("오늘도 집중해서 목표 달성!");
-  const [resDraft, setResDraft] = useState(res);
   const [myIdx, setMyIdx] = useState(0);
 
-  // 디데이 — 플래너 서비스와 연동 (모달 닫힐 때 갱신)
-  const [nearest, setNearest] = useState<DdayItem | null>(null);
-  const refreshDday = () => { fetchNearestDday().then(setNearest); };
-  useEffect(() => { refreshDday(); }, []);
+  const [todayStudySeconds, setTodayStudySeconds] = useState(0);
+  const [ddayTitle, setDdayTitle] = useState<string | null>(null);
+  const [remainingDays, setRemainingDays] = useState<number | null>(null);
+  const [studyResolution, setStudyResolution] = useState<string | null>(null);
+
+  // 로그인 시 summary 조회 추가
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setRooms([]);
+      setTodayStudySeconds(0);
+      setDdayTitle(null);
+      setRemainingDays(null);
+      setStudyResolution(null);
+      return;
+    }
+
+    listMyRooms()
+      .then(setRooms)
+      .catch(() => setRooms([]));
+
+    getMainSummary()
+      .then((summary) => {
+        setTodayStudySeconds(summary.todayStudySeconds ?? 0);
+        setDdayTitle(summary.ddayTitle ?? null);
+        setRemainingDays(summary.remainingDays ?? null);
+        setStudyResolution(summary.studyResolution ?? null);
+      })
+      .catch(() => {
+        setTodayStudySeconds(0);
+        setDdayTitle(null);
+        setRemainingDays(null);
+        setStudyResolution(null);
+      });
+  }, [isLoggedIn]);
+
+  const { h, m } = fmtTimer(todayStudySeconds);
+  const pct = Math.min((todayStudySeconds / (8 * 3600)) * 100, 100);
 
   const hasRooms = rooms.length > 0;
   const curRoom = hasRooms ? rooms[Math.min(myIdx, rooms.length - 1)] : null;
 
-  useEffect(() => {
-    const t = window.setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => window.clearInterval(t);
-  }, []);
-
-  const { h, m } = fmtTimer(elapsed);
-  const pct = Math.min((elapsed / (8 * 3600)) * 100, 100);
   const ww = useWindowWidth();
   const stackDash = ww <= 768;
 
@@ -55,7 +70,7 @@ export function Dashboard() {
 
   return (
     <>
-    <LearningPlannerModal open={plannerOpen} onClose={() => { setPlannerOpen(false); refreshDday(); }} />
+    <LearningPlannerModal open={plannerOpen} onClose={() => { setPlannerOpen(false); }} />
     <section
       id="my-study-section"
       style={stackDash ? {
@@ -130,7 +145,7 @@ export function Dashboard() {
               </span>
             </div>
           ) : !hasRooms ? (
-            <div style={{
+            <div onClick={() => navigate("/rooms/new")} style={{
               width: "100%",
               height: "100%",
               background: T.surface2,
@@ -140,6 +155,7 @@ export function Dashboard() {
               justifyContent: "center",
               gap: 10,
               border: `1.5px dashed ${T.border}`,
+              cursor: "pointer",
             }}>
               <div style={{
                 width: 36, height: 36, borderRadius: "50%", background: T.bg,
@@ -193,13 +209,16 @@ export function Dashboard() {
               onClick={() => setModalRoom({
                 id: curRoom.id,
                 title: curRoom.title,
-                cat: "개발·IT",
-                time: "—",
+                cat: curRoom.cat,
+                time: curRoom.time,
                 members: curRoom.members,
                 max: curRoom.max,
                 img: curRoom.img,
                 live: curRoom.live,
-                type: "FREE",
+                type: curRoom.type,
+                isPrivate: curRoom.isPrivate,
+                createdAt: curRoom.createdAt ? new Date(curRoom.createdAt).toISOString() : null,
+                expiredAt: curRoom.expiredAt,
               })}
               style={{ width: "100%", height: "100%", position: "relative" }}
             >
@@ -253,7 +272,20 @@ export function Dashboard() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    openStudyRoom(curRoom.id);
+                    setModalRoom({
+                      id: curRoom.id,
+                      title: curRoom.title,
+                      cat: curRoom.cat,
+                      time: curRoom.time,
+                      members: curRoom.members,
+                      max: curRoom.max,
+                      img: curRoom.img,
+                      live: curRoom.live,
+                      type: curRoom.type,
+                      isPrivate: curRoom.isPrivate,
+                      createdAt: curRoom.createdAt ? new Date(curRoom.createdAt).toISOString() : null,
+                      expiredAt: curRoom.expiredAt,
+                    });
                   }}
                   style={{
                     padding: "4px 12px",
@@ -372,25 +404,7 @@ export function Dashboard() {
                 설정
               </button>
             </div>
-            {editRes ? (
-              <input
-                value={resDraft}
-                onChange={(e) => setResDraft(e.target.value)}
-                style={{
-                  width: "100%",
-                  border: `1.5px solid ${T.red}`,
-                  borderRadius: 5,
-                  padding: "6px 8px",
-                  fontSize: 12,
-                  outline: "none",
-                  background: T.surface,
-                  color: T.text,
-                  fontFamily: "'Noto Sans KR',sans-serif",
-                }}
-              />
-            ) : (
-              <div style={{ fontSize: 13, color: T.text, fontWeight: 500, lineHeight: 1.5 }}>{res}</div>
-            )}
+            <div style={{ fontSize: 13, color: T.text, fontWeight: 500, lineHeight: 1.5 }}>{studyResolution || "자신만의 각오를 등록해보세요!"}</div>
           </div>
 
           {/* 내 디데이 — 플래너의 가장 빠른 D-day와 연동 (설정은 플래너에서) */}
@@ -398,32 +412,32 @@ export function Dashboard() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: T.text2 }}>내 디데이</span>
             </div>
-            {nearest ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{
-                  background: "none",
-                  color: T.red,
-                  border: `1.5px solid ${T.red}`,
-                  borderRadius: 6,
-                  padding: "4px 11px",
-                  fontFamily: "'JetBrains Mono',monospace",
-                  fontWeight: 700,
-                  fontSize: 17,
-                  flexShrink: 0,
-                  lineHeight: 1.2,
-                }}>
-                  {nearest.dday === 0 ? "D-day" : `D-${nearest.dday}`}
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: T.text, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nearest.title}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                background: "none",
+                color: T.red,
+                border: `1.5px solid ${T.red}`,
+                borderRadius: 6,
+                padding: "4px 11px",
+                fontFamily: "'JetBrains Mono',monospace",
+                fontWeight: 700,
+                fontSize: 17,
+                flexShrink: 0,
+                lineHeight: 1.2,
+              }}>
+                {remainingDays === null
+                  ? "D-day"
+                  : remainingDays === 0
+                    ? "D-day"
+                    : `D-${remainingDays}`}
               </div>
-            ) : (
-              <div
-                onClick={() => setPlannerOpen(true)}
-                style={{ fontSize: 13, color: T.text3, lineHeight: 1.4, cursor: "pointer" }}
-              >
-                등록된 일정이 없습니다.
-              </div>
-            )}
+              <div style={{ fontSize: 13, fontWeight: 500, color: T.text, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ddayTitle ?? "등록된 일정이 없습니다."}</div>
+            </div>
+            <div
+              onClick={() => setPlannerOpen(true)}
+              style={{ fontSize: 13, color: T.text3, lineHeight: 1.4, cursor: "pointer" }}
+            >
+            </div>
           </div>
         </div>
       </div>

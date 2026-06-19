@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { useT } from "@/theme";
 import type { RoomCategory } from "@/types";
+import { ROOM_CATEGORY_NO } from "@/types";
 import { CATS_FILTER } from "@/data/categories";
 import { XIc, PlusIc } from "../components/RoomIcons";
+import { getDefaultRoomImage } from "@/utils/roomImage";
+import { updateRoom } from "@/services/studyRoomService";
+
+const NO_TO_CAT = Object.fromEntries(
+  Object.entries(ROOM_CATEGORY_NO).map(([k, v]) => [v, k as RoomCategory])
+) as Record<number, RoomCategory>;
 
 export interface SettingModalProps {
   onClose: () => void;
@@ -15,6 +22,14 @@ export interface SettingModalProps {
   setSettingMicOn: (v: boolean) => void;
   maxMembers: number;
   setMaxMembers: (v: number) => void;
+  roomThumbnail?: string | null;
+  setRoomThumbnail?: (v: string | null) => void;
+  roomId?: string | number;
+  categoryNo?: number;
+  setCategoryNo?: (v: number) => void;
+  expiredAt?: string;
+  setExpiredAt?: (v: string) => void;
+  roomNotice?: string | null;
 }
 
 const GREEN = "#2e7d32";
@@ -29,18 +44,36 @@ function Toggle({ on, set, color }: { on: boolean; set: (v: boolean) => void; co
 }
 
 export function SettingModal(props: SettingModalProps) {
-  const { onClose, isHost, roomTitle, setRoomTitle, settingCamOn, setSettingCamOn, settingMicOn, setSettingMicOn, maxMembers, setMaxMembers } = props;
+  const {
+    onClose, isHost,
+    roomTitle, setRoomTitle,
+    settingCamOn, setSettingCamOn,
+    settingMicOn, setSettingMicOn,
+    maxMembers, setMaxMembers,
+    roomThumbnail, setRoomThumbnail,
+    roomId,
+    categoryNo, setCategoryNo,
+    expiredAt, setExpiredAt,
+    roomNotice,
+  } = props;
+
   const T = useT();
   const today = new Date().toISOString().slice(0, 10);
   const maxDate = (() => { const d = new Date(); d.setDate(d.getDate() + 90); return d.toISOString().slice(0, 10); })();
 
+  const initCat = categoryNo ? NO_TO_CAT[categoryNo] : undefined;
+  const initDate = expiredAt ? expiredAt.slice(0, 10) : "2026-08-01";
+
   const [title, setTitle] = useState(roomTitle);
-  const [endDate2, setEndDate2] = useState("2026-08-01");
+  const [endDate2, setEndDate2] = useState(initDate);
   const [maxM, setMaxM] = useState(maxMembers);
-  const [selCats, setSelCats] = useState<RoomCategory[]>(["개발·IT"]);
-  const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const [selCats, setSelCats] = useState<RoomCategory[]>(initCat ? [initCat] : []);
+  const defaultImg = getDefaultRoomImage(Number(roomId) || 0);
+  const [imgSrc, setImgSrc] = useState<string>(roomThumbnail ?? defaultImg);
+  const [imgFile, setImgFile] = useState<File | null>(null);
   const [imgName, setImgName] = useState("");
   const [imgErr, setImgErr] = useState("");
+  const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<null | "success" | "error">(null);
   const [errMsg, setErrMsg] = useState("");
 
@@ -58,19 +91,46 @@ export function SettingModal(props: SettingModalProps) {
     if (!file) return;
     if (!["image/jpeg", "image/jpg", "image/png"].includes(file.type)) { setImgErr("JPG, JPEG, PNG 파일만 업로드 가능합니다."); return; }
     if (file.size > 5 * 1024 * 1024) { setImgErr("파일 크기는 최대 5MB까지 업로드 가능합니다."); return; }
-    setImgErr(""); setImgName(file.name);
+    setImgErr(""); setImgName(file.name); setImgFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setImgSrc(ev.target?.result as string);
     reader.readAsDataURL(file);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!roomId) return;
     if (title.trim().length < 2) { setErrMsg("스터디방 제목은 최소 2자 이상 입력해주세요."); setSaveStatus("error"); return; }
     if (title.trim().length > 10) { setErrMsg("스터디방 제목은 최대 10자까지 입력 가능합니다."); setSaveStatus("error"); return; }
-    setSaveStatus("success"); setErrMsg("");
-    setRoomTitle(title.trim());
-    setMaxMembers(maxM);
-    window.setTimeout(() => { setSaveStatus(null); onClose(); }, 1500);
+    if (selCats.length !== 1) { setErrMsg("카테고리를 1개 선택해주세요."); setSaveStatus("error"); return; }
+
+    setSaving(true); setErrMsg(""); setSaveStatus(null);
+    try {
+      const result = await updateRoom(String(roomId), {
+        roomTitle: title.trim(),
+        maxUsers: maxM,
+        categoryNo: ROOM_CATEGORY_NO[selCats[0]],
+        expiredAt: endDate2,
+        cameraStatus: settingCamOn,
+        micStatus: settingMicOn,
+        roomNotice: roomNotice ?? null,
+      }, imgFile);
+
+      setRoomTitle(title.trim());
+      setMaxMembers(maxM);
+      setRoomThumbnail?.(result.thumbnail);
+      setCategoryNo?.(ROOM_CATEGORY_NO[selCats[0]]);
+      setExpiredAt?.(endDate2);
+      if (result.thumbnail) setImgSrc(result.thumbnail);
+      setImgFile(null);
+
+      setSaveStatus("success");
+      window.setTimeout(() => { setSaveStatus(null); onClose(); }, 1500);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "설정 저장 중 오류가 발생했습니다.";
+      setErrMsg(msg); setSaveStatus("error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const ro: React.CSSProperties = isHost ? {} : { pointerEvents: "none", opacity: 0.6 };
@@ -99,8 +159,8 @@ export function SettingModal(props: SettingModalProps) {
                 </label>
               )}
             </div>
-            <div style={{ width: "100%", aspectRatio: "16/9", borderRadius: 10, background: T.surface2, border: `1px solid ${T.border}`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {imgSrc ? <img src={imgSrc} alt="대표 이미지" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 36 }}>📚</span>}
+            <div style={{ width: "100%", aspectRatio: "16/9", borderRadius: 10, background: T.surface2, border: `1px solid ${T.border}`, overflow: "hidden" }}>
+              <img src={imgSrc} alt="대표 이미지" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </div>
             {isHost && (
               <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 2 }}>
@@ -209,7 +269,9 @@ export function SettingModal(props: SettingModalProps) {
             <div style={{ background: T.redLight, border: `1px solid ${T.dark ? "rgba(229,57,53,.4)" : "#FFCDD2"}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: T.red, fontWeight: 500, textAlign: "center" }}>⚠️ {errMsg}</div>
           )}
           {isHost
-            ? <button onClick={handleSave} style={{ width: "100%", padding: "11px 0", borderRadius: 9, border: "none", background: T.red, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>저장</button>
+            ? <button onClick={handleSave} disabled={saving} style={{ width: "100%", padding: "11px 0", borderRadius: 9, border: "none", background: T.red, color: "#fff", fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1, fontFamily: "inherit" }}>
+                {saving ? "저장 중..." : "저장"}
+              </button>
             : <div style={{ fontSize: 12, color: T.text3, textAlign: "center", padding: "4px 0" }}>설정 변경은 HOST만 가능합니다.</div>}
         </div>
       </div>

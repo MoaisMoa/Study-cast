@@ -14,8 +14,7 @@ export function Recommended() {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
-    listRecommended().then(setFiltered);
+    listRecommended({ guest: !isLoggedIn }).then(setFiltered);
   }, [isLoggedIn]);
 
   const total = filtered.length;
@@ -25,7 +24,7 @@ export function Recommended() {
     if (total <= VISIBLE) return;
     const t = window.setInterval(() => setIdx((i) => (i >= maxIdx ? 0 : i + 1)), 3000);
     return () => window.clearInterval(t);
-  }, [total, maxIdx, idx]);
+  }, [total, maxIdx]);
 
   useEffect(() => {
     setIdx(0);
@@ -37,22 +36,10 @@ export function Recommended() {
     <section style={{ marginBottom: 36 }}>
       <div style={{ display: "flex", alignItems: "baseline", marginBottom: 14 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: T.text, marginRight: 8 }}>추천 스터디</h2>
-        <span style={{ fontSize: 12, color: T.text3 }}>목표 시험·자격증에 맞는 방</span>
+        <span style={{ fontSize: 12, color: T.text3 }}>{isLoggedIn ? "목표 시험·자격증에 맞는 방" : "지금 활발한 스터디"}</span>
       </div>
 
-      {!isLoggedIn ? (
-        <div style={{
-          height: 180,
-          borderRadius: T.radius,
-          border: `1.5px dashed ${T.border}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: T.surface2,
-        }}>
-          <span style={{ fontSize: 14, color: T.text3 }}>로그인 후 이용해주세요.</span>
-        </div>
-      ) : total === 0 ? (
+      {total === 0 ? (
         <div style={{
           height: 180,
           borderRadius: T.radius,
@@ -66,7 +53,7 @@ export function Recommended() {
         </div>
       ) : (
         <>
-          <div style={{ overflow: "hidden", borderRadius: T.radius }}>
+          <div style={{ overflow: "hidden", borderRadius: T.radius, paddingTop: 4, marginTop: -4 }}>
             <div style={{
               display: "flex",
               gap: 16,
