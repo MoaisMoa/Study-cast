@@ -106,7 +106,8 @@ public class SecurityConfig {
                     "/api/auth/me",
                     "/api/rooms/**",
                     "/api/main/**",
-                    "/api/visited-rooms/**"
+                    "/api/visited-rooms/**",
+                    "/api/payments/**"
                 ).authenticated()
 
                 // 아직 다른 기능 개발 중이므로 임시 허용

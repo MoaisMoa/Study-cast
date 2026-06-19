@@ -9,8 +9,4 @@ public interface RoomImageStorageService {
     
     // 저장된 스터디방 썸네일 이미지 삭제
     void delete(String imagePath);
-
-    //
-    private final RoomMapper roomMapper;
-    private final ChatsMapper chatsMapper;
 }

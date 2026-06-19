@@ -135,6 +135,7 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
     const user: AuthUser = {
       email: data.userEmail,
       name: data.userName,
+      userUuid: data.userUuid,
     };
     saveCurrentUser(user);
     return user;

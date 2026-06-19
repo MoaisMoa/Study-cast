@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.younghee.studycast.dao.ChatsMapper;
 import com.younghee.studycast.dao.RoomMapper;
-import com.younghee.studycast.dao.UserMapper;
 import com.younghee.studycast.dto.ChatMessage;
 import com.younghee.studycast.dto.ChatsDTO;
 import com.younghee.studycast.dto.RoomsDTO;
@@ -27,7 +26,6 @@ public class ChatServiceImpl implements ChatService {
     private final ChatsMapper chatsMapper;
     private final RoomMapper roomMapper;
     private final SimpMessagingTemplate messagingTemplate;
-    private final UserMapper userMapper;
 
     @Override
     @Transactional

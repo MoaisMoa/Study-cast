@@ -48,6 +48,7 @@ public class RoomServiceImpl implements RoomService {
     private final RoomParticipantsMapper roomParticipantsMapper;
     private final StudyLogService studyLogService;
     private final RoomVisitHistoriesService roomVisitHistoriesService;
+    private final SubscriptionService subscriptionService;
 
     @Override
     @Transactional
@@ -60,7 +61,9 @@ public class RoomServiceImpl implements RoomService {
     ) {
         // 1. 로그인 사용자 UUID 검증
         validateUserUuid(userUuid);
-        // 2. 방 생성 요청값 검증
+        // 2. 구독 여부 확인 (room_premium 설정에 사용)
+        boolean isPremium = subscriptionService.isActive(userUuid);
+        // 3. 방 생성 요청값 검증
         validateCreateRequest(request);
         // 추가) 대표 이미지 검증 및 실제 파일 저장
         String thumbnailPath = roomImageStorageService.store(image);
@@ -79,11 +82,12 @@ public class RoomServiceImpl implements RoomService {
                                     .userUuid(userUuid)
                                     .categoryNo(request.getCategoryNo())
                                     .roomTitle(request.getRoomTitle().trim())
-                                    .maxUser(request.getMaxUsers())
-                                    .nowUser(1)
+                                    .maxUsers(request.getMaxUsers())
+                                    .nowUsers(0)
                                     .roomPassword(roomPassword)
                                     .roomNotice(trimToNull(request.getRoomNotice()))
                                     .roomPrivate(request.getRoomPrivate())
+                                    .roomPremium(isPremium)
                                     .cameraStatus(request.getCameraStatus())
                                     .micStatus(request.getMicStatus())
                                     .roomThumbnail(thumbnailPath)

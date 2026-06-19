@@ -27,55 +27,36 @@ public class UserServiceImpl implements UserService{
     @Transactional
     public int signup(SignupRequest request) {
 
-        // 입력값 검증
+        // 1. 입력값 검증
         validateSignup(request);
 
-        log.info("회원가입 요청: email={}", request.getUserEmail());
-        // 이메일 중복 확인
+        log.info("***회원가입 요청: email={}", request.getUserEmail());
+        // 2. 이메일 중복 확인
         UserDTO existingUser = userMapper.findByEmail(request.getUserEmail());
         // 예외처리: 이메일 중복은 DB 상태와 충돌
         if (existingUser != null) {
             throw new IllegalStateException("이미 사용 중인 이메일입니다.");
         }
-        // UserDTO 생성
+        // 3. UserDTO 생성
         UserDTO user = new UserDTO();
-        // UUID 생성
+        // 4. UUID 생성
         user.setUserUuid(UUID.randomUUID());
-        // 회원가입 요청값 세팅
+        // 5. 회원가입 요청값 세팅
         user.setUserEmail(request.getUserEmail());
         user.setUserName(request.getUserName());
-        // 비밀번호 암호화
+        // 6. 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(request.getUserPassword());
         user.setUserPassword(encodedPassword);
-        // 기본 상태 설정
+        // 7. 기본 상태 설정
         user.setUserStatus("ACTIVE");
-        // users 테이블 저장
+        // 8. users 테이블 저장
         int result = userMapper.insertUser(user);
-        // roles 테이블에 기본 권한 저장
+        // 9. roles 테이블에 기본 권한 저장
         roleMapper.insertDefaultRole(user.getUserUuid());
 
         log.info("회원가입 성공: userUuid={}, email={}", user.getUserUuid(), user.getUserEmail());
 
         return result;
-    }
-
-    // 프로필 수정
-    @Override
-    @Transactional
-    public void updateProfile(UUID userUuid, UserDTO dto) {
-        log.info("프로필 수정 요청 시작 userUuid: {}", userUuid);
-        dto.setUserUuid(userUuid);
-
-        userMapper.updateProfile(dto);
-        userMapper.deleteUserInterests(userUuid);
-
-        if(dto.getCategories() != null && !dto.getCategories().isEmpty()) {
-            for(String categoryName : dto.getCategories()) {
-                log.info("관심 카테고리 추가 등록: userUuid={}, categoryName={}", userUuid, categoryName);
-                userMapper.insertUserInterest(userUuid, categoryName);
-            }
-        }
-        log.info("프로필 수정 성공 userUuid: {}", userUuid);
     }
 
     private void validateSignup(SignupRequest request) {

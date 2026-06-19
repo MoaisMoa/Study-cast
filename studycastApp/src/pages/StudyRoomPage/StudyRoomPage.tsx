@@ -1,9 +1,6 @@
-
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import type { ChatMessage, RoomMember, RoomModal, TimerState } from "@/types/studyRoom";
-import { sendMessage as sendRoomMessage, subscribeChat } from "@/services/studyRoomService";
-import { useAuth } from "@/contexts/AuthContext";
 import { useT, useThemeCtx } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { fmtT, nowDate, nowT } from "@/data/studyRoom";
@@ -42,6 +39,7 @@ export default function StudyRoomPage() {
   const [mic, setMic] = useState(true);
   const [cam, setCam] = useState(true);
   const [camWarn, setCamWarn] = useState(false);
+  // 장치 권한/가용 오류 (null | "denied" | "unavailable")
   const [micError, setMicError] = useState<null | "denied" | "unavailable">(null);
   const [camError, setCamError] = useState<null | "denied" | "unavailable">(null);
 
@@ -232,18 +230,11 @@ export default function StudyRoomPage() {
     if (isSending) return;
     setIsSending(true);
     setSendError(null);
-    const payload = inp.trim();
-    sendRoomMessage(roomId ?? "", payload)
-      .then(() => { setInp(""); })
-      .catch((error) => {
-        console.error(error);
-        if (error instanceof Error && error.message === "로그인이 필요합니다.") {
-          setSendError("로그인이 필요합니다. 로그인 후 이용해 주세요.");
-        } else {
-          setSendError("채팅 전송에 실패했습니다. 잠시 후 다시 시도해 주세요.");
-        }
-      })
-      .finally(() => { setIsSending(false); });
+    const d = new Date();
+    const t = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    setMsgs((m) => [...m, { id: Date.now(), name: "나", text: inp, time: t, mine: true, isHost: true }]);
+    setInp("");
+    setIsSending(false);
   };
 
   const doKick = async () => {
@@ -293,6 +284,7 @@ export default function StudyRoomPage() {
   const handleSideLeave = () => { sideHoverTimer.current = window.setTimeout(() => setSideHover(false), 300); };
 
   const open = (key: RoomModal) => setModal((p) => (p === key ? null : key));
+  // 모바일 드로우: "menu" | "chat" | "members" | null
   const timerAction = () => {
     if (!cam) return;
     if (timerState === "idle") handleTimerStart();
@@ -301,6 +293,7 @@ export default function StudyRoomPage() {
   };
   const rightPanelProps = { chatTab, setChatTab, msgs, inp, setInp, send, isSending, sendError, setSendError, members, elapsed: { ...elapsed, 1: totalSec }, totalSec, timerState, noticeMsg, mic, cam, maxMembers, setNoticeMsg };
 
+  // ── 공통 모달 묶음 ──
   const modals = (
     <>
       {modal === "cal" && <LearningPlannerModal open onClose={() => setModal(null)} />}
@@ -319,6 +312,7 @@ export default function StudyRoomPage() {
       videoTracks={videoTracks} selfIdentity={selfIdentity} selfProfileImage={user?.profileImage} />
   );
 
+  // 장치 오류 배너 (데스크탑/모바일 공용)
   const deviceBanners = (
     <>
       {micError && (
@@ -342,12 +336,13 @@ export default function StudyRoomPage() {
     </>
   );
 
-  // ════════════════ 모바일 ════════════════
+  // ════════════════ 모바일 (드로어 방식 — 원본) ════════════════
   if (isMobile) {
     const chatBadge = msgs.filter((m) => m.type !== "system").length > 0;
     const cbtn: React.CSSProperties = { width: 48, height: 48, borderRadius: "50%", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
     return (
       <div style={{ height: "100dvh", display: "flex", flexDirection: "column", background: T.bg, color: T.text, position: "relative", overflow: "hidden", padding: 8, gap: 6 }}>
+        {/* 헤더 — 둥근 카드 (햄버거 / 중앙 ON STUDY+타이머 / 우측 벽시계+나가기) */}
         <header style={{ flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: "10px 14px", zIndex: 10 }}>
           <button onClick={() => setDrawer((d) => (d === "menu" ? null : "menu"))}
             style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", flexDirection: "column", gap: 4, justifyContent: "center", zIndex: 1 }}>
@@ -355,6 +350,7 @@ export default function StudyRoomPage() {
             <span style={{ width: 14, height: 2, borderRadius: 1, background: drawer === "menu" ? T.red : T.text2, display: "block", transition: "all 200ms" }} />
             <span style={{ width: 18, height: 2, borderRadius: 1, background: drawer === "menu" ? T.red : T.text2, display: "block", transition: "all 200ms" }} />
           </button>
+          {/* 중앙 — absolute 완전 가운데 */}
           <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", textAlign: "center", pointerEvents: "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.red, display: "inline-block", animation: "blink 1.2s ease-in-out infinite" }} />
@@ -362,6 +358,7 @@ export default function StudyRoomPage() {
             </div>
             <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 700, color: T.red, marginTop: 1 }}>{fmtT(timerSec)}</div>
           </div>
+          {/* 우측 — 벽시계 + 나가기(텍스트) */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", zIndex: 1 }}>
             <span style={{ color: T.text3, fontSize: 11, fontFamily: "'JetBrains Mono',monospace" }}>{clk}</span>
             <button onClick={toggle} title={mode === "dark" ? "라이트 모드" : "다크 모드"}
@@ -376,6 +373,7 @@ export default function StudyRoomPage() {
         </header>
         {deviceBanners}
 
+        {/* 캠 그리드 (모바일 전용 4분할 확대/축소) */}
         <MobileCamGrid
           members={members} elapsed={{ ...elapsed, 1: totalSec }} totalSec={totalSec}
           timerState={timerState} cam={cam} mic={mic} focused={focusedId}
@@ -384,6 +382,7 @@ export default function StudyRoomPage() {
           videoTracks={videoTracks} selfIdentity={selfIdentity} selfProfileImage={user?.profileImage}
         />
 
+        {/* 하단 컨트롤 바: 마이크 · 채팅 · 중앙 타이머 · 멤버 · 카메라 */}
         <div style={{ flexShrink: 0, padding: "12px 24px 14px", display: "flex", alignItems: "center", justifyContent: "space-around", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20 }}>
           <button onClick={() => setMic((v) => !v)} style={{ ...cbtn, background: mic ? T.redLight : T.surface2, position: "relative" }}>
             {mic ? <MicOn s={22} c={T.red} /> : <MicOff s={22} c={T.text3} />}
@@ -393,6 +392,8 @@ export default function StudyRoomPage() {
             <ChatIc s={22} c={drawer === "chat" ? T.red : T.text2} />
             {chatBadge && <span style={{ position: "absolute", top: 8, right: 8, width: 7, height: 7, borderRadius: "50%", background: T.red }} />}
           </button>
+          {/* 중앙 타이머 — 카메라 OFF 시 비활성 */}
+          {/* 중앙 타이머 — 카메라 OFF 시 비활성. 일시정지 시 위에 초기화 버튼 */}
           <div style={{ position: "relative", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
             {timerState === "paused" && (
               <button onClick={handleTimerReset}
@@ -417,6 +418,7 @@ export default function StudyRoomPage() {
         {/* 드로어 오버레이 */}
         {drawer && <div onClick={() => setDrawer(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 65 }} />}
 
+        {/* 메뉴 드로어 */}
         {drawer === "menu" && (
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 70, background: T.surface, borderRadius: "18px 18px 0 0", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", maxHeight: "70dvh", animation: "slideUp 240ms ease forwards" }}>
             <div onClick={() => setDrawer(null)} style={{ width: 36, height: 3, borderRadius: 2, background: T.borderStrong, margin: "10px auto 0", flexShrink: 0, cursor: "pointer" }} />
@@ -442,6 +444,7 @@ export default function StudyRoomPage() {
           </div>
         )}
 
+        {/* 채팅 드로어 */}
         {drawer === "chat" && (
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 70, background: T.surface, borderRadius: "18px 18px 0 0", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", height: "58dvh", animation: "slideUp 240ms ease forwards" }}>
             <div onClick={() => setDrawer(null)} style={{ width: 36, height: 3, borderRadius: 2, background: T.borderStrong, margin: "10px auto 0", flexShrink: 0, cursor: "pointer" }} />
@@ -453,6 +456,7 @@ export default function StudyRoomPage() {
           </div>
         )}
 
+        {/* 멤버 드로어 */}
         {drawer === "members" && (
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 70, background: T.surface, borderRadius: "18px 18px 0 0", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", maxHeight: "60dvh", animation: "slideUp 240ms ease forwards" }}>
             <div onClick={() => setDrawer(null)} style={{ width: 36, height: 3, borderRadius: 2, background: T.borderStrong, margin: "10px auto 0", flexShrink: 0, cursor: "pointer" }} />
@@ -478,6 +482,7 @@ export default function StudyRoomPage() {
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: T.bg, color: T.text }}>
+      {/* 헤더 */}
       <header style={{ height: 48, flexShrink: 0, display: "flex", alignItems: "center", background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "0 14px", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 5, background: T.red, color: "#fff", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 6, letterSpacing: ".06em", flexShrink: 0 }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff", animation: "blink 1.2s ease-in-out infinite" }} />ON STUDY
@@ -496,6 +501,7 @@ export default function StudyRoomPage() {
         </div>
       </header>
 
+      {/* 경고 배너 */}
       {camWarn && (
         <div style={{ flexShrink: 0, background: T.surface2, borderBottom: `1px solid ${T.border}`, padding: "6px 16px", display: "flex", alignItems: "center", gap: 8 }}>
           <CamOff s={14} c={T.text3} /><span style={{ fontSize: 12, color: T.text2, fontWeight: 500 }}>카메라를 켠 후 공부 타이머를 시작할 수 있습니다.</span>
@@ -509,6 +515,7 @@ export default function StudyRoomPage() {
       )}
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
+        {/* 좌측 네비 */}
         <div style={{ width: 44, flexShrink: 0, background: T.surface, borderRight: `1px solid ${T.border}`, display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0", gap: 2 }}>
           <button style={navBtn(modal === "members")} title="멤버 관리" onClick={() => open("members")}><UsersIc s={18} c={modal === "members" ? T.red : T.text2} /></button>
           <button style={navBtn(modal === "cal")} title="캘린더" onClick={() => open("cal")}><CalIc s={18} c={modal === "cal" ? T.red : T.text2} /></button>
@@ -523,16 +530,19 @@ export default function StudyRoomPage() {
           <button style={navBtn(false)} onClick={() => setShowExitConfirm(true)} title="나가기"><ExitIc s={18} c={T.red} /></button>
         </div>
 
+        {/* 중앙 캠 */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: T.bg, position: "relative" }}>
           {camGridEl}
         </div>
 
+        {/* 우측 패널 (축소 모드일 때만 고정) */}
         {!full && (
           <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", background: T.surface, borderLeft: `1px solid ${T.border}` }}>
             <RightPanel {...rightPanelProps} />
           </div>
         )}
 
+        {/* 확대 모드: 우측 끝 hover → 슬라이드 패널 */}
         {full && (
           <>
             <div onMouseEnter={handleSideEnter} onMouseLeave={handleSideLeave}

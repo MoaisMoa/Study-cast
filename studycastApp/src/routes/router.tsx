@@ -6,6 +6,9 @@ import { ProfilePage } from "@/pages/ProfilePage";
 import { MyStudyPage } from "@/pages/MyStudyPage";
 import { VisitedRoomsPage } from "@/pages/VisitedRoomsPage";
 import { StudyRoomPage } from "@/pages/StudyRoomPage";
+import { SubscriptionPage } from "@/pages/PaymentPage/SubscriptionPage";
+import { PaymentSuccess } from "@/pages/PaymentPage/PaymentSuccess";
+import { PaymentFail } from "@/pages/PaymentPage/PaymentFail";
 
 function RootLayout() {
   return (
@@ -27,8 +30,11 @@ export const router = createBrowserRouter([
       { path: "/rooms/:roomId", element: <StudyRoomPage /> },
       { path: "/profile",      element: <ProfilePage /> },
       { path: "/my-study",     element: <MyStudyPage /> },
-      { path: "/visited-rooms", element: <VisitedRoomsPage /> },
-      { path: "*",             element: <Navigate to="/" replace /> },
+      { path: "/visited-rooms",    element: <VisitedRoomsPage /> },
+      { path: "/subscription",     element: <SubscriptionPage /> },
+      { path: "/payments/success", element: <PaymentSuccess /> },
+      { path: "/payments/fail",    element: <PaymentFail /> },
+      { path: "*",                 element: <Navigate to="/" replace /> },
     ],
   },
 ]);
