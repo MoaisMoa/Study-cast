@@ -75,9 +75,10 @@ function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean, myPr
 }
 
 /** 방 입장 + 초기 스냅샷 조회 */
-export async function fetchRoom(roomId: string, myName: string, myProfileImage?: string): Promise<RoomSnapshot> {
+export async function fetchRoom(roomId: string, myName: string, myProfileImage?: string, joinCode?: string): Promise<RoomSnapshot> {
   // 입장 처리 (이미 active 상태면 백엔드가 중복 처리)
-  await apiClient.post(`/api/rooms/${roomId}/join`);
+  const joinBody = joinCode ? { joinCode } : undefined;
+  await apiClient.post(`/api/rooms/${roomId}/join`, joinBody);
 
   const [detailRes, participantsRes] = await Promise.all([
     apiClient.get<RoomDetailResponse>(`/api/rooms/${roomId}`),
@@ -157,6 +158,7 @@ import SockJS from "sockjs-client";
 
 let stompClient: Client | null = null;
 const pendingOnConnect: Array<() => void> = [];
+let subscriptionCount = 0;
 
 function getClient(): Client {
   if (!stompClient) {
@@ -179,6 +181,14 @@ function whenConnected(fn: () => void): void {
   } else {
     pendingOnConnect.push(fn);
     if (!c.active) c.activate();
+  }
+}
+
+function disconnectIfIdle(): void {
+  if (subscriptionCount === 0) {
+    pendingOnConnect.length = 0;
+    stompClient?.deactivate();
+    stompClient = null;
   }
 }
 
@@ -219,8 +229,11 @@ export function subscribeChat(
   onMessage: (msg: ChatMessage) => void
 ): () => void {
   let sub: ReturnType<Client["subscribe"]> | null = null;
+  let active = true;
+  subscriptionCount++;
 
   whenConnected(() => {
+    if (!active) return;
     sub = getClient().subscribe(`/sub/chat/room/${roomId}`, (frame) => {
       try {
         const data = JSON.parse(frame.body);
@@ -237,9 +250,11 @@ export function subscribeChat(
   });
 
   return () => {
+    active = false;
     sub?.unsubscribe();
-    stompClient?.deactivate();
-    stompClient = null;
+    sub = null;
+    subscriptionCount--;
+    disconnectIfIdle();
   };
 }
 
@@ -249,8 +264,11 @@ export function subscribeMembers(
   onEvent: (event: MemberEvent) => void
 ): () => void {
   let sub: ReturnType<Client["subscribe"]> | null = null;
+  let active = true;
+  subscriptionCount++;
 
   whenConnected(() => {
+    if (!active) return;
     sub = getClient().subscribe(`/sub/room/${roomId}/members`, (frame) => {
       try {
         onEvent(JSON.parse(frame.body));
@@ -259,9 +277,11 @@ export function subscribeMembers(
   });
 
   return () => {
+    active = false;
     sub?.unsubscribe();
-    stompClient?.deactivate();
-    stompClient = null;
+    sub = null;
+    subscriptionCount--;
+    disconnectIfIdle();
   };
 }
 

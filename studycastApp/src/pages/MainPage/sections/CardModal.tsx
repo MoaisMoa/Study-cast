@@ -1,9 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useT } from "@/theme";
 import { useModal, useModalRoom } from "@/contexts/ModalContext";
 import { joinRoom } from "@/services/visitedRoomService";
-import { openStudyRoom } from "@/utils/openStudyRoom";
-import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
+import { canEnterRoom } from "@/utils/roomSession";
 import { Icon } from "@/components/ui/Icon";
 
 const CODE_RE = /^[0-9]{4,6}$/;
@@ -16,6 +16,7 @@ function formatDate(iso: string | null | undefined): string {
 
 export function CardModal() {
   const T = useT();
+  const navigate = useNavigate();
   const room = useModalRoom();
   const setModalRoom = useModal();
 
@@ -50,9 +51,8 @@ export function CardModal() {
     const allowed = await canEnterRoom();
     setEntering(false);
     if (!allowed) { setEntryBlocked(true); return; }
-    setPendingEntry(String(room.id));
-    openStudyRoom(room.id);
     handleClose();
+    navigate(`/rooms/${room.id}`);
   };
 
   const handleCodeSubmit = async () => {
@@ -62,7 +62,7 @@ export function CardModal() {
     if (!allowed) { setVerifying(false); setEntryBlocked(true); setCodeStep(false); return; }
     const ok = await joinRoom(room.id, codeVal.trim());
     setVerifying(false);
-    if (ok) { setPendingEntry(String(room.id)); openStudyRoom(room.id); handleClose(); return; }
+    if (ok) { handleClose(); navigate(`/rooms/${room.id}`); return; }
     setCodeError("wrong");
   };
 

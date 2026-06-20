@@ -55,7 +55,7 @@ export function MobileDashboard() {
   const hasRooms = rooms.length > 0;
   const curRoom = hasRooms && myIdx < rooms.length ? rooms[myIdx] : null;
 
-  const { h, m } = fmtTimer(todayStudySeconds);
+  const { h, m, s } = fmtTimer(todayStudySeconds);
   const pct = Math.min((todayStudySeconds / (8 * 3600)) * 100, 100);
 
   return (
@@ -147,10 +147,13 @@ export function MobileDashboard() {
           <div style={{
             fontFamily: "'JetBrains Mono',monospace",
             fontSize: 22, fontWeight: 700, color: T.red,
-            lineHeight: 1, marginBottom: 8,
+            lineHeight: 1, marginBottom: 8, letterSpacing: "0.04em",
           }}>
-            {h}<span style={{ fontSize: 12, color: T.text3, fontWeight: 400 }}>h</span>{" "}
-            {m}<span style={{ fontSize: 12, color: T.text3, fontWeight: 400 }}>m</span>
+            {String(h).padStart(2, "0")}
+            <span style={{ fontSize: 14, color: T.text3, fontWeight: 400, margin: "0 1px" }}>:</span>
+            {String(m).padStart(2, "0")}
+            <span style={{ fontSize: 14, color: T.text3, fontWeight: 400, margin: "0 1px" }}>:</span>
+            {String(s).padStart(2, "0")}
           </div>
           <div style={{
             height: 5,
@@ -168,7 +171,7 @@ export function MobileDashboard() {
             }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
-            <span style={{ fontSize: 9, color: T.text3 }}>오늘 {h}h</span>
+            <span style={{ fontSize: 9, color: T.text3 }}>오늘 {String(h).padStart(2, "0")}:{String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}</span>
           </div>
         </div>
 

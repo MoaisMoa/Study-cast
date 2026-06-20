@@ -78,7 +78,7 @@ public class RoomController {
     // 스터디방 상세 페이지 헤더 조회
     @GetMapping("/{roomNo}")
     public ResponseEntity<RoomDetailResponse> getRoomDetail(
-        @PathVariable long roomNo,
+        @PathVariable("roomNo") long roomNo,
         Authentication authentication
     ) {
         UUID userUuid = getUserUuid(authentication);
@@ -91,7 +91,7 @@ public class RoomController {
     // 스터디방 입장 처리
     @PostMapping("/{roomNo}/join")
     public ResponseEntity<RoomJoinResponse> joinRoom(
-        @PathVariable Long roomNo,
+        @PathVariable("roomNo") Long roomNo,
         @RequestBody(required = false) RoomJoinRequest request,
         Authentication authentication    
     ) {
@@ -105,7 +105,7 @@ public class RoomController {
     // 스터디방 active 참여자 목록 조회
     @GetMapping("/{roomNo}/participants")
     public ResponseEntity<List<RoomParticipantResponse>> getActiveParticipants(
-        @PathVariable Long roomNo
+        @PathVariable("roomNo") Long roomNo
     ) {
         List<RoomParticipantResponse> response = roomService.getActiveParticipants(roomNo);
 
@@ -115,7 +115,7 @@ public class RoomController {
     // LiveKit 접속 토큰 발급
     @GetMapping("/{roomNo}/token")
     public ResponseEntity<LiveKitTokenResponse> getLiveKitToken(
-        @PathVariable Long roomNo,
+        @PathVariable("roomNo") Long roomNo,
         Authentication authentication
     ) {
         UUID userUuid = getUserUuid(authentication);
@@ -129,7 +129,7 @@ public class RoomController {
     // 스터디방 퇴장 처리 + 공부시간 저장
     @DeleteMapping("/{roomNo}/leave")
     public ResponseEntity<Void> leaveRoom(
-        @PathVariable Long roomNo,
+        @PathVariable("roomNo") Long roomNo,
         @RequestBody(required = false) LeaveRoomRequest request,
         Authentication authentication
     ) {
@@ -146,7 +146,7 @@ public class RoomController {
     // 스터디방 설정 업데이트 (방장 전용)
     @PatchMapping(value = "/{roomNo}/settings", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RoomUpdateResponse> updateRoomSettings(
-        @PathVariable Long roomNo,
+        @PathVariable("roomNo") Long roomNo,
         @RequestPart("request") RoomUpdateRequest request,
         @RequestPart(value = "image", required = false) MultipartFile image,
         Authentication authentication
@@ -159,7 +159,7 @@ public class RoomController {
     // 방 종료 (방장 전용)
     @PatchMapping("/{roomNo}/close")
     public ResponseEntity<Void> closeRoom(
-        @PathVariable Long roomNo,
+        @PathVariable("roomNo") Long roomNo,
         Authentication authentication
     ) {
         UUID userUuid = getUserUuid(authentication);
@@ -170,7 +170,7 @@ public class RoomController {
     // 방 삭제 (방장 전용)
     @DeleteMapping("/{roomNo}")
     public ResponseEntity<Void> deleteRoom(
-        @PathVariable Long roomNo,
+        @PathVariable("roomNo") Long roomNo,
         Authentication authentication
     ) {
         UUID userUuid = getUserUuid(authentication);
@@ -181,7 +181,7 @@ public class RoomController {
     // 공지사항 저장/삭제 (방장 전용) — notice: null이면 삭제
     @PatchMapping("/{roomNo}/notice")
     public ResponseEntity<java.util.Map<String, Object>> saveNotice(
-        @PathVariable Long roomNo,
+        @PathVariable("roomNo") Long roomNo,
         @RequestBody java.util.Map<String, String> body,
         Authentication authentication
     ) {
@@ -193,7 +193,7 @@ public class RoomController {
     // 멤버 이메일 초대 (방장 전용)
     @PostMapping("/{roomNo}/invite")
     public ResponseEntity<Void> inviteMember(
-        @PathVariable Long roomNo,
+        @PathVariable("roomNo") Long roomNo,
         @RequestBody RoomInviteRequest request,
         Authentication authentication
     ) {

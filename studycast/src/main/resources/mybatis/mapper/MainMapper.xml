@@ -135,7 +135,7 @@
             END AS remaining_days,
 
             <!-- 내 각오 -->
-            NULL::VARCHAR AS study_resolution
+            u.user_motto AS study_resolution
 
         FROM users u
         <!-- 디데이 없어도 요약 응답 반환하기 위해 LEFT JOIN LATERAL 사용 -->

@@ -153,7 +153,7 @@ export function CamGrid(props: CamGridProps) {
         {thumbs.length > 0 && (
           <div style={{ flexShrink: 0, display: "flex", gap: 6, height: 110 }}>
             {thumbs.map((m) => (
-              <div key={m.id} style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setFocusedId(m.id)}>
+              <div key={m.userUuid} style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setFocusedId(m.id)}>
                 <CamCell m={m} avSize={36} {...cellProps(m)} />
               </div>
             ))}
@@ -172,7 +172,7 @@ export function CamGrid(props: CamGridProps) {
         const isLast = idx === all.length - 1;
         const isSelf = selfIdentity ? m.userUuid === selfIdentity : m.name === "나";
         return (
-          <div key={m.id} style={{ gridColumn: count === 3 && isLast ? "1 / span 2" : undefined, minHeight: 0, height: "100%" }} onClick={() => setFocusedId(m.id)}>
+          <div key={m.userUuid} style={{ gridColumn: count === 3 && isLast ? "1 / span 2" : undefined, minHeight: 0, height: "100%" }} onClick={() => setFocusedId(m.id)}>
             <CamCell m={m} avSize={count === 1 ? 90 : count === 2 ? 70 : 56} showTimer={isSelf} {...cellProps(m)} />
           </div>
         );

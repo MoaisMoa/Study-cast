@@ -73,7 +73,7 @@ export function MobileMemberDrawer({
         const micOn = isSelf ? mic : m.mic;
         const isActive = isSelf ? timerState === "running" : camOn;
         return (
-          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: T.surface2, borderRadius: 12, border: `1px solid ${T.border}` }}>
+          <div key={m.userUuid} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: T.surface2, borderRadius: 12, border: `1px solid ${T.border}` }}>
             <div style={{ position: "relative", flexShrink: 0 }}>
               <Av name={m.short} color={m.color} size={42} />
               <span style={{ position: "absolute", bottom: 1, right: 1, width: 10, height: 10, borderRadius: "50%", background: isActive ? GREEN : T.text3, border: `2px solid ${T.surface}` }} />

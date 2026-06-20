@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Modal";
 import { Icon } from "@/components/ui/Icon";
 import { useRT } from "@/theme";
-import { deleteRoomNotice, updateRoomNotice } from "@/services/roomService";
+import { saveNotice } from "@/services/studyRoomService";
 
 interface RoomNoticeModalProps {
   open: boolean;
@@ -44,7 +44,7 @@ export function RoomNoticeModal({
     setPending(true);
     try {
       const noticeValue = draft.trim() === "" ? null : draft.trim();
-      const result = await updateRoomNotice(roomId, noticeValue);
+      const result = await saveNotice(String(roomId), noticeValue);
       onUpdate(result.notice ?? null);
       setEditing(false);
       setError("");
@@ -61,7 +61,7 @@ export function RoomNoticeModal({
     }
     setPending(true);
     try {
-      await deleteRoomNotice(roomId);
+      await saveNotice(String(roomId), null);
       onUpdate(null);
       setEditing(false);
       onClose();

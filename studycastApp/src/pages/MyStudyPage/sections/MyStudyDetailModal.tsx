@@ -5,8 +5,7 @@ import { useT } from "@/theme";
 import { Icon } from "@/components/ui/Icon";
 import { calcRoomStatus } from "@/utils/myStudyDate";
 import { joinRoom } from "@/services/visitedRoomService";
-import { openStudyRoom } from "@/utils/openStudyRoom";
-import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
+import { canEnterRoom } from "@/utils/roomSession";
 
 const CODE_RE = /^[0-9]{4,6}$/;
 
@@ -55,9 +54,8 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
     const allowed = await canEnterRoom();
     setEntering(false);
     if (!allowed) { setEntryBlocked(true); return; }
-    setPendingEntry(String(room.id));
-    openStudyRoom(room.id);
     handleClose();
+    navigate(`/rooms/${room.id}`);
   };
 
   const handleCodeSubmit = async () => {
@@ -67,7 +65,7 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
     if (!allowed) { setVerifying(false); setEntryBlocked(true); setCodeStep(false); return; }
     const ok = await joinRoom(Number(room.id), codeVal.trim());
     setVerifying(false);
-    if (ok) { setPendingEntry(String(room.id)); openStudyRoom(room.id); handleClose(); return; }
+    if (ok) { handleClose(); navigate(`/rooms/${room.id}`); return; }
     setCodeError("wrong");
   };
 

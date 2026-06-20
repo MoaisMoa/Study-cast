@@ -36,7 +36,7 @@ public class ChatController {
     }
 
     @GetMapping("/{roomNo}")
-    public List<Map<String, Object>> getChatHistory(@PathVariable Long roomNo) {
+    public List<Map<String, Object>> getChatHistory(@PathVariable("roomNo") Long roomNo) {
         return chatsService.getChatHistory(roomNo);
     }
 

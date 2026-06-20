@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import type { ChatMessage, RoomMember, RoomModal, TimerState } from "@/types/studyRoom";
 import { useT, useThemeCtx } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -28,6 +28,7 @@ export default function StudyRoomPage() {
   const { roomId } = useParams();
   const isMobile = useIsMobile(768);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // 멤버/시간
   const [members, setMembers] = useState<RoomMember[]>([]);
@@ -85,13 +86,19 @@ export default function StudyRoomPage() {
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
+  // join 완료 여부 — LiveKit 토큰은 join 성공 후에만 요청
+  const [joined, setJoined] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [codeInput, setCodeInput] = useState("");
+  const [retryCode, setRetryCode] = useState<string | null>(null);
+
   // API: 방 입장 처리 + 초기 데이터 로드
   useEffect(() => {
     if (!roomId) return;
     registerSession(roomId);
     let cancelled = false;
     Promise.all([
-      fetchRoom(roomId, user?.name ?? "", user?.profileImage),
+      fetchRoom(roomId, user?.name ?? "", user?.profileImage, retryCode ?? undefined),
       getTodayStudySeconds(),
     ]).then(([snap, todaySeconds]) => {
       if (cancelled) return;
@@ -114,9 +121,14 @@ export default function StudyRoomPage() {
       setRoomThumbnail(snap.thumbnail);
       setCategoryNo(snap.categoryNo);
       setExpiredAt(snap.expiredAt);
+      setJoined(true);
+    }).catch((e) => {
+      if (cancelled) return;
+      const msg: string = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "방에 입장할 수 없습니다.";
+      setJoinError(msg);
     });
     return () => { cancelled = true; };
-  }, [roomId, user?.name]);
+  }, [roomId, user?.name, retryCode]);
 
   // 시계 + 타이머
   useEffect(() => {
@@ -182,8 +194,8 @@ export default function StudyRoomPage() {
         }
       } else if (event.type === "KICKED") {
         if (event.userUuid === myUuidRef.current) {
-          // 자신이 추방됨 → 퇴장 처리 없이 창 닫기
-          window.close();
+          // 자신이 추방됨 → 퇴장 처리 없이 메인으로 이동
+          navigate("/");
           return;
         }
         const kicked = membersRef.current.find((m) => m.userUuid === event.userUuid);
@@ -221,9 +233,9 @@ export default function StudyRoomPage() {
     if (!cam && timerState === "running") setTimerState("paused");
   }, [cam, timerState]);
 
-  // LiveKit 연결 — 카메라/마이크 실제 연결 및 비디오 트랙 관리
+  // LiveKit 연결 — join 성공 후에만 토큰 요청 (joined가 true일 때만 roomId 전달)
   const { selfIdentity, videoTracks } = useLiveKit(
-    roomId,
+    joined ? roomId : undefined,
     cam,
     mic,
     (e) => setCamError(e),
@@ -274,7 +286,7 @@ export default function StudyRoomPage() {
       exitedRef.current = true;
     } catch { /* ignore — pagehide fallback will handle cleanup */ }
     unregisterSession();
-    window.close();
+    navigate("/");
   };
 
   // 탭/브라우저 강제 종료 시 퇴장 처리
@@ -295,6 +307,52 @@ export default function StudyRoomPage() {
     window.addEventListener("pagehide", handlePageHide);
     return () => window.removeEventListener("pagehide", handlePageHide);
   }, [handlePageHide]);
+
+  // join 실패 시 에러 화면 (모든 훅 호출 후에 위치)
+  if (joinError) {
+    const needsCode = joinError === "비공개 방은 참여 코드가 필요합니다.";
+    return (
+      <div style={{ minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, fontFamily: "'Noto Sans KR', sans-serif" }}>
+        <p style={{ fontSize: 16, color: T.text, margin: 0 }}>{joinError}</p>
+        {needsCode && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="text"
+              value={codeInput}
+              onChange={(e) => setCodeInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && codeInput.trim()) {
+                  setJoinError(null);
+                  setJoined(false);
+                  setRetryCode(codeInput.trim());
+                }
+              }}
+              placeholder="참여 코드 입력"
+              maxLength={10}
+              style={{ padding: "10px 14px", borderRadius: 10, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 14, outline: "none", width: 160 }}
+            />
+            <button
+              onClick={() => {
+                if (!codeInput.trim()) return;
+                setJoinError(null);
+                setJoined(false);
+                setRetryCode(codeInput.trim());
+              }}
+              style={{ padding: "10px 20px", borderRadius: 10, border: "none", background: "#4f8ef7", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+            >
+              입장
+            </button>
+          </div>
+        )}
+        <button
+          onClick={() => navigate("/")}
+          style={{ padding: "10px 24px", borderRadius: 10, border: "none", background: T.red, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+        >
+          메인으로 돌아가기
+        </button>
+      </div>
+    );
+  }
 
   const handleSideEnter = () => { if (sideHoverTimer.current) window.clearTimeout(sideHoverTimer.current); setSideHover(true); };
   const handleSideLeave = () => { sideHoverTimer.current = window.setTimeout(() => setSideHover(false), 300); };

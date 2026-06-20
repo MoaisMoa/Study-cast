@@ -13,14 +13,14 @@ import com.younghee.studycast.dto.RoomsDTO;
 @Mapper
 public interface RoomMapper {
     int insertRoom(RoomsDTO room);
-    RoomsDTO selectRoomById(Long roomNo);
+    RoomsDTO selectRoomById(@Param("roomNo") Long roomNo);
     int insertParticipant(RoomParticipantDTO participant);
     int deleteParticipant(@Param("userUuid") UUID userUuid, @Param("roomNo") Long roomNo);
     boolean existsParticipant(@Param("userUuid") UUID userUuid, @Param("roomNo") Long roomNo);
     int updateRoomUserCount(@Param("roomNo") Long roomNo, @Param("delta") int delta);
     int updateRoomNotice(@Param("roomNo") Long roomNo, @Param("roomNotice") String roomNotice);
     int clearRoomNotice(@Param("roomNo") Long roomNo);
-    int selectParticipantCount(Long roomNo);
-    List<RoomParticipantDTO> selectParticipants(Long roomNo);
-    List<Map<String, Object>> selectParticipantsWithUser(Long roomNo);
+    int selectParticipantCount(@Param("roomNo") Long roomNo);
+    List<RoomParticipantDTO> selectParticipants(@Param("roomNo") Long roomNo);
+    List<Map<String, Object>> selectParticipantsWithUser(@Param("roomNo") Long roomNo);
 }

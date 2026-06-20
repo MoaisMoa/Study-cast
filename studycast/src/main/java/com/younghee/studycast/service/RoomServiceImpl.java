@@ -200,8 +200,8 @@ public class RoomServiceImpl implements RoomService {
         // - 방장은 정원이 가득 차도 입장 보장 정책 적용
         boolean owner = userUuid.equals(room.getUserUuid());
 
-        // 7. 비공개방이면 joinCode 검증 (방장 포함 모든 참여자)
-        if (Boolean.TRUE.equals(room.getRoomPrivate())) {
+        // 7. 비공개방이면 joinCode 검증 (방장은 코드 없이 입장 가능)
+        if (Boolean.TRUE.equals(room.getRoomPrivate()) && !owner) {
             String joinCode = request == null ? null : request.getJoinCode();
 
             if (joinCode == null || joinCode.trim().isEmpty()) {
@@ -216,7 +216,9 @@ public class RoomServiceImpl implements RoomService {
         // 이력 없으면 insert / 이력 있으면 rejoin update 처리
         RoomParticipantDTO existingParticipant =
             roomParticipantsMapper.findParticipantByRoomNoAndUserUuid(roomNo, userUuid);
-        // 9. 입장 전 현재 인원 조회
+        // 9. 입장 전 now_users를 실제 active 참여자 수로 동기화 후 조회
+        // (서버 비정상 종료 등으로 now_users가 실제보다 높게 남는 경우 방어)
+        roomsMapper.syncNowUsersByActiveParticipants(roomNo);
         Integer currentUsersBeforeJoin = roomsMapper.findNowUsersByRoomNo(roomNo);
 
         // 10. 정원 체크 (방장 슬롯은 정원 외로 취급 → 5/4 허용)

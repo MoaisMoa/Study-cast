@@ -28,7 +28,7 @@ public class RoomVisitHistoriesController {
     // 1. 방문 기록 저장 또는 갱신
     @PostMapping("/{roomNo}")
     public ResponseEntity<Void> recordVisit(
-        @PathVariable Long roomNo,
+        @PathVariable("roomNo") Long roomNo,
         Authentication authentication
     ) {
         UUID userUuid = getUserUuid(authentication);

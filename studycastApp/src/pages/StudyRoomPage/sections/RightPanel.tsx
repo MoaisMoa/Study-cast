@@ -147,7 +147,7 @@ export function RightPanel(props: RightPanelProps) {
               const camState = isSelf ? cam : m.cam;
               const isActive = isSelf ? timerState === "running" : camState;
               return (
-                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", opacity: isActive ? 1 : 0.55 }}>
+                <div key={m.userUuid} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", opacity: isActive ? 1 : 0.55 }}>
                   <div style={{ position: "relative", flexShrink: 0 }}>
                     <Av name={m.short} color={m.color} size={32} />
                     <span style={{ position: "absolute", bottom: 0, right: 0, width: 8, height: 8, borderRadius: "50%", background: isActive ? GREEN : c3, border: `2px solid ${T.surface}` }} />

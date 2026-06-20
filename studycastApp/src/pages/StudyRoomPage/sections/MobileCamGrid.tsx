@@ -60,7 +60,7 @@ export function MobileCamGrid(props: MobileCamGridProps) {
         const flexV = isFocused ? 3.5 : isShrunk ? 0.45 : 1;
         return (
           <div
-            key={m.id}
+            key={m.userUuid}
             onClick={() => setFocused((v) => (v === m.id ? null : m.id))}
             style={{
               flex: flexV, minHeight: 0, position: "relative", borderRadius: 12, overflow: "hidden",

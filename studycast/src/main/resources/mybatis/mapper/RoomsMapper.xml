@@ -16,8 +16,6 @@
         <result property="roomNotice" column="room_notice"/>
         <result property="roomPrivate" column="room_private"/>
         <result property="roomPremium" column="room_premium"/>
-        <result property="cameraStatus" column="camera_status"/>
-        <result property="micStatus" column="mic_status"/>
         <result property="roomThumbnail" column="room_thumbnail"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -39,8 +37,6 @@
             room_password,
             room_notice,
             room_private,
-            camera_status,
-            mic_status,
             room_thumbnail,
             expired_at
         ) VALUES (
@@ -52,8 +48,6 @@
             #{roomPassword},
             #{roomNotice},
             #{roomPrivate},
-            #{cameraStatus},
-            #{micStatus},
             #{roomThumbnail},
             #{expiredAt}
         )
@@ -118,8 +112,6 @@
                 WHEN r.expired_at IS NOT NULL AND r.expired_at &lt; NOW() THEN TRUE
                 ELSE FALSE
             END AS expired,
-            r.camera_status AS cameraStatus,
-            r.mic_status AS micStatus,
             r.created_at AS createdAt,
             r.expired_at AS expiredAt
         FROM rooms r
@@ -142,8 +134,6 @@
             max_users      = #{req.maxUsers},
             category_no    = #{req.categoryNo},
             expired_at     = #{req.expiredAt},
-            camera_status  = #{req.cameraStatus},
-            mic_status     = #{req.micStatus},
             room_notice    = #{req.roomNotice},
             room_thumbnail = #{thumbnail},
             updated_at     = NOW()

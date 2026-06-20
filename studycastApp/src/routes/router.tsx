@@ -31,7 +31,6 @@ export const router = createBrowserRouter([
       { path: "/profile",      element: <ProfilePage /> },
       { path: "/my-study",     element: <MyStudyPage /> },
       { path: "/visited-rooms",    element: <VisitedRoomsPage /> },
-      { path: "/subscription",     element: <SubscriptionPage /> },
       { path: "/payments/success", element: <PaymentSuccess /> },
       { path: "/payments/fail",    element: <PaymentFail /> },
       { path: "*",                 element: <Navigate to="/" replace /> },

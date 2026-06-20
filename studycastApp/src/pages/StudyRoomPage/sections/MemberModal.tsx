@@ -79,7 +79,7 @@ export function MemberModal({
             const micState = isSelf ? mic : m.mic;
             const camState = isSelf ? cam : m.cam;
             return (
-              <div key={m.id} style={{ display: "grid", gridTemplateColumns: colTpl, alignItems: "center", padding: "14px 22px", borderBottom: i < sortedMembers.length - 1 ? `1px solid ${T.border}` : "none" }}>
+              <div key={m.userUuid} style={{ display: "grid", gridTemplateColumns: colTpl, alignItems: "center", padding: "14px 22px", borderBottom: i < sortedMembers.length - 1 ? `1px solid ${T.border}` : "none" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                   <div style={{ flexShrink: 0 }}><Av name={m.short} color={m.color} size={40} profileImage={m.profileImage} /></div>
                   <div style={{ minWidth: 0 }}>

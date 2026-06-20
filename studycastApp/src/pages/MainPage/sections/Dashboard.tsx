@@ -56,7 +56,7 @@ export function Dashboard() {
       });
   }, [isLoggedIn]);
 
-  const { h, m } = fmtTimer(todayStudySeconds);
+  const { h, m, s } = fmtTimer(todayStudySeconds);
   const pct = Math.min((todayStudySeconds / (8 * 3600)) * 100, 100);
 
   const hasRooms = rooms.length > 0;
@@ -348,14 +348,15 @@ export function Dashboard() {
             fontSize: 22,
             fontWeight: 600,
             color: T.red,
-            letterSpacing: "-0.02em",
+            letterSpacing: "0.04em",
             lineHeight: 1,
             marginBottom: 10,
           }}>
-            {h}
-            <span style={{ fontSize: 14, color: T.text3, fontWeight: 400, marginLeft: 2 }}>시간</span>{" "}
-            {m}
-            <span style={{ fontSize: 14, color: T.text3, fontWeight: 400, marginLeft: 2 }}>분</span>
+            {String(h).padStart(2, "0")}
+            <span style={{ fontSize: 16, color: T.text3, fontWeight: 400, margin: "0 1px" }}>:</span>
+            {String(m).padStart(2, "0")}
+            <span style={{ fontSize: 16, color: T.text3, fontWeight: 400, margin: "0 1px" }}>:</span>
+            {String(s).padStart(2, "0")}
           </div>
           <div style={{
             height: 8,

@@ -11,7 +11,7 @@ import com.younghee.studycast.dto.ChatsDTO;
 @Mapper
 public interface ChatsMapper {
     int insertChat(ChatsDTO chatsDTO);
-    List<Map<String, Object>> selectChatsByRoomNo(Long roomNo);
+    List<Map<String, Object>> selectChatsByRoomNo(@Param("roomNo") Long roomNo);
     List<Map<String, Object>> selectRecentChats(@Param("roomNo") Long roomNo, @Param("limit") int limit);
-    int deleteChat(Long chatNo);
+    int deleteChat(@Param("chatNo") Long chatNo);
 }
