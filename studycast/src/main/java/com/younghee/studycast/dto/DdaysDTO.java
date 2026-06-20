@@ -16,6 +16,7 @@ public class DdaysDTO {
     private Long ddayNo;                // 디데이 고유 번호
     private UUID userUuid;              // 회원 고유 번호
     private String ddayTitle;           // 목표 제목
+    private String ddayType;            // 일정 유형 (시험/과제/모임)
     private LocalDate targetDate;       // 목표 날짜
     private boolean isMain;             // 디데이 노출 여부
     private LocalDateTime createdAt;    // 생성 일시

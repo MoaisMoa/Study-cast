@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { MyRoom } from "@/types";
 import { listMyRooms, getMainSummary } from "@/services/roomService";
 import { fmtTimer } from "@/utils/time";
+import { useClock } from "@/hooks/useClock";
 import { useModal } from "@/contexts/ModalContext";
 import { Icon } from "@/components/ui/Icon";
 import { LearningPlannerModal } from "./planner/LearningPlannerModal";
@@ -23,20 +24,7 @@ export function MobileDashboard() {
   const [remainingDays, setRemainingDays] = useState<number | null>(null);
   const [studyResolution, setStudyResolution] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isLoggedIn) {
-      setRooms([]);
-      setTodayStudySeconds(0);
-      setDdayTitle(null);
-      setRemainingDays(null);
-      setStudyResolution(null);
-      return;
-    }
-
-    listMyRooms()
-      .then(setRooms)
-      .catch(() => setRooms([]));
-
+  const fetchSummary = () => {
     getMainSummary()
       .then((summary) => {
         setTodayStudySeconds(summary.todayStudySeconds ?? 0);
@@ -50,7 +38,22 @@ export function MobileDashboard() {
         setRemainingDays(null);
         setStudyResolution(null);
       });
-  }, [isLoggedIn]);
+  };
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setRooms([]);
+      setTodayStudySeconds(0);
+      setDdayTitle(null);
+      setRemainingDays(null);
+      setStudyResolution(null);
+      return;
+    }
+    listMyRooms().then(setRooms).catch(() => setRooms([]));
+    fetchSummary();
+  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { dateStr, timeStr } = useClock();
 
   const hasRooms = rooms.length > 0;
   const curRoom = hasRooms && myIdx < rooms.length ? rooms[myIdx] : null;
@@ -60,8 +63,29 @@ export function MobileDashboard() {
 
   return (
     <>
-    <LearningPlannerModal open={plannerOpen} onClose={() => setPlannerOpen(false)} />
+    <LearningPlannerModal open={plannerOpen} onClose={() => setPlannerOpen(false)} onScheduleChanged={fetchSummary} />
     <section style={{ padding: "14px 16px 0" }}>
+      {/* 날짜 및 시간 */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 14,
+        padding: "8px 12px",
+        background: T.surface,
+        borderRadius: T.radius,
+        border: `1px solid ${T.border}`,
+      }}>
+        <span style={{ fontSize: 11, color: T.text2, fontWeight: 500 }}>{dateStr}</span>
+        <span style={{
+          fontFamily: "'JetBrains Mono',monospace",
+          fontSize: 13,
+          fontWeight: 700,
+          color: T.text,
+          letterSpacing: "0.05em",
+        }}>{timeStr}</span>
+      </div>
+
       {/* 내 스터디 */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>

@@ -12,7 +12,8 @@ DROP TABLE IF EXISTS
     chats,
     rooms,
     categories,
-    users
+    users,
+    week_plans
 CASCADE;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -29,9 +30,6 @@ CREATE TABLE IF NOT EXISTS users (
     user_profile_image TEXT,
     user_motto VARCHAR(255),
     user_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE' CHECK (user_status IN ('ACTIVE', 'WITHDRAWN')),
-    user_profile_image VARCHAR(255),
-    user_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
-    user_study_resolution VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL
@@ -41,6 +39,7 @@ COMMENT ON COLUMN users.user_email IS '회원 이메일';
 COMMENT ON COLUMN users.user_password IS '회원 비밀번호';
 COMMENT ON COLUMN users.user_name IS '회원 이름';
 COMMENT ON COLUMN users.user_gender IS '회원 성별 (남성, 여성, 선택안함)';
+COMMENT ON COLUMN users.user_birth_date IS '회원 생년월일';
 COMMENT ON COLUMN users.user_profile_image IS '회원 프로필 이미지 URL';
 COMMENT ON COLUMN users.user_motto IS '회원 한 줄 각오';
 COMMENT ON COLUMN users.user_status IS '회원 상태 (ACTIVE, WITHDRAWN)';
@@ -69,11 +68,9 @@ CREATE TABLE IF NOT EXISTS user_auths (
 
     connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login_at TIMESTAMP,
-    social_type VARCHAR(20) NOT NULL,
-    social_id VARCHAR(255) NOT NULL UNIQUE,
-    connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_user_auths_user_uuid --users 테이블 외래 키 설정
+    --users 테이블 외래 키 설정
+    CONSTRAINT fk_user_auths_user_uuid
         FOREIGN KEY (user_uuid)
         REFERENCES users(user_uuid)
         ON DELETE CASCADE,
@@ -86,14 +83,18 @@ CREATE TABLE IF NOT EXISTS user_auths (
 );
 CREATE INDEX IF NOT EXISTS idx_user_auths_user_uuid
 ON user_auths(user_uuid);
-    CONSTRAINT fk_user_uuid FOREIGN KEY (user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE
-);
-COMMENT ON COLUMN user_auths.social_no IS '소셜 연동 식별 번호';
-COMMENT ON COLUMN user_auths.user_uuid IS '회원 식별 번호(FK)';
-COMMENT ON COLUMN user_auths.social_type IS '소셜 로그인 정보 (GOOGLE/KAKAO)';
-COMMENT ON COLUMN user_auths.social_id IS '소셜 플랫폼에서 제공하는 식별 값';
-COMMENT ON COLUMN user_auths.connected_at IS '소셜 계정 연동한 시각';
 
+-- 주석
+COMMENT ON TABLE user_auths IS '회원 소셜 로그인 연동 정보';
+COMMENT ON COLUMN user_auths.auth_no IS '소셜 인증 연동 식별 번호';
+COMMENT ON COLUMN user_auths.user_uuid IS '회원 식별 번호(FK)';
+COMMENT ON COLUMN user_auths.provider IS '소셜 로그인 제공자(GOOGLE, KAKAO)';
+COMMENT ON COLUMN user_auths.provider_user_id IS '소셜 플랫폼에서 제공하는 사용자 고유 ID';
+COMMENT ON COLUMN user_auths.provider_email IS '소셜 플랫폼에서 제공한 이메일';
+COMMENT ON COLUMN user_auths.provider_name IS '소셜 플랫폼에서 제공한 이름 또는 닉네임';
+COMMENT ON COLUMN user_auths.provider_profile_image IS '소셜 플랫폼에서 제공한 프로필 이미지 URL';
+COMMENT ON COLUMN user_auths.connected_at IS '소셜 계정 최초 연동 시각';
+COMMENT ON COLUMN user_auths.last_login_at IS '해당 소셜 계정 마지막 로그인 시각';
 -- 4. 권한 관리
 CREATE TABLE IF NOT EXISTS roles (
     role_code SERIAL PRIMARY KEY,
@@ -326,3 +327,26 @@ CREATE INDEX IF NOT EXISTS idx_email_verifications_user_uuid
 ON email_verifications(user_uuid);
 CREATE INDEX IF NOT EXISTS idx_email_verifications_email_purpose
 ON email_verifications(user_email, purpose);
+
+-- 15. 플래너
+CREATE TABLE week_plans (
+    plan_no    SERIAL       NOT NULL PRIMARY KEY,
+    user_uuid  UUID         NOT NULL,
+    day_of_week SMALLINT    NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+    title      VARCHAR(30)  NOT NULL,
+    color      VARCHAR(10)  NOT NULL DEFAULT '#E57373',
+    start_time VARCHAR(5)   NOT NULL,
+    end_time   VARCHAR(5)   NOT NULL,
+    created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_week_plan_user FOREIGN KEY (user_uuid)
+        REFERENCES users(user_uuid) ON DELETE CASCADE
+);
+
+COMMENT ON COLUMN week_plans.plan_no     IS '계획 고유 번호';
+COMMENT ON COLUMN week_plans.user_uuid   IS '회원 고유 번호';
+COMMENT ON COLUMN week_plans.day_of_week IS '요일 (0=월 ~ 6=일)';
+COMMENT ON COLUMN week_plans.title       IS '계획 제목';
+COMMENT ON COLUMN week_plans.color       IS '블록 색상 (HEX)';
+COMMENT ON COLUMN week_plans.start_time  IS '시작 시간 HH:MM';
+COMMENT ON COLUMN week_plans.end_time    IS '종료 시간 HH:MM';

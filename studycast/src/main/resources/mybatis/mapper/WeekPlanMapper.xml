@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.younghee.studycast.dao.WeekPlanMapper">
+
+    <resultMap id="WeekPlanResultMap" type="com.younghee.studycast.dto.WeekPlanDTO">
+        <id     property="planNo"     column="plan_no"/>
+        <result property="userUuid"   column="user_uuid"/>
+        <result property="dayOfWeek"  column="day_of_week"/>
+        <result property="title"      column="title"/>
+        <result property="color"      column="color"/>
+        <result property="startTime"  column="start_time"/>
+        <result property="endTime"    column="end_time"/>
+        <result property="createdAt"  column="created_at"/>
+    </resultMap>
+
+    <select id="findAllByUser" resultMap="WeekPlanResultMap">
+        SELECT plan_no, user_uuid, day_of_week, title, color, start_time, end_time, created_at
+        FROM week_plans
+        WHERE user_uuid = #{userUuid}
+        ORDER BY day_of_week ASC, start_time ASC
+    </select>
+
+    <insert id="insert">
+        INSERT INTO week_plans (user_uuid, day_of_week, title, color, start_time, end_time)
+        VALUES (#{userUuid}, #{dayOfWeek}, #{title}, #{color}, #{startTime}, #{endTime})
+    </insert>
+
+    <update id="update">
+        UPDATE week_plans
+        SET day_of_week = #{dayOfWeek},
+            title       = #{title},
+            color       = #{color},
+            start_time  = #{startTime},
+            end_time    = #{endTime}
+        WHERE plan_no = #{planNo}
+          AND user_uuid = #{userUuid}
+    </update>
+
+    <delete id="deleteByIdAndUser">
+        DELETE FROM week_plans
+        WHERE plan_no = #{planNo}
+          AND user_uuid = #{userUuid}
+    </delete>
+
+</mapper>

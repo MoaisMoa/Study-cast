@@ -33,4 +33,20 @@
             0
         )
     </select>
+
+    <!-- 특정 연월의 일별 공부 기록 조회 -->
+    <select id="findMonthlyStudyLogs" resultType="com.younghee.studycast.dto.StudyLogDTO">
+        SELECT
+            log_no       AS logNo,
+            user_uuid    AS userUuid,
+            study_date   AS studyDate,
+            total_seconds AS totalSeconds,
+            updated_at   AS updatedAt
+        FROM study_logs
+        WHERE user_uuid = #{userUuid}
+          AND EXTRACT(YEAR  FROM study_date) = #{year}
+          AND EXTRACT(MONTH FROM study_date) = #{month}
+          AND total_seconds > 0
+        ORDER BY study_date
+    </select>
 </mapper>

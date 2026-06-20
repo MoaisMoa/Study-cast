@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/contexts/ModalContext";
 import { Icon } from "@/components/ui/Icon";
 import { fmtTimer } from "@/utils/time";
+import { useClock } from "@/hooks/useClock";
 import { getMainSummary, listMyRooms } from "@/services/roomService";
 import { LearningPlannerModal } from "./planner/LearningPlannerModal";
 
@@ -18,6 +19,7 @@ export function Dashboard() {
   const [plannerOpen, setPlannerOpen] = useState(false);
 
   const [rooms, setRooms] = useState<MyRoom[]>([]);
+  const { dateStr, timeStr } = useClock();
 
   const [myIdx, setMyIdx] = useState(0);
 
@@ -26,21 +28,7 @@ export function Dashboard() {
   const [remainingDays, setRemainingDays] = useState<number | null>(null);
   const [studyResolution, setStudyResolution] = useState<string | null>(null);
 
-  // 로그인 시 summary 조회 추가
-  useEffect(() => {
-    if (!isLoggedIn) {
-      setRooms([]);
-      setTodayStudySeconds(0);
-      setDdayTitle(null);
-      setRemainingDays(null);
-      setStudyResolution(null);
-      return;
-    }
-
-    listMyRooms()
-      .then(setRooms)
-      .catch(() => setRooms([]));
-
+  const fetchSummary = () => {
     getMainSummary()
       .then((summary) => {
         setTodayStudySeconds(summary.todayStudySeconds ?? 0);
@@ -54,7 +42,21 @@ export function Dashboard() {
         setRemainingDays(null);
         setStudyResolution(null);
       });
-  }, [isLoggedIn]);
+  };
+
+  // 로그인 시 summary 조회
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setRooms([]);
+      setTodayStudySeconds(0);
+      setDdayTitle(null);
+      setRemainingDays(null);
+      setStudyResolution(null);
+      return;
+    }
+    listMyRooms().then(setRooms).catch(() => setRooms([]));
+    fetchSummary();
+  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { h, m, s } = fmtTimer(todayStudySeconds);
   const pct = Math.min((todayStudySeconds / (8 * 3600)) * 100, 100);
@@ -70,7 +72,7 @@ export function Dashboard() {
 
   return (
     <>
-    <LearningPlannerModal open={plannerOpen} onClose={() => { setPlannerOpen(false); }} />
+    <LearningPlannerModal open={plannerOpen} onClose={() => { setPlannerOpen(false); }} onScheduleChanged={fetchSummary} />
     <section
       id="my-study-section"
       style={stackDash ? {
@@ -331,6 +333,18 @@ export function Dashboard() {
         boxShadow: T.shadow,
         transition: "background 0.25s,border-color 0.25s",
       }}>
+        {/* 날짜 및 시간 */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, paddingBottom: 12, borderBottom: `1px solid ${T.border}` }}>
+          <span style={{ fontSize: 12, color: T.text2, fontWeight: 500 }}>{dateStr}</span>
+          <span style={{
+            fontFamily: "'JetBrains Mono',monospace",
+            fontSize: 14,
+            fontWeight: 700,
+            color: T.text,
+            letterSpacing: "0.05em",
+          }}>{timeStr}</span>
+        </div>
+
         <div style={{ marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div style={{ fontSize: 11, color: T.text3 }}>오늘 공부한 시간</div>

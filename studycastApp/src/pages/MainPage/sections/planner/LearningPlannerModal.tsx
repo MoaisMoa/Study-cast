@@ -1,11 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useT } from "@/theme";
 import { Icon } from "@/components/ui/Icon";
-import type { PlannerSchedule, WeekPlan } from "@/data/planner";
+import type { WeekPlan } from "@/data/planner";
 import {
-  INIT_WEEK_PLAN, PLANNER_CAT_COLOR, plannerIc, plannerIcText,
-  PLANNER_STUDY_DATA, SCHED_KEY, WEEK_KEY, plannerLv, toMin, toMinExt,
+  PLANNER_CAT_COLOR, plannerIc, plannerIcText,
+  plannerLv, toMin, toMinExt,
 } from "@/data/planner";
+import {
+  fetchDdays, createDday, deleteDday,
+  fetchMonthlyStudyStats,
+  fetchWeekPlans, createWeekPlan, updateWeekPlan, deleteWeekPlan,
+} from "@/services/plannerService";
+import type { DdayResponse, MonthlyStudyStats } from "@/services/plannerService";
 import { PlanEditModal } from "./PlanEditModal";
 import { PlannerAddModal } from "./PlannerAddModal";
 import type { PlanPayload, SchedulePayload } from "./PlannerAddModal";
@@ -15,10 +21,12 @@ const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 export interface LearningPlannerModalProps {
   open: boolean;
   onClose: () => void;
+  /** 일정이 추가/삭제된 후 호출 — Dashboard D-Day 재조회용 */
+  onScheduleChanged?: () => void;
 }
 
 /** 학습 플래너 모달 — 캘린더(월별 출석/D-DAY) + 플래너(주간 수강표) */
-export function LearningPlannerModal({ open, onClose }: LearningPlannerModalProps) {
+export function LearningPlannerModal({ open, onClose, onScheduleChanged }: LearningPlannerModalProps) {
   const T = useT();
   const IC = plannerIc(T.dark);
   const IC_TEXT = plannerIcText(T.dark);
@@ -29,12 +37,22 @@ export function LearningPlannerModal({ open, onClose }: LearningPlannerModalProp
   const [calTab, setCalTab] = useState<"calendar" | "dday" | "schedules">("calendar");
   const [isNarrow, setIsNarrow] = useState(() => typeof window !== "undefined" && window.innerWidth <= 768);
   const [showAdd, setShowAdd] = useState(false);
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStudyStats | null>(null);
 
   useEffect(() => {
     const fn = () => setIsNarrow(window.innerWidth <= 768);
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
   }, []);
+
+  // 월이 바뀔 때마다 월별 공부 통계 조회
+  useEffect(() => {
+    if (!open) return;
+    setMonthlyStats(null);
+    fetchMonthlyStudyStats(viewYear, viewMonth + 1)
+      .then(setMonthlyStats)
+      .catch(() => setMonthlyStats(null));
+  }, [open, viewYear, viewMonth]);
 
   const prevMonth = () => { if (viewMonth === 0) { setViewYear((y) => y - 1); setViewMonth(11); } else setViewMonth((m) => m - 1); };
   const nextMonth = () => { if (viewMonth === 11) { setViewYear((y) => y + 1); setViewMonth(0); } else setViewMonth((m) => m + 1); };
@@ -44,44 +62,97 @@ export function LearningPlannerModal({ open, onClose }: LearningPlannerModalProp
   const cells: Array<number | null> = [...Array(startDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   const isCurrentMonth = viewYear === now.getFullYear() && viewMonth === now.getMonth();
   const todayDate = now.getDate();
-  const studyData: Record<number, string> = isCurrentMonth ? PLANNER_STUDY_DATA : {};
+
+  // 실제 일별 공부 시간 → 캘린더 색상용 문자열 변환
+  const studyData: Record<number, string> = (() => {
+    if (!monthlyStats) return {};
+    const result: Record<number, string> = {};
+    for (const [dayStr, secs] of Object.entries(monthlyStats.dailySeconds)) {
+      const day = Number(dayStr);
+      const h = secs / 3600;
+      if (isCurrentMonth && day === todayDate) {
+        result[day] = "today";
+      } else if (h >= 10) {
+        result[day] = `${Math.floor(h)}h`;
+      } else if (h >= 1) {
+        const m = Math.floor((secs % 3600) / 60);
+        result[day] = m > 0 ? `${Math.floor(h)}h${m}m` : `${Math.floor(h)}h`;
+      } else {
+        const m = Math.floor(secs / 60);
+        result[day] = `${m}m`;
+      }
+    }
+    return result;
+  })();
+
   const ddayLabel = (d: number) => (d > 0 ? `D-${d}` : d === 0 ? "D-day" : `D+${Math.abs(d)}`);
 
-  // ── 일정 (localStorage) ──
-  const loadSched = (): PlannerSchedule[] | null => {
-    try { const s = localStorage.getItem(SCHED_KEY); if (s) { const p = JSON.parse(s); if (Array.isArray(p) && p.length > 0) return p; } } catch { /* ignore */ }
-    return null;
-  };
-  const saveSched = (list: PlannerSchedule[]) => { try { localStorage.setItem(SCHED_KEY, JSON.stringify(list)); } catch { /* ignore */ } };
-  const [schedules, setSchedules] = useState<PlannerSchedule[]>(() => {
-    const saved = loadSched(); if (saved) return saved;
-    const t = new Date(); t.setHours(0, 0, 0, 0);
-    const add = (n: number) => { const d = new Date(t); d.setDate(d.getDate() + n); return d; };
-    const mk = (title: string, type: string, n: number): PlannerSchedule => {
-      const d = add(n);
-      return { title, type, year: d.getFullYear(), month: d.getMonth(), day: d.getDate(), dday: Math.ceil((d.getTime() - t.getTime()) / 86400000), date: `${d.getMonth() + 1}월 ${d.getDate()}일` };
-    };
-    return [mk("CS 파이널 시험", "시험", 0), mk("팀 프로젝트 발표", "과제", 5), mk("스터디 최종 발표", "모임", 12)];
-  });
-  const addSchedule = (s: SchedulePayload) => {
-    const d = new Date(s.dateRaw);
-    const item: PlannerSchedule = { title: s.title, type: s.type, year: d.getFullYear(), month: d.getMonth(), day: d.getDate(), dday: s.dday, date: `${d.getMonth() + 1}월 ${d.getDate()}일` };
-    setSchedules((prev) => {
-      const next = [...prev, item].sort((a, b) => new Date(a.year, a.month, a.day).getTime() - new Date(b.year, b.month, b.day).getTime());
-      saveSched(next); return next;
-    });
-  };
-  const deleteSchedule = (i: number) => setSchedules((prev) => { const next = prev.filter((_, j) => j !== i); saveSched(next); return next; });
+  // ── 일정 (서버 API) ──
+  const [schedules, setSchedules] = useState<DdayResponse[]>([]);
 
-  // ── 주간 계획 (localStorage) ──
-  const loadWeek = (): WeekPlan[] | null => {
-    try { const s = localStorage.getItem(WEEK_KEY); if (s) { const p = JSON.parse(s); if (Array.isArray(p) && p.length > 0) return p; } } catch { /* ignore */ }
-    return null;
+  const loadSchedules = useCallback(async () => {
+    try {
+      const data = await fetchDdays();
+      setSchedules(data);
+    } catch {
+      setSchedules([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) loadSchedules();
+  }, [open, loadSchedules]);
+
+  const addSchedule = async (s: SchedulePayload) => {
+    try {
+      await createDday({ title: s.title, targetDate: s.dateRaw });
+      await loadSchedules();
+      onScheduleChanged?.();
+    } catch {
+      alert("일정 등록에 실패했습니다. 서버 연결을 확인해주세요.");
+    }
   };
-  const saveWeek = (list: WeekPlan[]) => { try { localStorage.setItem(WEEK_KEY, JSON.stringify(list)); } catch { /* ignore */ } };
-  const [weekPlan, setWeekPlan] = useState<WeekPlan[]>(() => loadWeek() || INIT_WEEK_PLAN);
+
+  const deleteSchedule = async (ddayNo: number) => {
+    try {
+      await deleteDday(ddayNo);
+      setSchedules((prev) => prev.filter((s) => s.ddayNo !== ddayNo));
+      onScheduleChanged?.();
+    } catch {
+      alert("일정 삭제에 실패했습니다. 서버 연결을 확인해주세요.");
+    }
+  };
+
+  const fmtDate = (targetDate: string) => {
+    const d = new Date(targetDate + "T00:00:00");
+    return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+  };
+
+  // ── 주간 계획 (API) ──
+  const [weekPlan, setWeekPlan] = useState<WeekPlan[]>([]);
   const [editingPlan, setEditingPlan] = useState<WeekPlan | null>(null);
   const [planOverlapMsg, setPlanOverlapMsg] = useState("");
+
+  const loadWeekPlans = useCallback(async () => {
+    try {
+      const data = await fetchWeekPlans();
+      setWeekPlan(data.map((r) => ({
+        id: r.planNo,
+        day: r.dayOfWeek,
+        title: r.title,
+        cat: "",
+        color: r.color,
+        start: r.startTime,
+        end: r.endTime,
+      })));
+    } catch {
+      setWeekPlan([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) loadWeekPlans();
+  }, [open, loadWeekPlans]);
 
   const addPlan = (s: PlanPayload): boolean => {
     const ns = toMinExt(s.start), ne = toMinExt(s.end);
@@ -89,7 +160,9 @@ export function LearningPlannerModal({ open, onClose }: LearningPlannerModalProp
     const overlap = weekPlan.some((p) => p.day === s.day && toMinExt(p.start) < ne && toMinExt(p.end) > ns);
     if (overlap) { setPlanOverlapMsg("해당 시간대에 이미 계획이 있습니다."); setTimeout(() => setPlanOverlapMsg(""), 2500); return false; }
     setPlanOverlapMsg("");
-    setWeekPlan((prev) => { const next = [...prev, { id: Date.now(), day: s.day, title: s.title, cat: s.cat || "", color: s.color || "#E57373", start: s.start, end: s.end }]; saveWeek(next); return next; });
+    createWeekPlan({ dayOfWeek: s.day, title: s.title, color: s.color || "#E57373", startTime: s.start, endTime: s.end })
+      .then(loadWeekPlans)
+      .catch(() => alert("계획 저장에 실패했습니다."));
     return true;
   };
   const handleAdd = (s: SchedulePayload | PlanPayload): boolean => {
@@ -102,19 +175,44 @@ export function LearningPlannerModal({ open, onClose }: LearningPlannerModalProp
     if (ns >= ne) return false;
     const overlap = weekPlan.some((p) => p.id !== s.id && p.day === s.day && toMinExt(p.start) < ne && toMinExt(p.end) > ns);
     if (overlap) return false;
-    setWeekPlan((prev) => { const next = prev.map((p) => (p.id === s.id ? s : p)); saveWeek(next); return next; });
+    updateWeekPlan(s.id, { dayOfWeek: s.day, title: s.title, color: s.color || "#E57373", startTime: s.start, endTime: s.end })
+      .then(loadWeekPlans)
+      .catch(() => alert("계획 수정에 실패했습니다."));
     return true;
   };
-  const deletePlan = (id: number) => setWeekPlan((prev) => { const next = prev.filter((p) => p.id !== id); saveWeek(next); return next; });
+  const deletePlan = (id: number) => {
+    deleteWeekPlan(id)
+      .then(loadWeekPlans)
+      .catch(() => alert("계획 삭제에 실패했습니다."));
+  };
 
-  const scheduleDays = new Set(schedules.filter((s) => s.year === viewYear && s.month === viewMonth).map((s) => s.day));
-  const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+  const scheduleDays = new Set(
+    schedules
+      .filter((s) => {
+        const d = new Date(s.targetDate + "T00:00:00");
+        return d.getFullYear() === viewYear && d.getMonth() === viewMonth;
+      })
+      .map((s) => new Date(s.targetDate + "T00:00:00").getDate())
+  );
   const upcomingDdays = [...schedules]
-    .map((s) => ({ ...s, dday: Math.ceil((new Date(s.year, s.month, s.day).getTime() - todayMid.getTime()) / 86400000) }))
-    .filter((s) => s.dday >= 0).sort((a, b) => a.dday - b.dday).slice(0, 3);
-  const attendDays = isCurrentMonth ? Object.keys(studyData).filter((k) => studyData[+k] && studyData[+k] !== "dot" && studyData[+k] !== "today").length : 0;
-  const totalStudyH = isCurrentMonth ? "52h" : "0h";
-  const avgStudyMin = isCurrentMonth ? "263분" : "0분";
+    .filter((s) => s.remainingDays >= 0)
+    .sort((a, b) => a.remainingDays - b.remainingDays)
+    .slice(0, 3);
+  const attendDays = monthlyStats?.attendDays ?? 0;
+  const totalStudyH = (() => {
+    const secs = monthlyStats?.totalSeconds ?? 0;
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    if (h === 0 && m === 0) return "0분";
+    return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}분`;
+  })();
+  const avgStudyMin = (() => {
+    if (!monthlyStats || attendDays === 0) return "0분";
+    const avgSecs = Math.round(monthlyStats.totalSeconds / attendDays);
+    const h = Math.floor(avgSecs / 3600);
+    const m = Math.floor((avgSecs % 3600) / 60);
+    return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}분`;
+  })();
 
   if (!open) return null;
 
@@ -219,15 +317,15 @@ export function LearningPlannerModal({ open, onClose }: LearningPlannerModalProp
                   : <>
                     <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, padding: isNarrow ? 18 : 10, textAlign: "center", marginBottom: isNarrow ? 14 : 8 }}>
                       <div style={{ fontSize: isNarrow ? 16 : 12, fontWeight: 600, color: T.text2, marginBottom: isNarrow ? 8 : 4 }}>{upcomingDdays[0].title}</div>
-                      <div style={{ fontWeight: 700, fontSize: isNarrow ? 38 : 22, color: T.red, lineHeight: 1 }}>{ddayLabel(upcomingDdays[0].dday)}</div>
-                      <div style={{ fontSize: isNarrow ? 13 : 10, color: T.text2, marginTop: isNarrow ? 8 : 3 }}>{upcomingDdays[0].date}</div>
+                      <div style={{ fontWeight: 700, fontSize: isNarrow ? 38 : 22, color: T.red, lineHeight: 1 }}>{ddayLabel(upcomingDdays[0].remainingDays)}</div>
+                      <div style={{ fontSize: isNarrow ? 13 : 10, color: T.text2, marginTop: isNarrow ? 8 : 3 }}>{fmtDate(upcomingDdays[0].targetDate)}</div>
                     </div>
-                    {upcomingDdays.slice(1).map((s, i) => (
-                      <div key={i} style={{ padding: isNarrow ? "12px 0" : "6px 0", borderBottom: i < upcomingDdays.slice(1).length - 1 ? `1px solid ${T.border}` : "none" }}>
+                    {upcomingDdays.slice(1).map((s) => (
+                      <div key={s.ddayNo} style={{ padding: isNarrow ? "12px 0" : "6px 0", borderBottom: `1px solid ${T.border}` }}>
                         <div style={{ fontSize: isNarrow ? 15 : 12, fontWeight: 500, color: T.text, marginBottom: isNarrow ? 4 : 2 }}>{s.title}</div>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <span style={{ fontSize: isNarrow ? 13 : 10, color: T.text3 }}>{s.date}</span>
-                          <span style={{ fontSize: isNarrow ? 13 : 10, color: T.red, fontWeight: 600 }}>{ddayLabel(s.dday)}</span>
+                          <span style={{ fontSize: isNarrow ? 13 : 10, color: T.text3 }}>{fmtDate(s.targetDate)}</span>
+                          <span style={{ fontSize: isNarrow ? 13 : 10, color: T.red, fontWeight: 600 }}>{ddayLabel(s.remainingDays)}</span>
                         </div>
                       </div>
                     ))}
@@ -253,16 +351,16 @@ export function LearningPlannerModal({ open, onClose }: LearningPlannerModalProp
               {schedules.length === 0
                 ? <div style={{ fontSize: 12, color: T.text3 }}>등록된 일정이 없습니다.</div>
                 : <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {schedules.map((s, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.surface2, borderRadius: 8, padding: "8px 12px" }}>
+                  {schedules.map((s) => (
+                    <div key={s.ddayNo} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.surface2, borderRadius: 8, padding: "8px 12px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={{ width: 4, height: 4, borderRadius: "50%", background: T.red, flexShrink: 0 }} />
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{s.title}</div>
-                          <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>{s.date} · <span style={{ color: T.red, fontWeight: 600 }}>{ddayLabel(Math.ceil((new Date(s.year, s.month, s.day).getTime() - todayMid.getTime()) / 86400000))}</span></div>
+                          <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>{fmtDate(s.targetDate)} · <span style={{ color: T.red, fontWeight: 600 }}>{ddayLabel(s.remainingDays)}</span></div>
                         </div>
                       </div>
-                      <button onClick={() => deleteSchedule(i)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", flexShrink: 0 }}><Icon name="x" size={14} color={T.text3} /></button>
+                      <button onClick={() => deleteSchedule(s.ddayNo)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", flexShrink: 0 }}><Icon name="x" size={14} color={T.text3} /></button>
                     </div>
                   ))}
                 </div>}
@@ -333,14 +431,14 @@ export function LearningPlannerModal({ open, onClose }: LearningPlannerModalProp
             {schedules.length === 0
               ? <div style={{ fontSize: 12, color: T.text3, padding: "6px 0" }}>등록된 일정이 없습니다.</div>
               : <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: schedules.length > 3 ? "108px" : "auto", overflowY: schedules.length > 3 ? "auto" : "visible" }}>
-                {schedules.map((s, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.surface2, borderRadius: 6, padding: "5px 10px", flexShrink: 0 }}>
+                {schedules.map((s) => (
+                  <div key={s.ddayNo} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.surface2, borderRadius: 6, padding: "5px 10px", flexShrink: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <div style={{ width: 4, height: 4, borderRadius: "50%", background: T.red, flexShrink: 0 }} />
                       <span style={{ fontSize: 12, fontWeight: 500, color: T.text }}>{s.title}</span>
-                      <span style={{ fontSize: 11, color: T.text2 }}>{s.date} · {ddayLabel(Math.ceil((new Date(s.year, s.month, s.day).getTime() - todayMid.getTime()) / 86400000))}</span>
+                      <span style={{ fontSize: 11, color: T.text2 }}>{fmtDate(s.targetDate)} · {ddayLabel(s.remainingDays)}</span>
                     </div>
-                    <button onClick={() => deleteSchedule(i)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}><Icon name="x" size={13} color={T.text3} /></button>
+                    <button onClick={() => deleteSchedule(s.ddayNo)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}><Icon name="x" size={13} color={T.text3} /></button>
                   </div>
                 ))}
               </div>}
