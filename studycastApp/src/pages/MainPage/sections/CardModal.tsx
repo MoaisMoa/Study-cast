@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useT } from "@/theme";
 import { useModal, useModalRoom } from "@/contexts/ModalContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { joinRoom } from "@/services/visitedRoomService";
 import { openStudyRoom } from "@/utils/openStudyRoom";
 import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
@@ -16,6 +17,7 @@ function formatDate(iso: string | null | undefined): string {
 
 export function CardModal() {
   const T = useT();
+  const { isLoggedIn } = useAuth();
   const room = useModalRoom();
   const setModalRoom = useModal();
 
@@ -25,6 +27,19 @@ export function CardModal() {
   const [verifying, setVerifying] = useState(false);
   const [entering, setEntering] = useState(false);
   const [entryBlocked, setEntryBlocked] = useState(false);
+  const [loginCountdown, setLoginCountdown] = useState<number | null>(null);
+
+  // 비로그인 안내 후 3초 카운트다운 → 로그인 페이지를 새 탭으로 열기 (메인페이지는 유지, 로그인 후 그 탭이 방으로 이어짐)
+  useEffect(() => {
+    if (loginCountdown === null) return;
+    if (loginCountdown <= 0) {
+      window.open(`/login?redirect=${encodeURIComponent(`/rooms/${room?.id}`)}`, "_blank", "noopener,noreferrer");
+      handleClose();
+      return;
+    }
+    const t = window.setTimeout(() => setLoginCountdown((v) => (v ?? 1) - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [loginCountdown, room?.id]);
 
   if (!room) return null;
 
@@ -41,10 +56,12 @@ export function CardModal() {
     setCodeVal("");
     setCodeError(null);
     setEntryBlocked(false);
+    setLoginCountdown(null);
     setModalRoom(null);
   };
 
   const handleEnterClick = async () => {
+    if (!isLoggedIn) { setLoginCountdown(3); return; }
     if (isPrivate) { setCodeStep(true); return; }
     setEntering(true);
     const allowed = await canEnterRoom();
@@ -253,37 +270,39 @@ export function CardModal() {
           ) : (
             <>
               <div style={{
-                fontSize: 12, color: entryBlocked ? T.red : T.text3,
+                fontSize: 12, color: loginCountdown !== null || entryBlocked ? T.red : T.text3,
                 textAlign: "center", marginBottom: 14,
               }}>
-                {entryBlocked
-                  ? "이미 입장 중인 방이 있습니다."
-                  : full
-                    ? "정원이 마감된 스터디방입니다."
-                    : isPrivate
-                      ? "비공개 스터디방입니다. 참여 코드가 필요합니다."
-                      : "설정한 내용으로 스터디에 참여하시겠어요?"}
+                {loginCountdown !== null
+                  ? `로그인 후 입장 가능합니다. (${loginCountdown}초 후 로그인 페이지로 이동)`
+                  : entryBlocked
+                    ? "이미 입장 중인 방이 있습니다."
+                    : full
+                      ? "정원이 마감된 스터디방입니다."
+                      : isPrivate
+                        ? "비공개 스터디방입니다. 참여 코드가 필요합니다."
+                        : "설정한 내용으로 스터디에 참여하시겠어요?"}
               </div>
               <button
-                disabled={full || entering}
+                disabled={full || entering || loginCountdown !== null}
                 onClick={handleEnterClick}
                 style={{
                   width: "100%",
                   padding: "14px 0",
                   borderRadius: 12,
                   border: "none",
-                  background: full ? "#9e9e9e" : T.red,
+                  background: full || loginCountdown !== null ? "#9e9e9e" : T.red,
                   color: "#fff",
                   fontSize: 16, fontWeight: 800,
-                  cursor: full || entering ? "not-allowed" : "pointer",
+                  cursor: full || entering || loginCountdown !== null ? "not-allowed" : "pointer",
                   transition: "opacity 0.15s",
                   letterSpacing: ".02em",
                   opacity: entering ? 0.7 : 1,
                 }}
-                onMouseEnter={(e) => { if (!full && !entering) e.currentTarget.style.opacity = ".85"; }}
+                onMouseEnter={(e) => { if (!full && !entering && loginCountdown === null) e.currentTarget.style.opacity = ".85"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.opacity = entering ? "0.7" : "1"; }}
               >
-                {full ? "참여 마감" : entering ? "확인 중..." : isPrivate ? "코드 입력 후 입장" : "참여하기"}
+                {loginCountdown !== null ? "로그인 페이지로 이동 중..." : full ? "참여 마감" : entering ? "확인 중..." : isPrivate ? "코드 입력 후 입장" : "참여하기"}
               </button>
             </>
           )}

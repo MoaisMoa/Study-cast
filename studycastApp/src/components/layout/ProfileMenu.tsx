@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { PROFILE_MENU } from "@/data/menus";
 import { Icon } from "@/components/ui/Icon";
+import { getActiveRoomId, forceLeaveActiveRoom } from "@/utils/roomSession";
 
 /** 헤더에서 사용하는 프로필 드롭다운 (데스크탑/모바일 사이즈는 prop으로) */
 export interface ProfileMenuProps {
@@ -17,9 +18,15 @@ export function ProfileMenu({ avatarSize = 36, caretSize = 16 }: ProfileMenuProp
   const { user, isLoggedIn, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useClickOutside(ref, () => setOpen(false), open);
+
+  const doLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   const handleClick = async (item: string) => {
     setOpen(false);
@@ -37,9 +44,20 @@ export function ProfileMenu({ avatarSize = 36, caretSize = 16 }: ProfileMenuProp
     }
     // "내 스터디"는 화면 설계 코드가 아직 없으므로 라우트 미연결 (TODO)
     if (item === "로그아웃") {
-      logout();
-      navigate("/login");
+      // 참여 중인 스터디룸이 있으면 한 번 더 확인받고, 확인 시 그 방을 자동으로 나가기 처리
+      const activeRoomId = await getActiveRoomId();
+      if (activeRoomId) {
+        setLogoutConfirmOpen(true);
+        return;
+      }
+      doLogout();
     }
+  };
+
+  const handleConfirmLogout = () => {
+    forceLeaveActiveRoom();
+    setLogoutConfirmOpen(false);
+    doLogout();
   };
 
   if (!isLoggedIn) {
@@ -155,6 +173,19 @@ export function ProfileMenu({ avatarSize = 36, caretSize = 16 }: ProfileMenuProp
               </button>
             );
           })}
+        </div>
+      )}
+
+      {logoutConfirmOpen && (
+        <div onClick={() => setLogoutConfirmOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: T.surface, borderRadius: 14, width: 320, padding: "24px 22px", boxShadow: "0 16px 40px rgba(0,0,0,.4)", textAlign: "center" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 8 }}>참여 중인 스터디룸이 있습니다</div>
+            <div style={{ fontSize: 13, color: T.text3, marginBottom: 22, lineHeight: 1.6 }}>로그아웃하면 참여 중인 스터디룸에서<br />자동으로 나가기 처리됩니다.</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setLogoutConfirmOpen(false)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: `1px solid ${T.border}`, background: "none", color: T.text2, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>취소</button>
+              <button onClick={handleConfirmLogout} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: T.red, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>로그아웃</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { useLocation } from "react-router-dom";
 import { useAT } from "@/theme";
 import { SocialButton } from "@/components/ui/SocialButton";
 import { API_BASE_URL } from "@/services/apiClient";
@@ -9,13 +10,21 @@ export interface SocialButtonsProps {
 /** 카카오 + 구글 OAuth 버튼 묶음 */
 export function SocialButtons({ label = "계속하기" }: SocialButtonsProps) {
   const T = useAT();
+  const location = useLocation();
+
+  // /login?redirect=/rooms/123로 들어온 경우, 소셜 로그인 후에도 같은 곳으로 이어지도록 전달
+  function buildOAuthUrl(provider: "kakao" | "google"): string {
+    const redirect = new URLSearchParams(location.search).get("redirect");
+    const query = redirect && redirect.startsWith("/") ? `?redirect=${encodeURIComponent(redirect)}` : "";
+    return `${API_BASE_URL}/oauth2/authorization/${provider}${query}`;
+  }
 
   function handleKakao() {
-    window.location.href = `${API_BASE_URL}/oauth2/authorization/kakao`;
+    window.location.href = buildOAuthUrl("kakao");
   }
 
   function handleGoogle() {
-    window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
+    window.location.href = buildOAuthUrl("google");
   }
 
   return (

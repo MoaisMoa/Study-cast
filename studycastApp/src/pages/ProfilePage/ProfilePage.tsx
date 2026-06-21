@@ -6,8 +6,11 @@ import type {
 } from "@/types/profile";
 import { useT } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
+import { MobileTabBar } from "@/pages/MainPage/sections/MobileTabBar";
+import { LoginRequiredState } from "@/components/ui/LoginRequiredState";
 import { INITIAL_PROFILE, MAX_CATEGORIES } from "@/data/profile";
 import { fetchProfile, updateProfile } from "@/services/profileService";
 import { AvatarSection } from "./sections/AvatarSection";
@@ -27,6 +30,7 @@ interface ProfileErrors {
 export default function ProfilePage() {
   const T = useT();
   const isMobile = useIsMobile();
+  const { isLoggedIn, isLoading: authLoading } = useAuth();
   const ff = "'Noto Sans KR', sans-serif";
 
   // 읽기 전용 (회원가입 등록 정보)
@@ -51,6 +55,7 @@ export default function ProfilePage() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   useEffect(() => {
+    if (authLoading || !isLoggedIn) return;
     let alive = true;
 
     fetchProfile()
@@ -70,7 +75,7 @@ export default function ProfilePage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [authLoading, isLoggedIn]);
 
   // dirty: 저장된 값과 draft가 다른지
   const isDirty = JSON.stringify(draft) !== JSON.stringify(saved);
@@ -135,6 +140,16 @@ export default function ProfilePage() {
     : savedOk
     ? "✓ 저장되었습니다"
     : "프로필 설정 완료";
+
+  if (!authLoading && !isLoggedIn) {
+    return (
+      <div style={{ minHeight: "100vh", background: T.bg, fontFamily: ff, color: T.text, transition: "background 0.25s" }}>
+        {isMobile ? <MobileHeader /> : <Header />}
+        <LoginRequiredState message="내 프로필을 보려면 로그인이 필요해요." />
+        {isMobile && <MobileTabBar />}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -320,6 +335,7 @@ export default function ProfilePage() {
       />
 
       <WithdrawModal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} />
+      {isMobile && <MobileTabBar />}
     </div>
   );
 }

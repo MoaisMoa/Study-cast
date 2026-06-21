@@ -18,6 +18,7 @@ import com.younghee.studycast.service.UserService;
 import com.younghee.studycast.util.AuthCookieUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -107,6 +108,13 @@ public class AuthController {
         String refreshToken = authCookieUtil.extractCookieValue(request, AuthCookieUtil.REFRESH_TOKEN_COOKIE_NAME);
 
         authService.logout(refreshToken, userUuid);
+
+        // 소셜 로그인 OAuth2 흐름 때문에 세션 자체는 STATELESS로 막아둘 수 없어서,
+        // JWT 쿠키만 지우면 세션에 남은 인증 정보로 로그인 상태가 유지되는 문제 방지
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
 
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.clearTokenCookie(AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME).toString());

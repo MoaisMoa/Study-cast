@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import type { ChatMessage, RoomMember, RoomModal, TimerState } from "@/types/studyRoom";
 import { useT, useThemeCtx } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -26,10 +26,20 @@ export default function StudyRoomPage() {
   const T = useT();
   const { mode, toggle } = useThemeCtx();
   const { roomId } = useParams();
+  const navigate = useNavigate();
   const isMobile = useIsMobile(768);
-  const { user } = useAuth();
+  const { user, isLoggedIn, isLoading: authLoading } = useAuth();
   // "나" 식별 기준 — 화상화면/멤버관리/멤버목록/채팅 전체 공통
   const myUuid = user?.userUuid ?? "";
+
+  // 비로그인 접근 시 로그인 페이지로 리다이렉트
+  useEffect(() => {
+    if (!authLoading && !isLoggedIn) {
+      // registerSession이 실행되지 못해 남은 "입장 중" 표시 정리 (다음 입장 시도가 막히지 않도록)
+      unregisterSession();
+      navigate("/login", { replace: true });
+    }
+  }, [authLoading, isLoggedIn, navigate]);
 
   // 멤버/시간
   const [members, setMembers] = useState<RoomMember[]>([]);
@@ -57,6 +67,8 @@ export default function StudyRoomPage() {
   const exitedRef = useRef(false);
   // pagehide 핸들러가 최신 timerSec을 읽을 수 있도록 ref로 추적
   const timerSecRef = useRef(0);
+  // 다른 탭의 강제 퇴장 요청(로그아웃)이 항상 최신 doExit을 호출하도록 ref로 추적
+  const doExitRef = useRef<() => void>(() => {});
   // WebSocket 이벤트 핸들러에서 최신 members를 읽기 위한 ref
   const myUuidRef = useRef<string>("");
   const membersRef = useRef<RoomMember[]>([]);
@@ -89,8 +101,8 @@ export default function StudyRoomPage() {
 
   // API: 방 입장 처리 + 초기 데이터 로드
   useEffect(() => {
-    if (!roomId) return;
-    registerSession(roomId);
+    if (!roomId || authLoading || !isLoggedIn) return;
+    registerSession(roomId, () => doExitRef.current());
     let cancelled = false;
     Promise.all([
       fetchRoom(roomId, myUuid),
@@ -118,7 +130,7 @@ export default function StudyRoomPage() {
       setExpiredAt(snap.expiredAt);
     });
     return () => { cancelled = true; };
-  }, [roomId, user?.name]);
+  }, [roomId, authLoading, isLoggedIn, myUuid]);
 
   // 시계 + 타이머
   useEffect(() => {
@@ -141,7 +153,7 @@ export default function StudyRoomPage() {
 
   // 멤버 입퇴장 실시간 구독
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || authLoading || !isLoggedIn) return;
     const unsub = subscribeMembers(roomId, (event: MemberEvent) => {
       if (event.type === "JOINED") {
         if (event.userUuid === myUuidRef.current) return; // 자신 입장 이벤트 무시
@@ -205,27 +217,27 @@ export default function StudyRoomPage() {
       }
     });
     return unsub;
-  }, [roomId]);
+  }, [roomId, authLoading, isLoggedIn]);
 
   // 실시간 채팅 구독
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || authLoading || !isLoggedIn) return;
     const unsub = subscribeChat(
       roomId,
       () => myUuidRef.current,
       (msg) => setMsgs((prev) => [...prev, msg])
     );
     return unsub;
-  }, [roomId]);
+  }, [roomId, authLoading, isLoggedIn]);
 
   // 카메라 OFF 시 자동 일시정지
   useEffect(() => {
     if (!cam && timerState === "running") setTimerState("paused");
   }, [cam, timerState]);
 
-  // LiveKit 연결 — 카메라/마이크 실제 연결 및 비디오 트랙 관리
+  // LiveKit 연결 — 카메라/마이크 실제 연결 및 비디오 트랙 관리 (비로그인 상태에서는 연결 시도 안 함)
   const { videoTracks } = useLiveKit(
-    roomId,
+    !authLoading && isLoggedIn ? roomId : undefined,
     cam,
     mic,
     (e) => setCamError(e),
@@ -278,6 +290,7 @@ export default function StudyRoomPage() {
     unregisterSession();
     window.close();
   };
+  useEffect(() => { doExitRef.current = doExit; }, [doExit]);
 
   // 탭/브라우저 강제 종료 시 퇴장 처리
   // keepalive: true → 페이지 언로드 후에도 브라우저가 요청 완료를 보장
@@ -297,6 +310,9 @@ export default function StudyRoomPage() {
     window.addEventListener("pagehide", handlePageHide);
     return () => window.removeEventListener("pagehide", handlePageHide);
   }, [handlePageHide]);
+
+  // 인증 확인 전/비로그인 시 렌더링 방지 — 리다이렉트는 위 useEffect가 처리
+  if (authLoading || !isLoggedIn) return null;
 
   const handleSideEnter = () => { if (sideHoverTimer.current) window.clearTimeout(sideHoverTimer.current); setSideHover(true); };
   const handleSideLeave = () => { sideHoverTimer.current = window.setTimeout(() => setSideHover(false), 300); };
