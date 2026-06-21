@@ -1,6 +1,5 @@
 package com.younghee.studycast.controller;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -9,11 +8,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.younghee.studycast.dto.request.AccumulateStudyRequest;
-import com.younghee.studycast.dto.response.MonthlyStudyResponse;
 import com.younghee.studycast.dto.response.TodayStudyResponse;
 import com.younghee.studycast.service.StudyLogService;
 
@@ -54,23 +51,5 @@ public class StudyLogController {
             studyLogService.saveTodayStudySeconds(userUuid, seconds);
         }
         return ResponseEntity.ok().build();
-    }
-
-    // 월별 공부 통계 조회 (출석일 / 총 공부 / 일별 기록)
-    @GetMapping("/monthly")
-    public ResponseEntity<MonthlyStudyResponse> getMonthlyStudyStats(
-        Authentication authentication,
-        @RequestParam(required = false) Integer year,
-        @RequestParam(required = false) Integer month
-    ) {
-        if (authentication == null || authentication.getPrincipal() == null) {
-            throw new SecurityException("인증 사용자 정보가 없습니다.");
-        }
-        UUID userUuid = (UUID) authentication.getPrincipal();
-        LocalDate now = LocalDate.now();
-        int y = (year != null) ? year : now.getYear();
-        int m = (month != null) ? month : now.getMonthValue();
-        MonthlyStudyResponse response = studyLogService.getMonthlyStudyStats(userUuid, y, m);
-        return ResponseEntity.ok(response);
     }
 }
