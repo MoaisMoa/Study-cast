@@ -24,8 +24,6 @@ public interface RoomService {
     );    
     // 참여 코드 중복 확인
     JoinCodeCheckResponse checkJoinCodeDuplicate(String code);
-
-    // 추가) 방 상세 페이지
     // 스터디방 상세 페이지 헤더 조회
     RoomDetailResponse getRoomDetail(Long roomNo, UUID userUuid);
     // 스터디방 입장 처리
@@ -40,7 +38,6 @@ public interface RoomService {
     String saveNotice(Long roomNo, UUID userUuid, String notice);
     // 멤버 추방 (방장 전용)
     void kickMember(Long roomNo, UUID hostUuid, UUID targetUuid);
-
     // 이메일 초대 (방장 전용)
     void inviteMember(Long roomNo, UUID hostUuid, String toEmail);
     // 방 종료 (방장 전용)

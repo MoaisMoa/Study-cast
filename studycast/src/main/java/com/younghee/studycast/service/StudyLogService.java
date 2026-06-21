@@ -1,16 +1,12 @@
 package com.younghee.studycast.service;
 
-import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.younghee.studycast.dao.StudyLogMapper;
-import com.younghee.studycast.dto.StudyLogDTO;
-import com.younghee.studycast.dto.response.MonthlyStudyResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -30,21 +26,5 @@ public class StudyLogService {
     @Transactional(readOnly = true)
     public int getTodayStudySeconds(UUID userUuid) {
         return studyLogMapper.findTodayStudySeconds(userUuid);
-    }
-
-    @Transactional(readOnly = true)
-    public MonthlyStudyResponse getMonthlyStudyStats(UUID userUuid, int year, int month) {
-        var logs = studyLogMapper.findMonthlyStudyLogs(userUuid, year, month);
-
-        int attendDays = logs.size();
-        int totalSeconds = logs.stream().mapToInt(StudyLogDTO::getTotalSeconds).sum();
-        Map<Integer, Integer> dailySeconds = logs.stream().collect(
-            Collectors.toMap(
-                l -> l.getStudyDate().getDayOfMonth(),
-                StudyLogDTO::getTotalSeconds
-            )
-        );
-
-        return new MonthlyStudyResponse(attendDays, totalSeconds, dailySeconds);
     }
 }

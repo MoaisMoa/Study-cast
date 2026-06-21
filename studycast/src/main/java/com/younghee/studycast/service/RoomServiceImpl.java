@@ -55,8 +55,6 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     @Transactional
-    // 핵심: 트랜잭션
-    // 방 생성 혹은 방장 등록 둘중 하나라도 실패 시 전체 롤백
     public RoomCreateResponse createRoom(
         UUID userUuid, 
         RoomCreateRequest request, 
@@ -66,19 +64,17 @@ public class RoomServiceImpl implements RoomService {
         validateUserUuid(userUuid);
         // 3. 방 생성 요청값 검증
         validateCreateRequest(request);
-        // 추가) 대표 이미지 검증 및 실제 파일 저장
         String thumbnailPath = roomImageStorageService.store(image);
 
         try {
             // 3. 종료일을 해당 날짜의 마지막 시간으로 변환
             LocalDateTime expiredAt = request.getExpiredAt().atTime(23, 59, 59);
             // 4. 공개/비공개 여부에 따라 참여 코드 저장값 결정
-            // - 공개방이면 null, 비공개방이면 4~6자리 코드 저장
             String roomPassword = resolveRoomPassword(
                 request.getRoomPrivate(),
                 request.getRoomPassword()
             );
-            // 5. 방 생성 RoomsDTO 생성 (now_users는 실제 입장 시점에 증가하므로 0으로 초기화)
+            // 5. 방 생성 RoomsDTO 생성
             RoomsDTO room = RoomsDTO.builder()
                                     .userUuid(userUuid)
                                     .categoryNo(request.getCategoryNo())
@@ -92,13 +88,13 @@ public class RoomServiceImpl implements RoomService {
                                     .roomThumbnail(thumbnailPath)
                                     .expiredAt(expiredAt)
                                     .build();
-            // 6. rooms 테이블에 생성된 방 저장 (핵심)
+            // 6. rooms 테이블에 생성된 방 저장
             int insertedRoomCount = roomsMapper.insertRoom(room);
 
             if (insertedRoomCount != 1 || room.getRoomNo() == null) {
                 throw new IllegalStateException("스터디방 생성에 실패했습니다.");
             }
-            // 7. 생성된 방 번호와 제목 응답 (방 입장은 별도 join API에서 처리)
+            // 7. 생성된 방 번호와 제목 응답
             return new RoomCreateResponse(
                 room.getRoomNo(),
                 room.getRoomTitle(),
@@ -116,7 +112,6 @@ public class RoomServiceImpl implements RoomService {
     @Override
     public JoinCodeCheckResponse checkJoinCodeDuplicate(String code) {
         // 1. 참여 코드의 필수 여부와 숫자 4~6자리 형식 검증하고,
-        // 앞뒤 공백 제거한 정규화된 참여 코드를 반환받음
         String normalizedCode = validateAndNormalizeJoinCode(code);
         // 2. DB에서 동일한 비공개 방 참여 코드가 존재하는지 확인
         boolean duplicate =
@@ -192,7 +187,6 @@ public class RoomServiceImpl implements RoomService {
             );
         }
         // 6. 방장 여부 계산
-        // - 방장은 정원이 가득 차도 입장 보장 정책 적용
         boolean owner = userUuid.equals(room.getUserUuid());
 
         // 7. 비공개방이면 joinCode 검증 (방장은 코드 없이 입장 가능)
@@ -208,16 +202,13 @@ public class RoomServiceImpl implements RoomService {
             }
         }
         // 8. 기존 참여 이력 조회
-        // 이력 없으면 insert / 이력 있으면 rejoin update 처리
         RoomParticipantDTO existingParticipant =
             roomParticipantsMapper.findParticipantByRoomNoAndUserUuid(roomNo, userUuid);
         // 9. 입장 전 now_users를 실제 active 참여자 수로 동기화 후 조회
-        // (서버 비정상 종료 등으로 now_users가 실제보다 높게 남는 경우 방어)
         roomsMapper.syncNowUsersByActiveParticipants(roomNo);
         Integer currentUsersBeforeJoin = roomsMapper.findNowUsersByRoomNo(roomNo);
 
         // 10. 정원 체크 (방장 슬롯은 정원 외로 취급 → 5/4 허용)
-        // max_users는 비방장 슬롯 수를 의미하므로, 방장이 현재 active이면 now_users에서 1을 빼고 비교
         if (!owner && room.getMaxUsers() != null) {
             boolean hostActive = roomParticipantsMapper.existsActiveParticipant(roomNo, room.getUserUuid());
             int nonHostCount = (currentUsersBeforeJoin != null ? currentUsersBeforeJoin : 0)
@@ -228,7 +219,6 @@ public class RoomServiceImpl implements RoomService {
         }
 
         // 11. 신규/재입장 참여자 처리
-        // - 기존 참여 이력 없으면 room_participants에 새 row 추가
         if (existingParticipant == null) {
             RoomParticipantDTO participant = RoomParticipantDTO.builder()
                                                               .roomNo(roomNo)
@@ -241,7 +231,6 @@ public class RoomServiceImpl implements RoomService {
             roomParticipantsMapper.insertParticipant(participant);
         } else {
             // 12. 재입장 처리
-            // - 기존 row 재사용
             roomParticipantsMapper.rejoinParticipant(roomNo, userUuid);
         }
         // 13. active 참여자 수 기준으로 rooms.now_users 재계산
@@ -310,7 +299,7 @@ public class RoomServiceImpl implements RoomService {
         }
         // 7. active 참여자 수 기준으로 rooms.now_users 재계산
         roomsMapper.syncNowUsersByActiveParticipants(roomNo);
-        // 8. 프론트 타이머 기준 오늘 공부 시간 누적 저장 (독립 트랜잭션 — 실패해도 퇴장 처리 롤백 안 함)
+        // 8. 프론트 타이머 기준 오늘 공부 시간 누적 저장
         if (studiedSeconds > 0) {
             try {
                 studyLogService.saveTodayStudySeconds(userUuid, studiedSeconds);
