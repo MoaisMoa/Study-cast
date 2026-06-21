@@ -43,10 +43,9 @@
             total_seconds AS totalSeconds,
             updated_at   AS updatedAt
         FROM study_logs
-        WHERE user_uuid = #{userUuid}
+        WHERE user_uuid  = #{userUuid}
           AND EXTRACT(YEAR  FROM study_date) = #{year}
           AND EXTRACT(MONTH FROM study_date) = #{month}
-          AND total_seconds > 0
         ORDER BY study_date
     </select>
 </mapper>

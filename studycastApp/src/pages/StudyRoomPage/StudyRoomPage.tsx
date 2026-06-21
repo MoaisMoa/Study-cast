@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import type { ChatMessage, RoomMember, RoomModal, TimerState } from "@/types/studyRoom";
 import { useT, useThemeCtx } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { fmtT, nowDate, nowT } from "@/data/studyRoom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchRoom, leaveRoom, getTodayStudySeconds, subscribeMembers, subscribeChat, sendMessage, MEMBER_COLORS, saveNotice, kickMember as svcKickMember, type MemberEvent } from "@/services/studyRoomService";
+import { fetchRoom, leaveRoom, getTodayStudySeconds, accumulateStudySeconds, subscribeMembers, subscribeChat, sendMessage, MEMBER_COLORS, saveNotice, kickMember as svcKickMember, reportTimerTick, subscribeTimerUpdates, type MemberEvent } from "@/services/studyRoomService";
 import { API_BASE_URL } from "@/services/apiClient";
-import { registerSession, unregisterSession } from "@/utils/roomSession";
+import { registerSession, unregisterSession, broadcastRoomJoined } from "@/utils/roomSession";
 import { useLiveKit } from "@/hooks/useLiveKit";
 import { LearningPlannerModal } from "@/pages/MainPage/sections/planner/LearningPlannerModal";
 import {
@@ -26,14 +26,28 @@ export default function StudyRoomPage() {
   const T = useT();
   const { mode, toggle } = useThemeCtx();
   const { roomId } = useParams();
-  const isMobile = useIsMobile(768);
-  const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile(768);
+  const { user, isLoggedIn, isLoading: authLoading } = useAuth();
+  // "나" 식별 기준 — 화상화면/멤버관리/멤버목록/채팅 전체 공통
+  const myUuid = user?.userUuid ?? "";
+
+  // 비로그인 접근 시 로그인 페이지로 리다이렉트
+  useEffect(() => {
+    if (!authLoading && !isLoggedIn) {
+      // registerSession이 실행되지 못해 남은 "입장 중" 표시 정리 (다음 입장 시도가 막히지 않도록)
+      unregisterSession();
+      navigate("/login", { replace: true });
+    }
+  }, [authLoading, isLoggedIn, navigate]);
 
   // 멤버/시간
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [elapsed, setElapsed] = useState<Record<number, number>>({});
   const [totalSec, setTotalSec] = useState(0);
+  // 헤더(totalSec)는 "유저의 오늘 총 공부 시간" — 방 이동과 무관하게 유지
+  // roomSec은 "이 방에서의 누적 시간" — 방 입장 시 0부터 시작, 화상화면/멤버에게 공유되는 값
+  const [roomSec, setRoomSec] = useState(0);
   const [timerSec, setTimerSec] = useState(0);
   const [timerState, setTimerState] = useState<TimerState>("idle");
 
@@ -54,8 +68,12 @@ export default function StudyRoomPage() {
   const sideHoverTimer = useRef<number | null>(null);
   // 나가기 버튼으로 이미 퇴장한 경우 pagehide에서 중복 호출 방지
   const exitedRef = useRef(false);
-  // pagehide 핸들러가 최신 timerSec을 읽을 수 있도록 ref로 추적
-  const timerSecRef = useRef(0);
+  // pagehide/주기적 저장 핸들러가 최신 totalSec을 읽을 수 있도록 ref로 추적
+  const totalSecRef = useRef(0);
+  // 마지막으로 DB에 저장(반영)된 totalSec 시점 — 이 값과 totalSecRef의 차이만큼만 추가 저장
+  const lastSavedTotalRef = useRef(0);
+  // 다른 탭의 강제 퇴장 요청(로그아웃)이 항상 최신 doExit을 호출하도록 ref로 추적
+  const doExitRef = useRef<() => void>(() => {});
   // WebSocket 이벤트 핸들러에서 최신 members를 읽기 위한 ref
   const myUuidRef = useRef<string>("");
   const membersRef = useRef<RoomMember[]>([]);
@@ -86,27 +104,28 @@ export default function StudyRoomPage() {
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
-  // join 완료 여부 — LiveKit 토큰은 join 성공 후에만 요청
+  // 방 입장(/join) 완료 여부 — LiveKit 연결은 이게 true가 된 뒤에만 시작 (입장 전 토큰 발급 시도 방지)
   const [joined, setJoined] = useState(false);
-  const [joinError, setJoinError] = useState<string | null>(null);
-  const [codeInput, setCodeInput] = useState("");
-  const [retryCode, setRetryCode] = useState<string | null>(null);
 
   // API: 방 입장 처리 + 초기 데이터 로드
   useEffect(() => {
-    if (!roomId) return;
-    registerSession(roomId);
+    if (!roomId || authLoading || !isLoggedIn) return;
+    setJoined(false);
+    setRoomSec(0);
+    registerSession(roomId, () => doExitRef.current());
     let cancelled = false;
     Promise.all([
-      fetchRoom(roomId, user?.name ?? "", user?.profileImage, retryCode ?? undefined),
+      fetchRoom(roomId, myUuid),
       getTodayStudySeconds(),
     ]).then(([snap, todaySeconds]) => {
       if (cancelled) return;
       setMembers(snap.members);
-      myUuidRef.current = snap.members[0]?.userUuid ?? "";
+      myUuidRef.current = myUuid;
       membersRef.current = snap.members;
       setElapsed(Object.fromEntries(snap.members.map((m) => [m.id, m.sec])));
       setTotalSec(todaySeconds);
+      totalSecRef.current = todaySeconds;
+      lastSavedTotalRef.current = todaySeconds;
       setRoomTitle(snap.title);
       setMaxMembers(snap.maxMembers);
       setNoticeMsg(snap.notice);
@@ -121,14 +140,13 @@ export default function StudyRoomPage() {
       setRoomThumbnail(snap.thumbnail);
       setCategoryNo(snap.categoryNo);
       setExpiredAt(snap.expiredAt);
+      // 입장(/join) 완료 — 이제부터 LiveKit 연결 시작 가능
       setJoined(true);
-    }).catch((e) => {
-      if (cancelled) return;
-      const msg: string = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "방에 입장할 수 없습니다.";
-      setJoinError(msg);
+      // 메인페이지 등 다른 탭의 방 목록 새로고침 트리거
+      broadcastRoomJoined();
     });
     return () => { cancelled = true; };
-  }, [roomId, user?.name, retryCode]);
+  }, [roomId, authLoading, isLoggedIn, myUuid]);
 
   // 시계 + 타이머
   useEffect(() => {
@@ -138,20 +156,54 @@ export default function StudyRoomPage() {
       if (timerState === "running") {
         setTimerSec((v) => v + 1);
         setTotalSec((v) => v + 1);
+        setRoomSec((v) => v + 1);
       }
     }, 1000);
     return () => window.clearInterval(t);
   }, [timerState]);
 
-  // timerSec ref 동기화 (pagehide 핸들러용)
-  useEffect(() => { timerSecRef.current = timerSec; }, [timerSec]);
+  // totalSec ref 동기화 (pagehide/주기적 저장 핸들러용)
+  useEffect(() => { totalSecRef.current = totalSec; }, [totalSec]);
 
   // membersRef 동기화 (WebSocket 이벤트 핸들러가 최신 members를 읽을 수 있도록)
   useEffect(() => { membersRef.current = members; }, [members]);
 
+  // 방에 머무는 동안 30초마다 누적 공부 시간 중간 저장 (탭/브라우저 비정상 종료 시 데이터 손실 방지)
+  useEffect(() => {
+    if (!roomId || !joined) return;
+    const t = window.setInterval(() => {
+      const delta = totalSecRef.current - lastSavedTotalRef.current;
+      if (delta <= 0) return;
+      lastSavedTotalRef.current = totalSecRef.current;
+      accumulateStudySeconds(delta).catch(() => {
+        // 저장 실패 시 다음 주기에 누적해서 재시도되도록 롤백
+        lastSavedTotalRef.current -= delta;
+      });
+    }, 30000);
+    return () => window.clearInterval(t);
+  }, [roomId, joined]);
+
+  // 이 방에서의 누적 타이머 1초 틱 브로드캐스트 (다른 멤버 화면에 실시간 반영, 방 단위 — 유저 총 공부시간인 totalSec과는 별개)
+  useEffect(() => {
+    if (!roomId || !joined || timerState !== "running") return;
+    reportTimerTick(roomId, myUuidRef.current, (membersRef.current[0]?.sec ?? 0) + roomSec);
+  }, [roomId, joined, timerState, roomSec]);
+
+  // 다른 멤버의 누적 공부 타이머 실시간 구독
+  useEffect(() => {
+    if (!roomId || !joined) return;
+    const unsub = subscribeTimerUpdates(roomId, ({ userUuid, totalSeconds }) => {
+      if (userUuid === myUuidRef.current) return;
+      const member = membersRef.current.find((m) => m.userUuid === userUuid);
+      if (!member) return;
+      setElapsed((prev) => ({ ...prev, [member.id]: totalSeconds }));
+    });
+    return unsub;
+  }, [roomId, joined]);
+
   // 멤버 입퇴장 실시간 구독
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || authLoading || !isLoggedIn) return;
     const unsub = subscribeMembers(roomId, (event: MemberEvent) => {
       if (event.type === "JOINED") {
         if (event.userUuid === myUuidRef.current) return; // 자신 입장 이벤트 무시
@@ -215,26 +267,26 @@ export default function StudyRoomPage() {
       }
     });
     return unsub;
-  }, [roomId]);
+  }, [roomId, authLoading, isLoggedIn]);
 
   // 실시간 채팅 구독
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || authLoading || !isLoggedIn) return;
     const unsub = subscribeChat(
       roomId,
       () => myUuidRef.current,
       (msg) => setMsgs((prev) => [...prev, msg])
     );
     return unsub;
-  }, [roomId]);
+  }, [roomId, authLoading, isLoggedIn]);
 
   // 카메라 OFF 시 자동 일시정지
   useEffect(() => {
     if (!cam && timerState === "running") setTimerState("paused");
   }, [cam, timerState]);
 
-  // LiveKit 연결 — join 성공 후에만 토큰 요청 (joined가 true일 때만 roomId 전달)
-  const { selfIdentity, videoTracks } = useLiveKit(
+  // LiveKit 연결 — 카메라/마이크 실제 연결 및 비디오 트랙 관리 (비로그인 상태에서는 연결 시도 안 함)
+  const { videoTracks } = useLiveKit(
     joined ? roomId : undefined,
     cam,
     mic,
@@ -281,24 +333,30 @@ export default function StudyRoomPage() {
   const doExit = async () => {
     setTimerState("idle");
     setShowExitConfirm(false);
+    // 초기화 버튼을 눌렀어도 totalSec은 리셋되지 않으므로, 아직 저장 안 된 만큼만 정확히 전달
+    const remaining = Math.max(0, totalSecRef.current - lastSavedTotalRef.current);
     try {
-      await leaveRoom(roomId!, timerSec);
+      await leaveRoom(roomId!, remaining);
+      lastSavedTotalRef.current = totalSecRef.current;
       exitedRef.current = true;
+      broadcastRoomJoined(); // 메인페이지 등 다른 탭의 "오늘 공부한 시간"/방 목록 새로고침 트리거
     } catch { /* ignore — pagehide fallback will handle cleanup */ }
     unregisterSession();
     navigate("/");
   };
+  useEffect(() => { doExitRef.current = doExit; }, [doExit]);
 
   // 탭/브라우저 강제 종료 시 퇴장 처리
   // keepalive: true → 페이지 언로드 후에도 브라우저가 요청 완료를 보장
   const handlePageHide = useCallback(() => {
     if (exitedRef.current || !roomId) return;
+    const remaining = Math.max(0, totalSecRef.current - lastSavedTotalRef.current);
     fetch(`${API_BASE_URL}/api/rooms/${roomId}/leave`, {
       method: "DELETE",
       credentials: "include",
       keepalive: true,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studiedSeconds: timerSecRef.current }),
+      body: JSON.stringify({ studiedSeconds: remaining }),
     });
     unregisterSession();
   }, [roomId]);
@@ -308,51 +366,8 @@ export default function StudyRoomPage() {
     return () => window.removeEventListener("pagehide", handlePageHide);
   }, [handlePageHide]);
 
-  // join 실패 시 에러 화면 (모든 훅 호출 후에 위치)
-  if (joinError) {
-    const needsCode = joinError === "비공개 방은 참여 코드가 필요합니다.";
-    return (
-      <div style={{ minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, fontFamily: "'Noto Sans KR', sans-serif" }}>
-        <p style={{ fontSize: 16, color: T.text, margin: 0 }}>{joinError}</p>
-        {needsCode && (
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              type="text"
-              value={codeInput}
-              onChange={(e) => setCodeInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && codeInput.trim()) {
-                  setJoinError(null);
-                  setJoined(false);
-                  setRetryCode(codeInput.trim());
-                }
-              }}
-              placeholder="참여 코드 입력"
-              maxLength={10}
-              style={{ padding: "10px 14px", borderRadius: 10, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 14, outline: "none", width: 160 }}
-            />
-            <button
-              onClick={() => {
-                if (!codeInput.trim()) return;
-                setJoinError(null);
-                setJoined(false);
-                setRetryCode(codeInput.trim());
-              }}
-              style={{ padding: "10px 20px", borderRadius: 10, border: "none", background: "#4f8ef7", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
-            >
-              입장
-            </button>
-          </div>
-        )}
-        <button
-          onClick={() => navigate("/")}
-          style={{ padding: "10px 24px", borderRadius: 10, border: "none", background: T.red, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
-        >
-          메인으로 돌아가기
-        </button>
-      </div>
-    );
-  }
+  // 인증 확인 전/비로그인 시 렌더링 방지 — 리다이렉트는 위 useEffect가 처리
+  if (authLoading || !isLoggedIn) return null;
 
   const handleSideEnter = () => { if (sideHoverTimer.current) window.clearTimeout(sideHoverTimer.current); setSideHover(true); };
   const handleSideLeave = () => { sideHoverTimer.current = window.setTimeout(() => setSideHover(false), 300); };
@@ -365,13 +380,13 @@ export default function StudyRoomPage() {
     else if (timerState === "running") handleTimerPause();
     else handleTimerResume();
   };
-  const rightPanelProps = { chatTab, setChatTab, msgs, inp, setInp, send, isSending, sendError, setSendError, members, elapsed: { ...elapsed, 1: totalSec }, totalSec, timerState, noticeMsg, mic, cam, maxMembers, setNoticeMsg };
+  const rightPanelProps = { chatTab, setChatTab, msgs, inp, setInp, send, isSending, sendError, setSendError, members, elapsed: { ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }, totalSec: roomSec, timerState, noticeMsg, myUuid, mic, cam, maxMembers, setNoticeMsg };
 
   // ── 공통 모달 묶음 ──
   const modals = (
     <>
       {modal === "cal" && <LearningPlannerModal open onClose={() => setModal(null)} />}
-      {modal === "members" && <MemberModal roomId={roomId} members={members} elapsed={{ ...elapsed, 1: totalSec }} mic={mic} cam={cam} joinElapsed={timerSec} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
+      {modal === "members" && <MemberModal roomId={roomId} members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} myUuid={myUuid} mic={mic} cam={cam} joinElapsed={timerSec} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
       {modal === "settings" && <SettingModal onClose={() => setModal(null)} isHost={isHost} roomTitle={roomTitle} setRoomTitle={setRoomTitle} settingCamOn={settingCamOn} setSettingCamOn={setSettingCamOn} settingMicOn={settingMicOn} setSettingMicOn={setSettingMicOn} maxMembers={maxMembers} setMaxMembers={setMaxMembers} roomThumbnail={roomThumbnail} setRoomThumbnail={setRoomThumbnail} roomId={roomId} categoryNo={categoryNo} setCategoryNo={setCategoryNo} expiredAt={expiredAt} setExpiredAt={setExpiredAt} roomNotice={noticeMsg} roomPrivate={roomPrivate} />}
       {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={async (msg) => { try { const r = await saveNotice(roomId!, msg); setNoticeMsg(r.notice); } catch { setNoticeMsg(msg); } }} noticeMsg={noticeMsg} isHost={isHost} />}
       {kickTarget && <KickConfirm member={kickTarget} onConfirm={doKick} onCancel={() => setKickTarget(null)} />}
@@ -380,10 +395,10 @@ export default function StudyRoomPage() {
   );
 
   const camGridEl = (
-    <CamGrid members={members} elapsed={elapsed} totalSec={totalSec} timerSec={timerSec} timerState={timerState}
+    <CamGrid members={members} elapsed={elapsed} totalSec={roomSec} timerSec={timerSec} timerState={timerState}
       cam={cam} camError={!!camError} focusedId={focusedId} setFocusedId={setFocusedId}
       onTimerStart={handleTimerStart} onTimerPause={handleTimerPause} onTimerResume={handleTimerResume} onTimerReset={handleTimerReset}
-      videoTracks={videoTracks} selfIdentity={selfIdentity} selfProfileImage={user?.profileImage} />
+      videoTracks={videoTracks} myUuid={myUuid} />
   );
 
   // 장치 오류 배너 (데스크탑/모바일 공용)
@@ -430,7 +445,7 @@ export default function StudyRoomPage() {
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.red, display: "inline-block", animation: "blink 1.2s ease-in-out infinite" }} />
               <span style={{ color: T.text, fontWeight: 700, fontSize: 12, letterSpacing: ".04em" }}>ON STUDY</span>
             </div>
-            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 700, color: T.red, marginTop: 1 }}>{fmtT(timerSec)}</div>
+            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 700, color: T.red, marginTop: 1 }}>{fmtT(totalSec)}</div>
           </div>
           {/* 우측 — 벽시계 + 나가기(텍스트) */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", zIndex: 1 }}>
@@ -449,11 +464,11 @@ export default function StudyRoomPage() {
 
         {/* 캠 그리드 (모바일 전용 4분할 확대/축소) */}
         <MobileCamGrid
-          members={members} elapsed={{ ...elapsed, 1: totalSec }} totalSec={totalSec}
+          members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} totalSec={roomSec} timerSec={timerSec}
           timerState={timerState} cam={cam} mic={mic} focused={focusedId}
           setFocused={setFocusedId}
           onTimerToggle={timerAction} onTimerReset={handleTimerReset}
-          videoTracks={videoTracks} selfIdentity={selfIdentity} selfProfileImage={user?.profileImage}
+          videoTracks={videoTracks} myUuid={myUuid}
         />
 
         {/* 하단 컨트롤 바: 마이크 · 채팅 · 중앙 타이머 · 멤버 · 카메라 */}
@@ -538,7 +553,7 @@ export default function StudyRoomPage() {
               <span style={{ color: T.text, fontWeight: 700, fontSize: 15 }}>멤버 <span style={{ color: T.text3, fontWeight: 400, fontSize: 13 }}>{members.length}명</span></span>
               <button onClick={() => setDrawer(null)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}><XIc s={18} c={T.text3} /></button>
             </div>
-            <MobileMemberDrawer members={members} elapsed={{ ...elapsed, 1: totalSec }} totalSec={totalSec} timerState={timerState} mic={mic} cam={cam} />
+            <MobileMemberDrawer members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} totalSec={roomSec} timerState={timerState} mic={mic} cam={cam} myUuid={myUuid} />
           </div>
         )}
 
@@ -570,7 +585,7 @@ export default function StudyRoomPage() {
           <span style={{ fontSize: 12, color: T.text2 }}>{dateStr}</span>
           <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: T.text3 }}>{clk}</span>
           <div style={{ width: 1, height: 20, background: T.border }} />
-          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: T.red, fontWeight: 600 }}>{fmtT(timerSec)}</span>
+          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: T.red, fontWeight: 600 }}>{fmtT(totalSec)}</span>
           <Av name={user?.name ?? "나"} color={T.red} size={30} profileImage={user?.profileImage} />
         </div>
       </header>

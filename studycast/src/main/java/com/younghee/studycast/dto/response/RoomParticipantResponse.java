@@ -17,11 +17,11 @@ public class RoomParticipantResponse {
     
     private UUID userUuid;
     private String userName;
+    private String userEmail;
     private String profileImage;
-
     private Boolean owner;
     private Boolean cameraStatus;
     private Boolean micStatus;
-
     private LocalDateTime joinedAt;
+    private Integer todayStudySeconds;
 }

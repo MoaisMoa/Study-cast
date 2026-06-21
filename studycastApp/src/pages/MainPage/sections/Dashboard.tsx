@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { MyRoom } from "@/types";
 import { useT } from "@/theme";
 import { useWindowWidth } from "@/hooks/useWindowWidth";
@@ -8,6 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { fmtTimer } from "@/utils/time";
 import { useClock } from "@/hooks/useClock";
 import { getMainSummary, listMyRooms } from "@/services/roomService";
+import { subscribeRoomJoined } from "@/utils/roomSession";
 import { LearningPlannerModal } from "./planner/LearningPlannerModal";
 
 /** 내 스터디 + 스탯 (각오 / 디데이 / 타이머) */
@@ -44,6 +46,13 @@ export function Dashboard() {
       });
   };
 
+  function loadDashboard() {
+    listMyRooms()
+      .then(setRooms)
+      .catch(() => setRooms([]));
+    fetchSummary();
+  }
+
   // 로그인 시 summary 조회
   useEffect(() => {
     if (!isLoggedIn) {
@@ -54,9 +63,14 @@ export function Dashboard() {
       setStudyResolution(null);
       return;
     }
-    listMyRooms().then(setRooms).catch(() => setRooms([]));
-    fetchSummary();
-  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+    loadDashboard();
+  }, [isLoggedIn]);
+
+  // 다른 탭에서 방 입장이 완료되면 (참여 인원 변경) 다시 조회
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    return subscribeRoomJoined(loadDashboard);
+  }, [isLoggedIn]);
 
   const { h, m, s } = fmtTimer(todayStudySeconds);
   const pct = Math.min((todayStudySeconds / (8 * 3600)) * 100, 100);
@@ -428,24 +442,22 @@ export function Dashboard() {
               <span style={{ fontSize: 12, fontWeight: 600, color: T.text2 }}>내 디데이</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{
-                background: "none",
-                color: T.red,
-                border: `1.5px solid ${T.red}`,
-                borderRadius: 6,
-                padding: "4px 11px",
-                fontFamily: "'JetBrains Mono',monospace",
-                fontWeight: 700,
-                fontSize: 17,
-                flexShrink: 0,
-                lineHeight: 1.2,
-              }}>
-                {remainingDays === null
-                  ? "D-day"
-                  : remainingDays === 0
-                    ? "D-day"
-                    : `D-${remainingDays}`}
-              </div>
+              {ddayTitle && (
+                <div style={{
+                  background: "none",
+                  color: T.red,
+                  border: `1.5px solid ${T.red}`,
+                  borderRadius: 6,
+                  padding: "4px 11px",
+                  fontFamily: "'JetBrains Mono',monospace",
+                  fontWeight: 700,
+                  fontSize: 17,
+                  flexShrink: 0,
+                  lineHeight: 1.2,
+                }}>
+                  {remainingDays === null || remainingDays === 0 ? "D-day" : `D-${remainingDays}`}
+                </div>
+              )}
               <div style={{ fontSize: 13, fontWeight: 500, color: T.text, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ddayTitle ?? "등록된 일정이 없습니다."}</div>
             </div>
             <div

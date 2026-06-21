@@ -9,6 +9,8 @@ export interface MemberModalProps {
   roomId?: string;
   members: RoomMember[];
   elapsed: Record<number, number>;
+  /** 현재 로그인한 사용자의 UUID — "나" 식별 기준 (화상화면/멤버관리/멤버목록/채팅 공통) */
+  myUuid: string;
   /** 본인(HOST) 장치 상태 — 첫 행 표시용 */
   mic?: boolean;
   cam?: boolean;
@@ -24,7 +26,7 @@ export interface MemberModalProps {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function MemberModal({
-  roomId, members, elapsed, mic = true, cam = true, joinElapsed = 0, isHost, isPrivate = false, joinCode, onClose, onKickRequest,
+  roomId, members, elapsed, myUuid, mic = true, cam = true, joinElapsed = 0, isHost, isPrivate = false, joinCode, onClose, onKickRequest,
 }: MemberModalProps) {
   const T = useT();
   const [showInvite, setShowInvite] = useState(false);
@@ -75,7 +77,7 @@ export function MemberModal({
         {/* 멤버 행 */}
         <div style={{ flex: 1, overflowY: "auto" }}>
           {sortedMembers.map((m, i) => {
-            const isSelf = m.id === 1;
+            const isSelf = m.userUuid === myUuid;
             const micState = isSelf ? mic : m.mic;
             const camState = isSelf ? cam : m.cam;
             return (
@@ -87,11 +89,11 @@ export function MemberModal({
                       <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{m.name}</span>
                       {m.role === "HOST" && <span style={{ background: T.redLight, color: T.red, fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, flexShrink: 0 }}>HOST</span>}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}><MailIc s={11} c={T.text3} /><span style={{ fontSize: 12, color: T.text3 }}>{m.email}</span></div>
+                    {m.email && <div style={{ display: "flex", alignItems: "center", gap: 4 }}><MailIc s={11} c={T.text3} /><span style={{ fontSize: 12, color: T.text3, lineHeight: 1 }}>{m.email}</span></div>}
                   </div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: T.text }}>{m.joinMin + Math.floor(joinElapsed / 60)}분</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: T.text }}>{isSelf ? m.joinMin + Math.floor(joinElapsed / 60) : m.joinMin}분</div>
                 </div>
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: T.red, marginBottom: 4 }}>{fmtT(elapsed[m.id] || 0)}</div>

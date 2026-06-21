@@ -12,6 +12,7 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.younghee.studycast.config.OAuthRedirectCaptureFilter;
 import com.younghee.studycast.dao.RefreshTokenMapper;
 import com.younghee.studycast.dto.RefreshTokenDTO;
 import com.younghee.studycast.security.JwtProvider;
@@ -21,6 +22,7 @@ import com.younghee.studycast.util.TokenHashUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -76,8 +78,18 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler{
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
         log.info("OAuth 로그인 성공 JWT 쿠키 발급 완료: userUuid={}", userUuid);
-        // 9. 프론트 메인 페이지로 이동
-        response.sendRedirect(frontendUrl);
+
+        // 9. 로그인 시작 시점에 저장해둔 이동 목적지(redirect)가 있으면 그쪽으로, 없으면 메인 페이지로
+        HttpSession session = request.getSession(false);
+        Object redirectAttr = session != null ? session.getAttribute(OAuthRedirectCaptureFilter.SESSION_KEY) : null;
+        if (session != null) session.removeAttribute(OAuthRedirectCaptureFilter.SESSION_KEY);
+
+        String target = redirectAttr instanceof String redirectPath
+            ? frontendUrl + redirectPath
+            : frontendUrl;
+        // oauthLogin=1 — 프론트에서 다른 탭에 로그인 완료를 알리는 신호로 사용
+        String separator = target.contains("?") ? "&" : "?";
+        response.sendRedirect(target + separator + "oauthLogin=1");
     }
 
     // Refresh Token 원문은 DB 저장하지 않고, SHA-256 해시로 저장

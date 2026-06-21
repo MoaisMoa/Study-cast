@@ -8,6 +8,7 @@ import { useClickOutside } from "@/hooks/useClickOutside";
 import { CATS_FILTER, TYPE_OPTS } from "@/data/categories";
 import type { TypeOpt } from "@/data/categories";
 import { listRoomCards } from "@/services/roomService";
+import { subscribeRoomJoined } from "@/utils/roomSession";
 import { Icon } from "@/components/ui/Icon";
 
 const TABS_M = ["전체", "신규"] as const;
@@ -40,7 +41,7 @@ export function MobileBrowse() {
 
   useEffect(() => {
     fetchRooms(0, false);
-  }, [tab, selCats, roomType, onlyAvail]);
+  }, [tab, selCats, roomType, onlyAvail, isLoggedIn]);
 
   const toApiCategoryNos = () => {
     const map: Record<RoomCategory, number> = {
@@ -82,6 +83,13 @@ export function MobileBrowse() {
       setIsLoading(false);
     }
   };
+
+  // 다른 탭에서 방 입장이 완료되면 (참여 인원 변경) 첫 페이지 재조회
+  const fetchRoomsRef = useRef(fetchRooms);
+  useEffect(() => { fetchRoomsRef.current = fetchRooms; });
+  useEffect(() => {
+    return subscribeRoomJoined(() => fetchRoomsRef.current(0, false));
+  }, []);
 
   const toggleCat = (c: RoomCategory) =>
     setSelCats((prev) =>
@@ -404,7 +412,7 @@ export function MobileBrowse() {
           );
         })}
         {visible.length === 0 && (
-          <div style={{ textAlign: "center", padding: "36px 0", color: T.text3, fontSize: 13 }}>
+          <div style={{ gridColumn: is2col ? "1 / -1" : undefined, textAlign: "center", padding: "36px 0", color: T.text3, fontSize: 13 }}>
             해당 조건의 스터디가 없습니다.
           </div>
         )}

@@ -19,6 +19,7 @@ import { FilterRow } from "./sections/FilterRow";
 import { VisitedRoomCard } from "./sections/VisitedRoomCard";
 import { EntryModal } from "./sections/EntryModal";
 import { EmptyState } from "./sections/EmptyState";
+import { LoginRequiredState } from "@/components/ui/LoginRequiredState";
 
 type LoadState = "loading" | "loaded" | "error";
 
@@ -149,7 +150,7 @@ export default function VisitedRoomsPage() {
         padding: isMobile ? "20px 16px 76px" : "32px 28px 60px",
       }}>
         {!isLoggedIn ? (
-          <EmptyState type="all" />
+          <LoginRequiredState message="방문한 스터디 그룹을 보려면 로그인이 필요해요." />
         ) : loadState === "loading" ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "80px 24px" }}>
             <div style={{ fontSize: 14, color: T.text3 }}>불러오는 중...</div>

@@ -4,6 +4,7 @@ import { useWindowWidth } from "@/hooks/useWindowWidth";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Room } from "@/types";
 import { listRecommended } from "@/services/roomService";
+import { subscribeRoomJoined } from "@/utils/roomSession";
 import { StudyCard } from "@/components/study/StudyCard";
 
 export function MobileRecommended() {
@@ -17,6 +18,13 @@ export function MobileRecommended() {
 
   useEffect(() => {
     listRecommended({ guest: !isLoggedIn }).then(setRooms);
+  }, [isLoggedIn]);
+
+  // 다른 탭에서 방 입장이 완료되면 (참여 인원 변경) 다시 조회
+  useEffect(() => {
+    return subscribeRoomJoined(() => {
+      listRecommended({ guest: !isLoggedIn }).then(setRooms);
+    });
   }, [isLoggedIn]);
 
   const total = rooms.length;

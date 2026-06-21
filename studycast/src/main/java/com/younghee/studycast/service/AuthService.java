@@ -2,7 +2,7 @@ package com.younghee.studycast.service;
 
 import java.util.UUID;
 
-import com.younghee.studycast.dto.AuthResponse;
+import com.younghee.studycast.dto.response.AuthResponse;
 import com.younghee.studycast.dto.UserDTO;
 
 public interface AuthService {
@@ -14,4 +14,6 @@ public interface AuthService {
     void logout(String refreshToken, UUID userUuid);
     // 인증 사용자 정보 조회
     UserDTO getMe(UUID userUuid);
+    // 비밀번호 변경
+    void changePassword(UUID userUuid, String currentPassword, String newPassword);
 }

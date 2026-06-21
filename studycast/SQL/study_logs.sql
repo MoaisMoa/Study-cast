@@ -1,4 +1,4 @@
--- Active: 1778135432146@@127.0.0.1@5432@studycast_db
+-- Active: 1781851343881@@localhost@5432@studycast_db
 CREATE TABLE study_logs (
     log_no BIGSERIAL NOT NULL PRIMARY KEY,
     user_uuid UUID NOT NULL,

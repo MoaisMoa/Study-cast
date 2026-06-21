@@ -4,6 +4,7 @@ import path from "node:path";
 
 export default defineConfig({
   plugins: [react()],
+  // sockjs-client가 참조하는 Node 전역 변수 polyfill (브라우저엔 없음)
   define: {
     global: "globalThis",
   },

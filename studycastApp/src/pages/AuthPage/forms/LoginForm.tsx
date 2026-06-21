@@ -65,7 +65,8 @@ export function LoginForm({ onNavigate }: LoginFormProps) {
         return;
       }
       if (result.user) setAuthUser(result.user);
-      navigate("/");
+      const redirect = new URLSearchParams(location.search).get("redirect");
+      navigate(redirect && redirect.startsWith("/") ? redirect : "/");
     } catch {
       setLoginError("로그인 처리 중 오류가 발생했습니다.");
     } finally {

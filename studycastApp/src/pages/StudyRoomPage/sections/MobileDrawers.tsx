@@ -30,7 +30,7 @@ export function MobileChatDrawer({
           }
           return (
             <div key={msg.id} style={{ display: "flex", flexDirection: msg.mine ? "row-reverse" : "row", alignItems: "flex-start", gap: 6 }}>
-              {!msg.mine && <div style={{ flexShrink: 0, marginTop: 2 }}><Av name={msg.name ?? ""} color={msg.color ?? "#888"} size={26} /></div>}
+              {!msg.mine && <div style={{ flexShrink: 0, marginTop: 2 }}><Av name={msg.name ?? ""} color={msg.color ?? "#888"} size={26} profileImage={msg.profileImage} /></div>}
               <div style={{ maxWidth: "76%", display: "flex", flexDirection: "column", alignItems: msg.mine ? "flex-end" : "flex-start", gap: 2 }}>
                 {!msg.mine && <span style={{ fontSize: 10, color: theme.text3, paddingLeft: 2 }}>{msg.name}</span>}
                 <div style={{ background: msg.mine ? theme.red : theme.surface2, color: msg.mine ? "#fff" : theme.text, borderRadius: msg.mine ? "14px 14px 2px 14px" : "2px 14px 14px 14px", padding: "8px 12px", fontSize: 13, lineHeight: 1.4, wordBreak: "break-word" }}>{msg.text}</div>
@@ -59,23 +59,25 @@ export function MobileChatDrawer({
 
 /* ── 모바일 멤버 드로어 콘텐츠 (큰 카드 리스트) ── */
 export function MobileMemberDrawer({
-  members, elapsed, totalSec, timerState, mic, cam,
+  members, elapsed, totalSec, timerState, mic, cam, myUuid,
 }: {
   members: RoomMember[]; elapsed: Record<number, number>; totalSec: number;
   timerState: TimerState; mic: boolean; cam: boolean;
+  /** 현재 로그인한 사용자의 UUID — "나" 식별 기준 (화상화면/멤버관리/멤버목록/채팅 공통) */
+  myUuid: string;
 }) {
   const T = useT();
   return (
     <div style={{ overflowY: "auto", padding: "0 14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
       {members.map((m) => {
-        const isSelf = m.role === "HOST";
+        const isSelf = m.userUuid === myUuid;
         const camOn = isSelf ? cam : m.cam;
         const micOn = isSelf ? mic : m.mic;
         const isActive = isSelf ? timerState === "running" : camOn;
         return (
           <div key={m.userUuid} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: T.surface2, borderRadius: 12, border: `1px solid ${T.border}` }}>
             <div style={{ position: "relative", flexShrink: 0 }}>
-              <Av name={m.short} color={m.color} size={42} />
+              <Av name={m.short} color={m.color} size={42} profileImage={m.profileImage} />
               <span style={{ position: "absolute", bottom: 1, right: 1, width: 10, height: 10, borderRadius: "50%", background: isActive ? GREEN : T.text3, border: `2px solid ${T.surface}` }} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>

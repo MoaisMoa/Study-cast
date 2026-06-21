@@ -4,6 +4,7 @@ import { useT } from "@/theme";
 import { useAuth } from "@/contexts/AuthContext";
 import { StudyCard } from "@/components/study/StudyCard";
 import { listRecommended } from "@/services/roomService";
+import { subscribeRoomJoined } from "@/utils/roomSession";
 
 const VISIBLE = 3;
 
@@ -15,6 +16,13 @@ export function Recommended() {
 
   useEffect(() => {
     listRecommended({ guest: !isLoggedIn }).then(setFiltered);
+  }, [isLoggedIn]);
+
+  // 다른 탭에서 방 입장이 완료되면 (참여 인원 변경) 다시 조회
+  useEffect(() => {
+    return subscribeRoomJoined(() => {
+      listRecommended({ guest: !isLoggedIn }).then(setFiltered);
+    });
   }, [isLoggedIn]);
 
   const total = filtered.length;
