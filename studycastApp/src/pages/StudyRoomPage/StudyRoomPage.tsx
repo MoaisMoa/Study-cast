@@ -31,7 +31,6 @@ export default function StudyRoomPage() {
   const { user, isLoggedIn, isLoading: authLoading } = useAuth();
   // "나" 식별 기준 — 화상화면/멤버관리/멤버목록/채팅 전체 공통
   const myUuid = user?.userUuid ?? "";
-
   // 비로그인 접근 시 로그인 페이지로 리다이렉트
   useEffect(() => {
     if (!authLoading && !isLoggedIn) {
@@ -386,7 +385,7 @@ export default function StudyRoomPage() {
   const modals = (
     <>
       {modal === "cal" && <LearningPlannerModal open onClose={() => setModal(null)} />}
-      {modal === "members" && <MemberModal roomId={roomId} members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} myUuid={myUuid} mic={mic} cam={cam} joinElapsed={timerSec} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
+      {modal === "members" && <MemberModal roomId={roomId} members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} myUuid={myUuid} mic={mic} cam={cam} joinElapsed={roomSec} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
       {modal === "settings" && <SettingModal onClose={() => setModal(null)} isHost={isHost} roomTitle={roomTitle} setRoomTitle={setRoomTitle} settingCamOn={settingCamOn} setSettingCamOn={setSettingCamOn} settingMicOn={settingMicOn} setSettingMicOn={setSettingMicOn} maxMembers={maxMembers} setMaxMembers={setMaxMembers} roomThumbnail={roomThumbnail} setRoomThumbnail={setRoomThumbnail} roomId={roomId} categoryNo={categoryNo} setCategoryNo={setCategoryNo} expiredAt={expiredAt} setExpiredAt={setExpiredAt} roomNotice={noticeMsg} roomPrivate={roomPrivate} />}
       {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={async (msg) => { try { const r = await saveNotice(roomId!, msg); setNoticeMsg(r.notice); } catch { setNoticeMsg(msg); } }} noticeMsg={noticeMsg} isHost={isHost} />}
       {kickTarget && <KickConfirm member={kickTarget} onConfirm={doKick} onCancel={() => setKickTarget(null)} />}
@@ -464,7 +463,7 @@ export default function StudyRoomPage() {
 
         {/* 캠 그리드 (모바일 전용 4분할 확대/축소) */}
         <MobileCamGrid
-          members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} totalSec={roomSec} timerSec={timerSec}
+          members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} totalSec={totalSec} timerSec={timerSec}
           timerState={timerState} cam={cam} mic={mic} focused={focusedId}
           setFocused={setFocusedId}
           onTimerToggle={timerAction} onTimerReset={handleTimerReset}
@@ -481,7 +480,6 @@ export default function StudyRoomPage() {
             <ChatIc s={22} c={drawer === "chat" ? T.red : T.text2} />
             {chatBadge && <span style={{ position: "absolute", top: 8, right: 8, width: 7, height: 7, borderRadius: "50%", background: T.red }} />}
           </button>
-          {/* 중앙 타이머 — 카메라 OFF 시 비활성 */}
           {/* 중앙 타이머 — 카메라 OFF 시 비활성. 일시정지 시 위에 초기화 버튼 */}
           <div style={{ position: "relative", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
             {timerState === "paused" && (
@@ -553,7 +551,7 @@ export default function StudyRoomPage() {
               <span style={{ color: T.text, fontWeight: 700, fontSize: 15 }}>멤버 <span style={{ color: T.text3, fontWeight: 400, fontSize: 13 }}>{members.length}명</span></span>
               <button onClick={() => setDrawer(null)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}><XIc s={18} c={T.text3} /></button>
             </div>
-            <MobileMemberDrawer members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} totalSec={roomSec} timerState={timerState} mic={mic} cam={cam} myUuid={myUuid} />
+            <MobileMemberDrawer members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} totalSec={totalSec} timerState={timerState} mic={mic} cam={cam} myUuid={myUuid} />
           </div>
         )}
 

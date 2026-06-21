@@ -58,10 +58,12 @@ export function CardModal() {
     setCodeError(null);
     setEntryBlocked(false);
     setLoginCountdown(null);
+    setLoginCountdown(null);
     setModalRoom(null);
   };
 
   const handleEnterClick = async () => {
+    if (!isLoggedIn) { setLoginCountdown(3); return; }
     if (!isLoggedIn) { setLoginCountdown(3); return; }
     if (isPrivate) { setCodeStep(true); return; }
     setEntering(true);

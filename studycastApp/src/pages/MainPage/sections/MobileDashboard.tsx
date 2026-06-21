@@ -25,7 +25,6 @@ export function MobileDashboard() {
   const [remainingDays, setRemainingDays] = useState<number | null>(null);
   const [studyResolution, setStudyResolution] = useState<string | null>(null);
 
-  const fetchSummary = () => {
   function loadDashboard() {
     listMyRooms()
       .then(setRooms)
@@ -44,22 +43,6 @@ export function MobileDashboard() {
         setRemainingDays(null);
         setStudyResolution(null);
       });
-  };
-
-  useEffect(() => {
-    if (!isLoggedIn) {
-      setRooms([]);
-      setTodayStudySeconds(0);
-      setDdayTitle(null);
-      setRemainingDays(null);
-      setStudyResolution(null);
-      return;
-    }
-    listMyRooms().then(setRooms).catch(() => setRooms([]));
-    fetchSummary();
-  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const { dateStr, timeStr } = useClock();
   }
 
   useEffect(() => {
@@ -72,7 +55,9 @@ export function MobileDashboard() {
       return;
     }
     loadDashboard();
-  }, [isLoggedIn]);
+  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { dateStr, timeStr } = useClock();
 
   // 다른 탭에서 방 입장이 완료되면 (참여 인원 변경) 다시 조회
   useEffect(() => {
@@ -88,7 +73,7 @@ export function MobileDashboard() {
 
   return (
     <>
-    <LearningPlannerModal open={plannerOpen} onClose={() => setPlannerOpen(false)} onScheduleChanged={fetchSummary} />
+    <LearningPlannerModal open={plannerOpen} onClose={() => setPlannerOpen(false)} onScheduleChanged={loadDashboard} />
     <section style={{ padding: "14px 16px 0" }}>
       {/* 날짜 및 시간 */}
       <div style={{

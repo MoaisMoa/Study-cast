@@ -24,6 +24,7 @@
     </insert>
 
     <!-- 오늘 누적 공부 시간 조회 (로그 없으면 0) -->
+    <!-- 오늘 누적 공부 시간 조회 (로그 없으면 0) -->
     <select id="findTodayStudySeconds" resultType="int">
         SELECT COALESCE(
             (SELECT total_seconds

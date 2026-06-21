@@ -1,4 +1,3 @@
--- Active: 1781851343881@@localhost@5432@studycast_db
 DROP TABLE IF EXISTS
     email_verifications,
     refresh_tokens,
@@ -94,7 +93,6 @@ COMMENT ON COLUMN user_auths.provider_name IS '소셜 플랫폼에서 제공한 
 COMMENT ON COLUMN user_auths.provider_profile_image IS '소셜 플랫폼에서 제공한 프로필 이미지 URL';
 COMMENT ON COLUMN user_auths.connected_at IS '소셜 계정 최초 연동 시각';
 COMMENT ON COLUMN user_auths.last_login_at IS '해당 소셜 계정 마지막 로그인 시각';
-
 
 -- 4. 권한 관리
 CREATE TABLE IF NOT EXISTS roles (
