@@ -18,8 +18,8 @@ export interface MobileCamGridProps {
   onTimerReset: () => void;
   // LiveKit
   videoTracks: Map<string, LiveKitVideoTrack>;
-  selfIdentity: string | null;
-  selfProfileImage?: string;
+  /** 현재 로그인한 사용자의 UUID — "나" 식별 기준 (화상화면/멤버관리/멤버목록/채팅 공통) */
+  myUuid: string;
 }
 
 function LiveVideo({ track, mirrored = false }: { track: LiveKitVideoTrack; mirrored?: boolean }) {
@@ -43,15 +43,16 @@ function LiveVideo({ track, mirrored = false }: { track: LiveKitVideoTrack; mirr
  * 셀을 탭하면 focused(확대) / 나머지는 shrunk(축소).
  */
 export function MobileCamGrid(props: MobileCamGridProps) {
-  const { members, elapsed, totalSec, timerState, cam, mic, focused, setFocused, onTimerToggle, onTimerReset, videoTracks, selfIdentity, selfProfileImage } = props;
+  const { members, elapsed, totalSec, timerState, cam, mic, focused, setFocused, onTimerToggle, onTimerReset, videoTracks, myUuid } = props;
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, overflow: "hidden", minHeight: 0 }}>
       {members.map((m) => {
-        const isSelf = selfIdentity ? m.userUuid === selfIdentity : m.name === "나";
+        const isSelf = m.userUuid === myUuid;
         const camOn = isSelf ? cam : m.cam;
         const micOn = isSelf ? mic : m.mic;
-        const videoTrack = isSelf ? (selfIdentity ? videoTracks.get(selfIdentity) : undefined) : videoTracks.get(m.userUuid);
+        // LiveKit identity == userUuid이므로 분기 없이 동일하게 조회 가능
+        const videoTrack = videoTracks.get(m.userUuid);
         const showVideo = !!videoTrack && camOn;
         const isLive = (isSelf && timerState === "running" && camOn) || (!isSelf && camOn);
         const secVal = isSelf ? totalSec : (elapsed[m.id] || m.sec);
@@ -73,13 +74,13 @@ export function MobileCamGrid(props: MobileCamGridProps) {
               ? <LiveVideo track={videoTrack!} mirrored={isSelf} />
               : (
                 <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Av name={m.short} color={m.color} size={isFocused ? 72 : isShrunk ? 24 : 44} profileImage={isSelf ? selfProfileImage : undefined} />
+                  <Av name={m.short} color={m.color} size={isFocused ? 72 : isShrunk ? 24 : 44} profileImage={m.profileImage} />
                 </div>
               )
             }
             {camOn && !showVideo && (
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.18 }}>
-                <Av name={m.short} color={m.color} size={isFocused ? 90 : isShrunk ? 32 : 56} profileImage={isSelf ? selfProfileImage : undefined} />
+                <Av name={m.short} color={m.color} size={isFocused ? 90 : isShrunk ? 32 : 56} profileImage={m.profileImage} />
               </div>
             )}
             {/* 그라디언트 */}
@@ -108,7 +109,7 @@ export function MobileCamGrid(props: MobileCamGridProps) {
             {/* 하단 */}
             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "5px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 2 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                {!isShrunk && <Av name={m.short} color={m.color} size={isFocused ? 28 : 22} profileImage={isSelf ? selfProfileImage : undefined} />}
+                {!isShrunk && <Av name={m.short} color={m.color} size={isFocused ? 28 : 22} profileImage={m.profileImage} />}
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                     <span style={{ color: "#fff", fontSize: isFocused ? 12 : isShrunk ? 8 : 10, fontWeight: 600, whiteSpace: "nowrap" }}>{m.name}</span>

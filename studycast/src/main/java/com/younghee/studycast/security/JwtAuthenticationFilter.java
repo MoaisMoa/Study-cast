@@ -16,7 +16,6 @@ import com.younghee.studycast.util.AuthCookieUtil;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final UserMapper userMapper;
+    private final AuthCookieUtil authCookieUtil;
 
     @Override
     protected void doFilterInternal(
@@ -39,16 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String uri = request.getRequestURI();
 
-        String token = null;
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if (AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME.equals(cookie.getName())) {
-                    token = cookie.getValue();
-                    break;
-                }
-            }
-        }
+        String token = authCookieUtil.extractCookieValue(request, AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME);
 
         if (token == null) {
             filterChain.doFilter(request, response);

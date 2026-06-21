@@ -3,6 +3,8 @@ package com.younghee.studycast.config;
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -14,7 +16,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
-import com.younghee.studycast.dao.RoomMapper;
+import com.younghee.studycast.dao.RoomParticipantsMapper;
 import com.younghee.studycast.dao.UserMapper;
 import com.younghee.studycast.dto.UserDTO;
 import com.younghee.studycast.security.JwtProvider;
@@ -27,9 +29,14 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
 
+    // 채팅("/sub/chat/room/{roomNo}")과 멤버 이벤트("/sub/room/{roomNo}/members") 구독 모두 매칭
+    private static final Pattern ROOM_DESTINATION_PATTERN =
+        Pattern.compile("^/sub/(?:chat/)?room/(\\d+)(?:/.*)?$");
+
     private final JwtProvider jwtProvider;
     private final UserMapper userMapper;
-    private final RoomMapper roomMapper;
+    // 죽은 코드였던 RoomMapper.existsParticipant를 대체 — 참여 이력이 아닌 active 참여자만 인정
+    private final RoomParticipantsMapper roomParticipantsMapper;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -78,15 +85,18 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             Principal principal = accessor.getUser();
             String destination = accessor.getDestination();
             log.info("SUBSCRIBE: destination={}, principal={}", destination, principal == null ? null : principal.getName());
-            if (destination != null && destination.startsWith("/sub/rooms/")) {
+            // 기존엔 "/sub/rooms/" prefix만 검사해서 실제 구독 경로(/sub/chat/room/, /sub/room/)와 안 맞아 이 가드가 한 번도 실행되지 않았음 — 정규식으로 두 destination 모두 매칭
+            Matcher roomMatcher = (destination == null) ? null : ROOM_DESTINATION_PATTERN.matcher(destination);
+            if (roomMatcher != null && roomMatcher.matches()) {
                 if (principal == null) {
                     log.warn("SUBSCRIBE denied: unauthenticated user");
                     return null;
                 }
                 try {
-                    Long roomNo = Long.valueOf(destination.substring("/sub/rooms/".length()));
+                    Long roomNo = Long.valueOf(roomMatcher.group(1));
                     UUID userUuid = UUID.fromString(principal.getName());
-                    if (!roomMapper.existsParticipant(userUuid, roomNo)) {
+                    // 단순 참여 기록(existsParticipant) 대신 active 상태만 인정 — 방을 나간 유저는 구독 거부
+                    if (!roomParticipantsMapper.existsActiveParticipant(roomNo, userUuid)) {
                         log.warn("SUBSCRIBE denied: user is not participant. room={} userUuid={}", roomNo, userUuid);
                         return null;
                     }

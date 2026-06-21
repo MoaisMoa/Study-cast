@@ -19,6 +19,8 @@ export interface RightPanelProps {
   totalSec: number;
   timerState: TimerState;
   noticeMsg: string | null;
+  /** 현재 로그인한 사용자의 UUID — "나" 식별 기준 (화상화면/멤버관리/멤버목록/채팅 공통) */
+  myUuid: string;
   /** 본인 마이크/카메라 상태 (멤버 목록 자기 행 아이콘) */
   mic?: boolean;
   cam?: boolean;
@@ -33,7 +35,7 @@ const GREEN = "#4caf50";
 export function RightPanel(props: RightPanelProps) {
   const {
     chatTab, setChatTab, msgs, inp, setInp, send, isSending, sendError, setSendError,
-    members, elapsed, totalSec, timerState, noticeMsg,
+    members, elapsed, totalSec, timerState, noticeMsg, myUuid,
     mic = true, cam = true, maxMembers = 4, setNoticeMsg,
   } = props;
   const T = useT();
@@ -80,7 +82,7 @@ export function RightPanel(props: RightPanelProps) {
               }
               return (
                 <div key={msg.id} style={{ display: "flex", flexDirection: msg.mine ? "row-reverse" : "row", alignItems: "flex-start", gap: 6 }}>
-                  {!msg.mine && <div style={{ flexShrink: 0, marginTop: 2 }}><Av name={msg.name ?? ""} color={msg.color ?? "#9E9E9E"} size={26} /></div>}
+                  {!msg.mine && <div style={{ flexShrink: 0, marginTop: 2 }}><Av name={msg.name ?? ""} color={msg.color ?? "#9E9E9E"} size={26} profileImage={msg.profileImage} /></div>}
                   <div style={{ maxWidth: "76%", display: "flex", flexDirection: "column", alignItems: msg.mine ? "flex-end" : "flex-start", gap: 2 }}>
                     {!msg.mine && (
                       <div style={{ display: "flex", alignItems: "center", gap: 4, paddingLeft: 2 }}>
@@ -142,14 +144,14 @@ export function RightPanel(props: RightPanelProps) {
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
             {members.map((m) => {
-              const isSelf = m.id === 1;
+              const isSelf = m.userUuid === myUuid;
               const micState = isSelf ? mic : m.mic;
               const camState = isSelf ? cam : m.cam;
               const isActive = isSelf ? timerState === "running" : camState;
               return (
                 <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", opacity: isActive ? 1 : 0.55 }}>
                   <div style={{ position: "relative", flexShrink: 0 }}>
-                    <Av name={m.short} color={m.color} size={32} />
+                    <Av name={m.short} color={m.color} size={32} profileImage={m.profileImage} />
                     <span style={{ position: "absolute", bottom: 0, right: 0, width: 8, height: 8, borderRadius: "50%", background: isActive ? GREEN : c3, border: `2px solid ${T.surface}` }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

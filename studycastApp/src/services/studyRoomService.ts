@@ -55,12 +55,13 @@ function nowT(): string {
   return [d.getHours(), d.getMinutes(), d.getSeconds()].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
-function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean, myProfileImage?: string): RoomMember {
+function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean): RoomMember {
   const joinedAt = p.joinedAt ? new Date(p.joinedAt) : new Date();
   const joinMin = Math.max(0, Math.floor((Date.now() - joinedAt.getTime()) / 60_000));
   return {
     id: index + 1,
     userUuid: p.userUuid,
+    // 본인 화면에서는 "나", 다른 사람 화면에서는 실명으로 보임 (각자의 클라이언트에서 본인 기준으로 판별)
     name: isMe ? "나" : p.userName,
     short: isMe ? "나" : p.userName.slice(0, 2),
     email: "",
@@ -70,12 +71,13 @@ function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean, myPr
     joinMin,
     mic: p.micStatus,
     cam: p.cameraStatus,
-    profileImage: isMe ? myProfileImage : undefined,
+    // 본인 여부와 무관하게 실제 등록된 프로필 사진이 있으면 보여줌
+    profileImage: p.profileImage ?? undefined,
   };
 }
 
 /** 방 입장 + 초기 스냅샷 조회 */
-export async function fetchRoom(roomId: string, myName: string, myProfileImage?: string): Promise<RoomSnapshot> {
+export async function fetchRoom(roomId: string, myUuid: string): Promise<RoomSnapshot> {
   // 입장 처리 (이미 active 상태면 백엔드가 중복 처리)
   await apiClient.post(`/api/rooms/${roomId}/join`);
 
@@ -86,9 +88,13 @@ export async function fetchRoom(roomId: string, myName: string, myProfileImage?:
 
   const detail = detailRes.data;
 
-  // 나를 항상 index 0(id=1)으로 정렬
-  const sorted = [...participantsRes.data].sort((a) => (a.userName === myName ? -1 : 1));
-  const members = sorted.map((p, i) => toRoomMember(p, i, p.userName === myName, myProfileImage));
+  // 나를 항상 index 0(id=1)으로 정렬 — UUID 기준이라 동명이인이어도 안전
+  const sorted = [...participantsRes.data].sort((a, b) => {
+    if (a.userUuid === myUuid) return -1;
+    if (b.userUuid === myUuid) return 1;
+    return 0;
+  });
+  const members = sorted.map((p, i) => toRoomMember(p, i, p.userUuid === myUuid));
 
   return {
     roomId,
@@ -231,6 +237,7 @@ export function subscribeChat(
           time: data.sentAt ? formatSentAt(data.sentAt) : nowT(),
           mine: data.userUuid === getMyUuid(),
           userUuid: data.userUuid,
+          profileImage: data.userProfileImage ?? undefined,
         });
       } catch { /* ignore malformed messages */ }
     });

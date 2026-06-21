@@ -2,7 +2,7 @@ package com.younghee.studycast.service;
 
 import java.util.UUID;
 
-import com.younghee.studycast.dto.AuthResponse;
+import com.younghee.studycast.dto.response.AuthResponse;
 import com.younghee.studycast.dto.UserDTO;
 
 public interface AuthService {

@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.younghee.studycast.dao.RefreshTokenMapper;
 import com.younghee.studycast.dao.UserMapper;
-import com.younghee.studycast.dto.AuthResponse;
+import com.younghee.studycast.dto.response.AuthResponse;
 import com.younghee.studycast.dto.RefreshTokenDTO;
 import com.younghee.studycast.dto.UserDTO;
 import com.younghee.studycast.security.JwtProvider;

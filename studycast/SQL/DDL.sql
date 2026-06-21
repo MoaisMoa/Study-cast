@@ -69,9 +69,6 @@ CREATE TABLE IF NOT EXISTS user_auths (
 
     connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login_at TIMESTAMP,
-    social_type VARCHAR(20) NOT NULL,
-    social_id VARCHAR(255) NOT NULL UNIQUE,
-    connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_user_auths_user_uuid --users 테이블 외래 키 설정
         FOREIGN KEY (user_uuid)
@@ -86,19 +83,23 @@ CREATE TABLE IF NOT EXISTS user_auths (
 );
 CREATE INDEX IF NOT EXISTS idx_user_auths_user_uuid
 ON user_auths(user_uuid);
-    CONSTRAINT fk_user_uuid FOREIGN KEY (user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE
-);
-COMMENT ON COLUMN user_auths.social_no IS '소셜 연동 식별 번호';
+
+COMMENT ON TABLE user_auths IS '회원 소셜 로그인 연동 정보';
+COMMENT ON COLUMN user_auths.auth_no IS '소셜 인증 연동 식별 번호';
 COMMENT ON COLUMN user_auths.user_uuid IS '회원 식별 번호(FK)';
-COMMENT ON COLUMN user_auths.social_type IS '소셜 로그인 정보 (GOOGLE/KAKAO)';
-COMMENT ON COLUMN user_auths.social_id IS '소셜 플랫폼에서 제공하는 식별 값';
-COMMENT ON COLUMN user_auths.connected_at IS '소셜 계정 연동한 시각';
+COMMENT ON COLUMN user_auths.provider IS '소셜 로그인 제공자(GOOGLE, KAKAO)';
+COMMENT ON COLUMN user_auths.provider_user_id IS '소셜 플랫폼에서 제공하는 사용자 고유 ID';
+COMMENT ON COLUMN user_auths.provider_email IS '소셜 플랫폼에서 제공한 이메일';
+COMMENT ON COLUMN user_auths.provider_name IS '소셜 플랫폼에서 제공한 이름 또는 닉네임';
+COMMENT ON COLUMN user_auths.provider_profile_image IS '소셜 플랫폼에서 제공한 프로필 이미지 URL';
+COMMENT ON COLUMN user_auths.connected_at IS '소셜 계정 최초 연동 시각';
+COMMENT ON COLUMN user_auths.last_login_at IS '해당 소셜 계정 마지막 로그인 시각';
 
 -- 4. 권한 관리
 CREATE TABLE IF NOT EXISTS roles (
     role_code SERIAL PRIMARY KEY,
     user_uuid UUID NOT NULL,
-    role VARCHAR(50) NOT NULL DEFAULT 'ROLE_USER', 
+    role VARCHAR(50) NOT NULL DEFAULT 'ROLE_USER', -- ROLE_USER 권한 부여 (기본값)
     
     CONSTRAINT fk_roles_user FOREIGN KEY(user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE,
     CONSTRAINT uq_user_role UNIQUE (user_uuid, role) 

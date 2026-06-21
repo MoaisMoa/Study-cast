@@ -27,6 +27,7 @@ export interface ChatMessage {
   color?: string;
   isHost?: boolean;
   userUuid?: string;
+  profileImage?: string;
 }
 
 /** 좌측 네비 모달 종류 */

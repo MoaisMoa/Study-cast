@@ -2,7 +2,6 @@ package com.younghee.studycast.controller;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,14 +9,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.younghee.studycast.dto.AuthResponse;
+import com.younghee.studycast.dto.response.AuthResponse;
 import com.younghee.studycast.dto.UserDTO;
 import com.younghee.studycast.dto.request.SignupRequest;
 import com.younghee.studycast.security.JwtProvider;
 import com.younghee.studycast.service.AuthService;
 import com.younghee.studycast.service.UserService;
+import com.younghee.studycast.util.AuthCookieUtil;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +33,7 @@ public class AuthController {
     private final UserService userService;
     private final AuthService authService;
     private final JwtProvider jwtProvider;
+    private final AuthCookieUtil authCookieUtil;
 
     // 회원가입
     @PostMapping("/api/auth/signup")
@@ -59,8 +59,8 @@ public class AuthController {
         int refreshMaxAge = (int) (jwtProvider.getRefreshTokenValidityMs() / 1000);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.SET_COOKIE, buildCookie("sc_access_token",  auth.getAccessToken(),  accessMaxAge).toString());
-        headers.add(HttpHeaders.SET_COOKIE, buildCookie("sc_refresh_token", auth.getRefreshToken(), refreshMaxAge).toString());
+        headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.buildTokenCookie(AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME,  auth.getAccessToken(),  accessMaxAge).toString());
+        headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.buildTokenCookie(AuthCookieUtil.REFRESH_TOKEN_COOKIE_NAME, auth.getRefreshToken(), refreshMaxAge).toString());
 
         return ResponseEntity.ok().headers(headers)
             .body(Map.of("success", true, "message", "로그인되었습니다."));
@@ -70,7 +70,7 @@ public class AuthController {
     @PostMapping("/api/auth/refresh")
     public ResponseEntity<Map<String, Object>> refresh(HttpServletRequest request) {
 
-        String refreshToken = getCookieValue(request, "sc_refresh_token");
+        String refreshToken = authCookieUtil.extractCookieValue(request, AuthCookieUtil.REFRESH_TOKEN_COOKIE_NAME);
 
         try {
             AuthResponse auth = authService.refresh(refreshToken);
@@ -78,7 +78,7 @@ public class AuthController {
             int accessMaxAge = (int) (jwtProvider.getAccessTokenValidityMs() / 1000);
 
             HttpHeaders headers = new HttpHeaders();
-            headers.add(HttpHeaders.SET_COOKIE, buildCookie("sc_access_token", auth.getAccessToken(), accessMaxAge).toString());
+            headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.buildTokenCookie(AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME, auth.getAccessToken(), accessMaxAge).toString());
 
             return ResponseEntity.ok().headers(headers)
                 .body(Map.of("success", true));
@@ -88,8 +88,8 @@ public class AuthController {
             log.warn("Refresh Token 재발급 실패: {}", e.getMessage());
 
             HttpHeaders headers = new HttpHeaders();
-            headers.add(HttpHeaders.SET_COOKIE, clearCookie("sc_access_token").toString());
-            headers.add(HttpHeaders.SET_COOKIE, clearCookie("sc_refresh_token").toString());
+            headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.clearTokenCookie(AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME).toString());
+            headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.clearTokenCookie(AuthCookieUtil.REFRESH_TOKEN_COOKIE_NAME).toString());
 
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).headers(headers)
                 .body(Map.of("success", false, "message", "인증이 만료되었습니다. 다시 로그인해주세요."));
@@ -104,13 +104,13 @@ public class AuthController {
     ) {
         UUID userUuid = (UUID) authentication.getPrincipal();
 
-        String refreshToken = getCookieValue(request, "sc_refresh_token");
+        String refreshToken = authCookieUtil.extractCookieValue(request, AuthCookieUtil.REFRESH_TOKEN_COOKIE_NAME);
 
         authService.logout(refreshToken, userUuid);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.SET_COOKIE, clearCookie("sc_access_token").toString());
-        headers.add(HttpHeaders.SET_COOKIE, clearCookie("sc_refresh_token").toString());
+        headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.clearTokenCookie(AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME).toString());
+        headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.clearTokenCookie(AuthCookieUtil.REFRESH_TOKEN_COOKIE_NAME).toString());
 
         return ResponseEntity.ok().headers(headers)
             .body(Map.of("success", true, "message", "로그아웃되었습니다."));
@@ -123,36 +123,5 @@ public class AuthController {
         UUID userUuid = (UUID) authentication.getPrincipal();
 
         return authService.getMe(userUuid);
-    }
-
-    private ResponseCookie buildCookie(String name, String value, int maxAgeSeconds) {
-        return ResponseCookie.from(name, value)
-            .httpOnly(true)
-            .secure(false)          // dev: false / prod: true
-            .path("/")
-            .maxAge(maxAgeSeconds)
-            .sameSite("Strict")
-            .build();
-    }
-
-    private ResponseCookie clearCookie(String name) {
-        return ResponseCookie.from(name, "")
-            .httpOnly(true)
-            .secure(false)          // dev: false / prod: true
-            .path("/")
-            .maxAge(0)
-            .sameSite("Strict")
-            .build();
-    }
-
-    private String getCookieValue(HttpServletRequest request, String name) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) return null;
-        for (Cookie cookie : cookies) {
-            if (name.equals(cookie.getName())) {
-                return cookie.getValue();
-            }
-        }
-        return null;
     }
 }
