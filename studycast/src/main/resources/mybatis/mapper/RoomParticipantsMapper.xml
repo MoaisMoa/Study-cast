@@ -110,6 +110,7 @@
         SELECT
             u.user_uuid AS userUuid,
             u.user_name AS userName,
+            u.user_email AS userEmail,
             u.user_profile_image AS profileImage,
             CASE
                 WHEN r.user_uuid = u.user_uuid THEN TRUE

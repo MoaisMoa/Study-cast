@@ -89,7 +89,7 @@ export function MemberModal({
                       <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{m.name}</span>
                       {m.role === "HOST" && <span style={{ background: T.redLight, color: T.red, fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, flexShrink: 0 }}>HOST</span>}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}><MailIc s={11} c={T.text3} /><span style={{ fontSize: 12, color: T.text3 }}>{m.email}</span></div>
+                    {m.email && <div style={{ display: "flex", alignItems: "center", gap: 4 }}><MailIc s={11} c={T.text3} /><span style={{ fontSize: 12, color: T.text3, lineHeight: 1 }}>{m.email}</span></div>}
                   </div>
                 </div>
                 <div style={{ textAlign: "center" }}>

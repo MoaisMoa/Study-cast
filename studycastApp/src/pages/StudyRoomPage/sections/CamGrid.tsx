@@ -105,7 +105,7 @@ function CamCell({
 
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "32px 12px 10px", background: "linear-gradient(to top,rgba(0,0,0,.6),transparent)", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 2 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <Av name={m.short} color={m.color} size={24} profileImage={m.profileImage} />
+          <Av name={m.short} color={m.color} size={30} profileImage={m.profileImage} />
           <span style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>{m.name}</span>
           {m.role === "HOST" && <span style={{ background: "rgba(255,255,255,.22)", color: "#fff", fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3 }}>HOST</span>}
         </div>

@@ -41,6 +41,7 @@ interface RoomDetailResponse {
 interface ParticipantResponse {
   userUuid: string;
   userName: string;
+  userEmail: string;
   profileImage: string | null;
   owner: boolean;
   cameraStatus: boolean;
@@ -64,7 +65,8 @@ function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean): Roo
     // 본인 화면에서는 "나", 다른 사람 화면에서는 실명으로 보임 (각자의 클라이언트에서 본인 기준으로 판별)
     name: isMe ? "나" : p.userName,
     short: isMe ? "나" : p.userName.slice(0, 2),
-    email: "",
+    // 개인정보 보호 — 본인 이메일만 노출, 다른 멤버에게는 보여주지 않음
+    email: isMe ? p.userEmail : "",
     role: p.owner ? "HOST" : "MEMBER",
     color: isMe ? MEMBER_COLORS[0] : MEMBER_COLORS[(index % (MEMBER_COLORS.length - 1)) + 1],
     sec: 0,
@@ -272,12 +274,43 @@ export function subscribeMembers(
   };
 }
 
-/** 공부 타이머 보고 (no-op) */
-export async function reportTimer(
-  _roomId: string,
-  _state: "running" | "paused" | "idle",
-  _sec: number
-): Promise<void> {}
+/** 누적 공부 타이머 1초 틱 — 같은 방 멤버 전체에게 실시간 브로드캐스트 (서버 저장 없음) */
+export async function reportTimerTick(roomId: string, userUuid: string, totalSeconds: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    whenConnected(() => {
+      getClient().publish({
+        destination: "/pub/timer/update",
+        body: JSON.stringify({ roomNo: parseInt(roomId), userUuid, totalSeconds }),
+      });
+      resolve();
+    });
+  });
+}
+
+export interface TimerUpdateEvent {
+  userUuid: string;
+  totalSeconds: number;
+}
+
+/** 멤버별 누적 공부 타이머 실시간 구독 (WebSocket) */
+export function subscribeTimerUpdates(
+  roomId: string,
+  onUpdate: (event: TimerUpdateEvent) => void
+): () => void {
+  let sub: ReturnType<Client["subscribe"]> | null = null;
+
+  whenConnected(() => {
+    sub = getClient().subscribe(`/sub/room/${roomId}/timer`, (frame) => {
+      try {
+        onUpdate(JSON.parse(frame.body));
+      } catch { /* ignore malformed */ }
+    });
+  });
+
+  return () => {
+    sub?.unsubscribe();
+  };
+}
 
 /** 방 나가기 */
 export async function leaveRoom(roomId: string, studiedSeconds = 0): Promise<{ ok: boolean }> {
@@ -291,6 +324,12 @@ export async function leaveRoom(roomId: string, studiedSeconds = 0): Promise<{ o
 export async function getTodayStudySeconds(): Promise<number> {
   const res = await apiClient.get<{ totalSeconds: number }>("/api/study-logs/today");
   return res.data.totalSeconds;
+}
+
+/** 방에 머무는 동안 누적 공부 시간 중간 저장 (방 퇴장 전 주기적 호출) */
+export async function accumulateStudySeconds(studySeconds: number): Promise<void> {
+  if (studySeconds <= 0) return;
+  await apiClient.post("/api/study-logs/accumulate", { studySeconds });
 }
 
 export interface LiveKitToken {

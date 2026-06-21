@@ -60,3 +60,19 @@ export function forceLeaveActiveRoom(): void {
   ch.postMessage({ type: 'FORCE_LEAVE' });
   ch.close();
 }
+
+/** 방 입장(참여 인원 증가) 완료 직후 호출 — 메인페이지 등 다른 탭의 방 목록 새로고침 트리거 */
+export function broadcastRoomJoined(): void {
+  const ch = new BroadcastChannel(BC_NAME);
+  ch.postMessage({ type: 'ROOM_JOINED' });
+  ch.close();
+}
+
+/** 다른 탭에서 방 입장이 완료되면 콜백 실행 — 반환값은 구독 해제 함수 */
+export function subscribeRoomJoined(onJoined: () => void): () => void {
+  const ch = new BroadcastChannel(BC_NAME);
+  ch.onmessage = ({ data }) => {
+    if (data?.type === 'ROOM_JOINED') onJoined();
+  };
+  return () => ch.close();
+}

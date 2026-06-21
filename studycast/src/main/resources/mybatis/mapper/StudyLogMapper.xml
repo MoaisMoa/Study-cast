@@ -23,11 +23,14 @@
             updated_at = NOW()
     </insert>
 
-    <!-- 오늘 누적 공부 시간 조회 -->
+    <!-- 오늘 누적 공부 시간 조회 (로그 없으면 0) -->
     <select id="findTodayStudySeconds" resultType="int">
-        SELECT COALESCE(total_seconds, 0)
-        FROM study_logs
-        WHERE user_uuid = #{userUuid}
-          AND study_date = CURRENT_DATE
+        SELECT COALESCE(
+            (SELECT total_seconds
+             FROM study_logs
+             WHERE user_uuid = #{userUuid}
+               AND study_date = CURRENT_DATE),
+            0
+        )
     </select>
 </mapper>

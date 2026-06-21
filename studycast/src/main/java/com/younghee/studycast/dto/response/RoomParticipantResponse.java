@@ -17,6 +17,7 @@ public class RoomParticipantResponse {
     
     private UUID userUuid;
     private String userName;
+    private String userEmail;
     private String profileImage;
 
     private Boolean owner;

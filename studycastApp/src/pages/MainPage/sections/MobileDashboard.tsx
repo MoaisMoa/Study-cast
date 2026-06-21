@@ -4,6 +4,7 @@ import { useT } from "@/theme";
 import { useAuth } from "@/contexts/AuthContext";
 import type { MyRoom } from "@/types";
 import { listMyRooms, getMainSummary } from "@/services/roomService";
+import { subscribeRoomJoined } from "@/utils/roomSession";
 import { fmtTimer } from "@/utils/time";
 import { useModal } from "@/contexts/ModalContext";
 import { Icon } from "@/components/ui/Icon";
@@ -23,16 +24,7 @@ export function MobileDashboard() {
   const [remainingDays, setRemainingDays] = useState<number | null>(null);
   const [studyResolution, setStudyResolution] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isLoggedIn) {
-      setRooms([]);
-      setTodayStudySeconds(0);
-      setDdayTitle(null);
-      setRemainingDays(null);
-      setStudyResolution(null);
-      return;
-    }
-
+  function loadDashboard() {
     listMyRooms()
       .then(setRooms)
       .catch(() => setRooms([]));
@@ -50,6 +42,24 @@ export function MobileDashboard() {
         setRemainingDays(null);
         setStudyResolution(null);
       });
+  }
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setRooms([]);
+      setTodayStudySeconds(0);
+      setDdayTitle(null);
+      setRemainingDays(null);
+      setStudyResolution(null);
+      return;
+    }
+    loadDashboard();
+  }, [isLoggedIn]);
+
+  // 다른 탭에서 방 입장이 완료되면 (참여 인원 변경) 다시 조회
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    return subscribeRoomJoined(loadDashboard);
   }, [isLoggedIn]);
 
   const hasRooms = rooms.length > 0;
@@ -185,23 +195,21 @@ export function MobileDashboard() {
           <div>
             <div style={{ fontSize: 10, color: T.text3, marginBottom: 4 }}>내 디데이</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{
-                background: "none",
-                color: T.red,
-                border: `1.5px solid ${T.red}`,
-                borderRadius: 5,
-                padding: "3px 8px",
-                fontFamily: "'JetBrains Mono',monospace",
-                fontWeight: 700,
-                fontSize: 15,
-                flexShrink: 0,
-              }}>
-                {remainingDays === null
-                  ? "D-day"
-                  : remainingDays === 0
-                    ? "D-day"
-                    : `D-${remainingDays}`}
-              </div>
+              {ddayTitle && (
+                <div style={{
+                  background: "none",
+                  color: T.red,
+                  border: `1.5px solid ${T.red}`,
+                  borderRadius: 5,
+                  padding: "3px 8px",
+                  fontFamily: "'JetBrains Mono',monospace",
+                  fontWeight: 700,
+                  fontSize: 15,
+                  flexShrink: 0,
+                }}>
+                  {remainingDays === null || remainingDays === 0 ? "D-day" : `D-${remainingDays}`}
+                </div>
+              )}
               <div style={{
                 fontSize: 11, fontWeight: 500, color: T.text,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
