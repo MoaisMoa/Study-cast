@@ -144,28 +144,4 @@ public class AuthController {
         userService.updateProfile(userUuid, dto);
         return Map.of("success", true, "message", "프로필이 저장되었습니다.");
     }
-
-    // 비밀번호 변경
-    @PostMapping("/api/auth/change-password")
-    public Map<String, Object> changePassword(
-        Authentication authentication,
-        @RequestBody Map<String, String> body
-    ) {
-        UUID userUuid = (UUID) authentication.getPrincipal();
-        String currentPassword = body.get("currentPassword");
-        String newPassword = body.get("newPassword");
-
-        if (currentPassword == null || currentPassword.isBlank() || newPassword == null || newPassword.isBlank()) {
-            return Map.of("success", false, "message", "비밀번호를 입력해 주세요.");
-        }
-
-        try {
-            authService.changePassword(userUuid, currentPassword, newPassword);
-            return Map.of("success", true, "message", "비밀번호가 변경되었습니다.");
-        } catch (SecurityException e) {
-            return Map.of("success", false, "message", e.getMessage(), "errorCode", "wrong_password");
-        } catch (IllegalStateException e) {
-            return Map.of("success", false, "message", e.getMessage(), "errorCode", "social_account");
-        }
-    }
 }
