@@ -4,6 +4,7 @@
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.younghee.studycast.dao.StudyLogMapper">
+    <!-- 오늘 공부 시간 누적 저장 -->
     <insert id="upsertTodayStudySeconds">
         INSERT INTO study_logs (
             user_uuid,
@@ -22,6 +23,7 @@
             updated_at = NOW()
     </insert>
 
+    <!-- 오늘 누적 공부 시간 조회 (로그 없으면 0) -->
     <select id="findTodayStudySeconds" resultType="int">
         SELECT COALESCE(
             (SELECT total_seconds
@@ -32,6 +34,7 @@
         )
     </select>
 
+    <!-- 일별 공부 기록 조회 -->
     <select id="findMonthlyStudyLogs" resultType="com.younghee.studycast.dto.StudyLogDTO">
         SELECT
             log_no       AS logNo,
