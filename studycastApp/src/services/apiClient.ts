@@ -87,10 +87,12 @@ apiClient.interceptors.response.use(
     }
 
     // 인증 관련 요청 자체가 실패한 경우 재시도하지 않음
+    // /api/auth/me는 비로그인 사용자가 공개 페이지에서도 호출하므로 401이 정상 케이스 — 강제 리다이렉트 대상에서 제외
     if (
       url.includes("/api/auth/login") ||
       url.includes("/api/auth/signup") ||
       url.includes("/api/auth/refresh") ||
+      url.includes("/api/auth/me") ||
       url.includes("/api/auth/password/send-code") ||
       url.includes("/api/auth/password/verify-code") ||
       url.includes("/api/auth/password/reset")

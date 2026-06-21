@@ -20,8 +20,8 @@ export interface CamGridProps {
   onTimerReset: () => void;
   // LiveKit
   videoTracks: Map<string, LiveKitVideoTrack>;
-  selfIdentity: string | null;
-  selfProfileImage?: string;
+  /** 현재 로그인한 사용자의 UUID — "나" 식별 기준 (화상화면/멤버관리/멤버목록/채팅 공통) */
+  myUuid: string;
 }
 
 function LiveVideo({ track, mirrored = false }: { track: LiveKitVideoTrack; mirrored?: boolean }) {
@@ -56,7 +56,6 @@ interface CamCellProps {
   onTimerPause: () => void;
   onTimerResume: () => void;
   onTimerReset: () => void;
-  profileImage?: string;
 }
 
 function CamCell({
@@ -64,7 +63,6 @@ function CamCell({
   isSelf, camOn, camError, videoTrack,
   timerSec, timerState, totalSec, elapsed,
   onTimerStart, onTimerPause, onTimerResume, onTimerReset,
-  profileImage,
 }: CamCellProps) {
   const showVideo = !!videoTrack && camOn && (isSelf ? !camError : true);
 
@@ -77,7 +75,7 @@ function CamCell({
     }}>
       {showVideo
         ? <LiveVideo track={videoTrack!} mirrored={isSelf} />
-        : <Av name={m.short} color={m.color} size={avSize} profileImage={isSelf ? profileImage : undefined} />}
+        : <Av name={m.short} color={m.color} size={avSize} profileImage={m.profileImage} />}
 
       {((isSelf && timerState === "running" && camOn) || (!isSelf && camOn)) && (
         <div style={{ position: "absolute", top: 8, left: 8, display: "flex", alignItems: "center", gap: 3, background: "#E53935", color: "#fff", fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 5, zIndex: 2 }}>
@@ -107,7 +105,7 @@ function CamCell({
 
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "32px 12px 10px", background: "linear-gradient(to top,rgba(0,0,0,.6),transparent)", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 2 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <Av name={m.short} color={m.color} size={24} profileImage={isSelf ? profileImage : undefined} />
+          <Av name={m.short} color={m.color} size={30} profileImage={m.profileImage} />
           <span style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>{m.name}</span>
           {m.role === "HOST" && <span style={{ background: "rgba(255,255,255,.22)", color: "#fff", fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3 }}>HOST</span>}
         </div>
@@ -121,22 +119,22 @@ export function CamGrid(props: CamGridProps) {
   const {
     members, elapsed, totalSec, timerSec, timerState, cam, camError = false,
     focusedId, setFocusedId, onTimerStart, onTimerPause, onTimerResume, onTimerReset,
-    videoTracks, selfIdentity, selfProfileImage,
+    videoTracks, myUuid,
   } = props;
 
   const all = members.slice(0, 4);
   const count = all.length;
 
   function cellProps(m: RoomMember): Omit<CamCellProps, "m" | "avSize" | "showTimer"> {
-    const isSelf = selfIdentity ? m.userUuid === selfIdentity : m.name === "나";
+    const isSelf = m.userUuid === myUuid;
     return {
       isSelf,
       camOn: isSelf ? cam : m.cam,
       camError,
-      videoTrack: videoTracks.get(isSelf ? (selfIdentity ?? "") : m.userUuid),
+      // LiveKit identity == userUuid이므로 분기 없이 동일하게 조회 가능
+      videoTrack: videoTracks.get(m.userUuid),
       timerSec, timerState, totalSec, elapsed,
       onTimerStart, onTimerPause, onTimerResume, onTimerReset,
-      profileImage: selfProfileImage,
     };
   }
 
@@ -144,7 +142,7 @@ export function CamGrid(props: CamGridProps) {
   if (focusedId) {
     const main = all.find((m) => m.id === focusedId) || all[0];
     const thumbs = all.filter((m) => m.id !== main.id);
-    const mainIsSelf = selfIdentity ? main.userUuid === selfIdentity : main.name === "나";
+    const mainIsSelf = main.userUuid === myUuid;
     return (
       <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, padding: 8, gap: 6 }}>
         <div style={{ flex: 1, minHeight: 0 }} onClick={() => setFocusedId(null)}>
@@ -170,7 +168,7 @@ export function CamGrid(props: CamGridProps) {
     <div style={{ flex: 1, display: "grid", gap: 8, padding: 8, gridTemplateColumns: `repeat(${cols},1fr)`, gridTemplateRows: `repeat(${rows},1fr)`, minHeight: 0 }}>
       {all.map((m, idx) => {
         const isLast = idx === all.length - 1;
-        const isSelf = selfIdentity ? m.userUuid === selfIdentity : m.name === "나";
+        const isSelf = m.userUuid === myUuid;
         return (
           <div key={m.userUuid} style={{ gridColumn: count === 3 && isLast ? "1 / span 2" : undefined, minHeight: 0, height: "100%" }} onClick={() => setFocusedId(m.id)}>
             <CamCell m={m} avSize={count === 1 ? 90 : count === 2 ? 70 : 56} showTimer={isSelf} {...cellProps(m)} />

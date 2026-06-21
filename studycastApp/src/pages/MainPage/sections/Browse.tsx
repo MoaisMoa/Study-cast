@@ -9,6 +9,7 @@ import { DropdownModal, DropdownModalHeader } from "@/components/ui/Modal";
 import { LiveStudyCard } from "@/components/study/LiveStudyCard";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { listRoomCards } from "@/services/roomService";
+import { subscribeRoomJoined } from "@/utils/roomSession";
 
 function getCol(): number {
   if (typeof window === "undefined") return 5;
@@ -82,10 +83,17 @@ export function Browse() {
     }
   }
 
-  // 필터 변경 시 첫 페이지 재조회
+  // 필터 변경 시 첫 페이지 재조회 (로그인 상태가 바뀌어도 — joinable 등 결과가 달라질 수 있음)
   useEffect(() => {
     fetchRooms(0, false);
-  }, [tab, selCats, roomType, onlyAvail, PAGE]);
+  }, [tab, selCats, roomType, onlyAvail, PAGE, isLoggedIn]);
+
+  // 다른 탭에서 방 입장이 완료되면 (참여 인원 변경) 첫 페이지 재조회
+  const fetchRoomsRef = useRef(fetchRooms);
+  useEffect(() => { fetchRoomsRef.current = fetchRooms; });
+  useEffect(() => {
+    return subscribeRoomJoined(() => fetchRoomsRef.current(0, false));
+  }, []);
 
   // 더보기
   const loadMore = () => {

@@ -8,12 +8,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-// 스터디룸 참여 현황 DTO
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+// 방 참여자 DB 저장/조회용
 public class RoomParticipantDTO {
 
     private Long partNo;

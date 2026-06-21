@@ -4,6 +4,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+
 @Component
 // 인증 토큰 쿠키 생성/삭제 담당하는 유틸 클래스
 public class AuthCookieUtil {
@@ -42,5 +45,17 @@ public class AuthCookieUtil {
             .maxAge(0)
             .sameSite("Strict")
             .build();
+    }
+
+    // 요청에 담긴 쿠키에서 지정한 이름의 값 추출
+    public String extractCookieValue(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) return null;
+        for (Cookie cookie : cookies) {
+            if (name.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 }

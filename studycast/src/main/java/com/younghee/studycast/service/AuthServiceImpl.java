@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.younghee.studycast.dao.RefreshTokenMapper;
 import com.younghee.studycast.dao.UserMapper;
-import com.younghee.studycast.dto.AuthResponse;
+import com.younghee.studycast.dto.response.AuthResponse;
 import com.younghee.studycast.dto.RefreshTokenDTO;
 import com.younghee.studycast.dto.UserDTO;
 import com.younghee.studycast.security.JwtProvider;
@@ -185,6 +185,23 @@ public class AuthServiceImpl implements AuthService {
         token.setRevoked(false);
 
         refreshTokenMapper.insert(token);
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(UUID userUuid, String currentPassword, String newPassword) {
+        UserDTO user = userMapper.findByUuid(userUuid);
+        if (user == null || !"ACTIVE".equals(user.getUserStatus())) {
+            throw new NoSuchElementException("사용자를 찾을 수 없습니다.");
+        }
+        if (user.getUserPassword() == null || user.getUserPassword().isBlank()) {
+            throw new IllegalStateException("소셜 로그인 계정은 비밀번호를 변경할 수 없습니다.");
+        }
+        if (!passwordEncoder.matches(currentPassword, user.getUserPassword())) {
+            throw new SecurityException("현재 비밀번호가 일치하지 않습니다.");
+        }
+        userMapper.updatePassword(userUuid, passwordEncoder.encode(newPassword));
+        log.info("비밀번호 변경 성공: userUuid={}", userUuid);
     }
 
     private void validateLogin(UserDTO request) {

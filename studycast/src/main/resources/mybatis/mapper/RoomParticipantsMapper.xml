@@ -59,7 +59,7 @@
               AND active = TRUE
         )
     </select>
-    <!-- 신규 참여자 등록 -->
+    <!-- 신규 참여자 등록 (동시 요청 경합 방지: ON CONFLICT → rejoin 처리) -->
     <insert id="insertParticipant" parameterType="RoomParticipantDTO">
         INSERT INTO room_participants (
             user_uuid,
@@ -82,6 +82,11 @@
             NOW(),
             NOW()
         )
+        ON CONFLICT (user_uuid, room_no) DO UPDATE SET
+            active     = TRUE,
+            joined_at  = NOW(),
+            left_at    = NULL,
+            updated_at = NOW()
     </insert>
     <!-- 재입장 update -->
     <update id="rejoinParticipant">
@@ -110,6 +115,7 @@
         SELECT
             u.user_uuid AS userUuid,
             u.user_name AS userName,
+            u.user_email AS userEmail,
             u.user_profile_image AS profileImage,
             CASE
                 WHEN r.user_uuid = u.user_uuid THEN TRUE
@@ -117,10 +123,14 @@
             END AS owner,
             rp.camera_status AS cameraStatus,
             rp.mic_status AS micStatus,
-            rp.joined_at AS joinedAt
+            rp.joined_at AS joinedAt,
+            COALESCE(sl.total_seconds, 0) AS todayStudySeconds
         FROM room_participants rp
         INNER JOIN users u ON rp.user_uuid = u.user_uuid
         INNER JOIN rooms r ON rp.room_no = r.room_no
+        LEFT JOIN study_logs sl
+            ON sl.user_uuid = u.user_uuid
+           AND sl.study_date = CURRENT_DATE
         WHERE rp.room_no = #{roomNo}
           AND rp.active = TRUE
         ORDER BY
