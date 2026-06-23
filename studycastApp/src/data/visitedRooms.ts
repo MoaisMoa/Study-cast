@@ -4,7 +4,7 @@ import { IMGS } from "./images";
 /**
  * 방문한 방 mock 원본.
  * - 최근 방문: visitedAtOrder 오름차순(작을수록 최신)
- * - 자주 방문: visitCount 내림차순 (5회 이상)
+ * - 자주 방문: visitCount 내림차순 (3회 이상)
  * - 동일 방이 양쪽에 모두 표시될 수 있음
  */
 export const VISITED_ROOMS_RAW: VisitedRoom[] = [

@@ -66,8 +66,6 @@ export default function VisitedRoomsPage() {
       .catch(() => setLoadState("error"));
   }, [isLoggedIn]);
 
-  const hasAnyData = recentRooms.length > 0 || frequentRooms.length > 0;
-
   const applyFilters = (list: VisitedRoom[]): VisitedRoom[] => {
     let result = [...list];
     if (catFilter.length > 0)
@@ -144,6 +142,8 @@ export default function VisitedRoomsPage() {
 
       <main style={{
         flex: 1,
+        display: "flex",
+        flexDirection: "column",
         maxWidth: 1160,
         width: "100%",
         margin: "0 auto",
@@ -157,8 +157,6 @@ export default function VisitedRoomsPage() {
           </div>
         ) : loadState === "error" ? (
           <EmptyState type="error" />
-        ) : !hasAnyData ? (
-          <EmptyState type="all" />
         ) : (
           <>
             <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
@@ -192,7 +190,9 @@ export default function VisitedRoomsPage() {
             />
 
             {displayRooms.length === 0 ? (
-              <EmptyState tab={tab} />
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <EmptyState tab={tab} />
+              </div>
             ) : (
               <>
                 <div className="visited-grid">

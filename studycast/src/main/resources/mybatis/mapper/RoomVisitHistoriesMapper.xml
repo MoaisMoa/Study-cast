@@ -161,14 +161,16 @@
             ON r.category_no = c.category_no
         
         WHERE rvh.user_uuid = #{userUuid}
-        
+          <!-- 자주 방문한 방으로 인정할 최소 방문 횟수 -->
+          AND rvh.visit_count &gt;= 3
+
         <!-- 방문 횟수 우선, 동률이면 최근 방문순 -->
-        ORDER BY    
+        ORDER BY
             rvh.visit_count DESC,
             rvh.last_visited_at DESC,
             r.created_at DESC,
             r.room_title ASC
-        
+
         LIMIT #{limit}
         OFFSET #{offset}
     </select>

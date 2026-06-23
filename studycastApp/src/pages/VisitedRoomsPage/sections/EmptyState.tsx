@@ -2,7 +2,7 @@ import type { VisitedTab } from "@/types/visitedRoom";
 import { useT } from "@/theme";
 import { Icon } from "@/components/ui/Icon";
 
-export type EmptyType = "tab" | "all" | "error";
+export type EmptyType = "tab" | "error";
 
 export interface EmptyStateProps {
   tab?: VisitedTab;
@@ -34,22 +34,10 @@ export function EmptyState({ tab, type = "tab" }: EmptyStateProps) {
     );
   }
 
-  if (type === "all") {
-    return (
-      <div style={wrap}>
-        <div style={circle}><Icon name="users" size={26} color={T.text3} strokeWidth={1.4} /></div>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: T.text2, marginBottom: 5 }}>방문한 스터디 그룹이 없습니다.</div>
-          <div style={{ fontSize: 13, color: T.text3 }}>스터디방에 입장하면 이곳에 기록됩니다.</div>
-        </div>
-      </div>
-    );
-  }
-
   const msg = tab === "recent" ? "최근 방문한 스터디 그룹이 없습니다." : "자주 방문한 스터디 그룹이 없습니다.";
   const sub = tab === "recent"
     ? "스터디방에 실제로 입장하면 이곳에 기록됩니다."
-    : "5회 이상 방문한 스터디방이 이곳에 표시됩니다.";
+    : "3회 이상 방문한 스터디방이 이곳에 표시됩니다.";
   return (
     <div style={wrap}>
       <div style={circle}><Icon name="users" size={26} color={T.text3} strokeWidth={1.4} /></div>
