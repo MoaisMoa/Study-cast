@@ -8,9 +8,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.younghee.studycast.dto.request.AccumulateStudyRequest;
+import com.younghee.studycast.dto.response.MonthlyStudyResponse;
 import com.younghee.studycast.dto.response.TodayStudyResponse;
 import com.younghee.studycast.service.StudyLogService;
 
@@ -51,5 +53,19 @@ public class StudyLogController {
             studyLogService.saveTodayStudySeconds(userUuid, seconds);
         }
         return ResponseEntity.ok().build();
+    }
+
+    // 캘린더 플래너 — 특정 연/월의 출석일/총 공부 시간/일별 공부 시간 조회
+    @GetMapping("/monthly")
+    public ResponseEntity<MonthlyStudyResponse> getMonthlyStats(
+        Authentication authentication,
+        @RequestParam int year,
+        @RequestParam int month
+    ) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new SecurityException("인증 사용자 정보가 없습니다.");
+        }
+        UUID userUuid = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(studyLogService.getMonthlyStats(userUuid, year, month));
     }
 }
