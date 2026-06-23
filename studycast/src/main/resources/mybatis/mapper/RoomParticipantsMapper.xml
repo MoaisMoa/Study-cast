@@ -95,6 +95,17 @@
             active = TRUE,
             joined_at = NOW(),
             left_at = NULL,
+            study_seconds = 0,
+            updated_at = NOW()
+        WHERE room_no = #{roomNo}
+          AND user_uuid = #{userUuid}
+    </update>
+
+    <!-- 이 방에서의 누적 공부 시간 가산 (study_logs와 동일한 저장 시점에 같이 호출) -->
+    <update id="incrementStudySeconds">
+        UPDATE room_participants
+        SET
+            study_seconds = study_seconds + #{seconds},
             updated_at = NOW()
         WHERE room_no = #{roomNo}
           AND user_uuid = #{userUuid}

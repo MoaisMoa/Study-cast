@@ -167,18 +167,18 @@ export default function StudyRoomPage() {
   // membersRef 동기화 (WebSocket 이벤트 핸들러가 최신 members를 읽을 수 있도록)
   useEffect(() => { membersRef.current = members; }, [members]);
 
-  // 방에 머무는 동안 30초마다 누적 공부 시간 중간 저장 (탭/브라우저 비정상 종료 시 데이터 손실 방지)
+  // 방에 머무는 동안 10초마다 누적 공부 시간 중간 저장 (탭/브라우저 비정상 종료 시 데이터 손실 방지)
   useEffect(() => {
     if (!roomId || !joined) return;
     const t = window.setInterval(() => {
       const delta = totalSecRef.current - lastSavedTotalRef.current;
       if (delta <= 0) return;
       lastSavedTotalRef.current = totalSecRef.current;
-      accumulateStudySeconds(delta).catch(() => {
+      accumulateStudySeconds(delta, roomId).catch(() => {
         // 저장 실패 시 다음 주기에 누적해서 재시도되도록 롤백
         lastSavedTotalRef.current -= delta;
       });
-    }, 30000);
+    }, 10000);
     return () => window.clearInterval(t);
   }, [roomId, joined]);
 

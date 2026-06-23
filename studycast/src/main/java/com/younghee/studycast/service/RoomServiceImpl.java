@@ -299,10 +299,11 @@ public class RoomServiceImpl implements RoomService {
         }
         // 7. active 참여자 수 기준으로 rooms.now_users 재계산
         roomsMapper.syncNowUsersByActiveParticipants(roomNo);
-        // 8. 프론트 타이머 기준 오늘 공부 시간 누적 저장
+        // 8. 프론트 타이머 기준 오늘 공부 시간 누적 저장 (오늘 총 누적 + 이 방에서의 누적, 둘 다)
         if (studiedSeconds > 0) {
             try {
                 studyLogService.saveTodayStudySeconds(userUuid, studiedSeconds);
+                roomParticipantsMapper.incrementStudySeconds(roomNo, userUuid, studiedSeconds);
             } catch (Exception e) {
                 log.warn("공부 시간 저장 실패 (퇴장 처리는 완료됨): roomNo={}, userUuid={}", roomNo, userUuid, e);
             }

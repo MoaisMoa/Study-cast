@@ -36,4 +36,10 @@ public interface RoomParticipantsMapper {
     int leaveParticipant(@Param("roomNo") Long roomNo, @Param("userUuid") UUID userUuid);
     // 참여자 목록 조회
     List<RoomParticipantResponse> findActiveParticipantsByRoomNo(@Param("roomNo") Long roomNo);
+    // 이 방에서의 누적 공부 시간 가산 (study_logs와 동일한 저장 시점에 같이 호출)
+    int incrementStudySeconds(
+        @Param("roomNo") Long roomNo,
+        @Param("userUuid") UUID userUuid,
+        @Param("seconds") int seconds
+    );
 }

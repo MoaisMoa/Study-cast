@@ -81,14 +81,26 @@ export function MobileBrowse() {
       setLast(response.last);
     } finally {
       setIsLoading(false);
+      // 로딩 중이라 무시됐던 새로고침 요청이 있으면 끝나는 즉시 재시도 (요청 누락 방지)
+      if (pendingRefreshRef.current) {
+        pendingRefreshRef.current = false;
+        fetchRoomsRef.current(0, false);
+      }
     }
   };
 
-  // 다른 탭에서 방 입장이 완료되면 (참여 인원 변경) 첫 페이지 재조회
+  // 다른 탭에서 방 입장/퇴장이 완료되면(참여 인원 변경) 첫 페이지 재조회
+  // — 마침 다른 fetch가 진행 중이면 요청이 그냥 버려지지 않도록 큐에 적어두고 끝나는 즉시 재시도
   const fetchRoomsRef = useRef(fetchRooms);
   useEffect(() => { fetchRoomsRef.current = fetchRooms; });
+  const isLoadingRef = useRef(isLoading);
+  useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
+  const pendingRefreshRef = useRef(false);
   useEffect(() => {
-    return subscribeRoomJoined(() => fetchRoomsRef.current(0, false));
+    return subscribeRoomJoined(() => {
+      if (isLoadingRef.current) pendingRefreshRef.current = true;
+      else fetchRoomsRef.current(0, false);
+    });
   }, []);
 
   const toggleCat = (c: RoomCategory) =>

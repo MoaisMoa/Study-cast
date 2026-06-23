@@ -88,8 +88,12 @@
             r.expired_at,
             rvh.last_visited_at,
             rvh.visit_count,
-            <!-- 평균 공부 시간은 스터디방 상세 통계 구현 후 연결 -->
-            NULL::BIGINT AS average_study_seconds
+            <!-- 이 방의 active 참여자들이 각각 이 방에서 누적한 공부 시간(room_participants.study_seconds)의 평균 -->
+            (
+                SELECT COALESCE(AVG(rp2.study_seconds), 0)::BIGINT
+                FROM room_participants rp2
+                WHERE rp2.room_no = r.room_no AND rp2.active = TRUE
+            ) AS average_study_seconds
 
         FROM room_visit_histories rvh
         <!-- 방문 기록에 해당하는 방 정보 조회 -->
@@ -141,8 +145,12 @@
             r.expired_at,
             rvh.last_visited_at,
             rvh.visit_count,
-            <!-- 평균 공부 시간은 스터디방 상세 통계 구현 후 연결 -->
-            NULL::BIGINT AS average_study_seconds
+            <!-- 이 방의 active 참여자들이 각각 이 방에서 누적한 공부 시간(room_participants.study_seconds)의 평균 -->
+            (
+                SELECT COALESCE(AVG(rp2.study_seconds), 0)::BIGINT
+                FROM room_participants rp2
+                WHERE rp2.room_no = r.room_no AND rp2.active = TRUE
+            ) AS average_study_seconds
 
         FROM room_visit_histories rvh
         <!-- 방문 기록에 해당하는 방 정보 조회 -->

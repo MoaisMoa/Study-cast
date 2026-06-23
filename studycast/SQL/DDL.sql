@@ -178,6 +178,10 @@ ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 
 ALTER TABLE room_participants
 ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- 7-1-1. 이 방에서의 누적 공부 시간(초) — 재입장 시 0으로 초기화됨 (메인페이지 방별 평균 공부 시간 계산용)
+ALTER TABLE room_participants
+ADD COLUMN IF NOT EXISTS study_seconds INT NOT NULL DEFAULT 0;
 -- 7-2. 참여자 목록 조회, 현재 인원 재계산, active 여부 확인 -> 자주 사용(인덱스)
 CREATE INDEX IF NOT EXISTS idx_room_participants_room_active
 ON room_participants(room_no, active);
@@ -189,6 +193,7 @@ COMMENT ON COLUMN room_participants.user_uuid IS '참여 회원 UUID';
 COMMENT ON COLUMN room_participants.room_no IS '참여 중인 방 번호';
 COMMENT ON COLUMN room_participants.camera_status IS '카메라 켜짐 여부';
 COMMENT ON COLUMN room_participants.mic_status IS '마이크 켜짐 여부';
+COMMENT ON COLUMN room_participants.study_seconds IS '이 방에서의 누적 공부 시간(초), 재입장 시 0으로 초기화';
 
 -- 8. 룸 방문 기록
 CREATE TABLE IF NOT EXISTS room_visit_histories (

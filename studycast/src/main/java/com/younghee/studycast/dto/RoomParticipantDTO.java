@@ -28,4 +28,5 @@ public class RoomParticipantDTO {
     private LocalDateTime leftAt;       // 퇴장 시간 저장
     private LocalDateTime createdAt;    // 최초 참여 이력
     private LocalDateTime updatedAt;    // 재입장/퇴장 갱신 시간
+    private Integer studySeconds;       // 이 방에서의 누적 공부 시간(초), 재입장 시 0으로 초기화
 }

@@ -346,10 +346,10 @@ export async function getTodayStudySeconds(): Promise<number> {
   return res.data.totalSeconds;
 }
 
-/** 방에 머무는 동안 누적 공부 시간 중간 저장 (방 퇴장 전 주기적 호출) */
-export async function accumulateStudySeconds(studySeconds: number): Promise<void> {
+/** 방에 머무는 동안 누적 공부 시간 중간 저장 (방 퇴장 전 주기적 호출) — roomId를 같이 보내면 그 방의 누적 시간도 같이 저장됨 */
+export async function accumulateStudySeconds(studySeconds: number, roomId?: string): Promise<void> {
   if (studySeconds <= 0) return;
-  await apiClient.post("/api/study-logs/accumulate", { studySeconds });
+  await apiClient.post("/api/study-logs/accumulate", { studySeconds, roomNo: roomId ? Number(roomId) : undefined });
 }
 
 export interface LiveKitToken {

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.younghee.studycast.dao.RoomParticipantsMapper;
 import com.younghee.studycast.dto.request.AccumulateStudyRequest;
 import com.younghee.studycast.dto.response.MonthlyStudyResponse;
 import com.younghee.studycast.dto.response.TodayStudyResponse;
@@ -24,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class StudyLogController {
 
     private final StudyLogService studyLogService;
+    private final RoomParticipantsMapper roomParticipantsMapper;
 
     // 오늘 누적 공부 시간 조회
     @GetMapping("/today")
@@ -51,6 +53,9 @@ public class StudyLogController {
         int seconds = request.getStudySeconds() != null ? request.getStudySeconds() : 0;
         if (seconds > 0) {
             studyLogService.saveTodayStudySeconds(userUuid, seconds);
+            if (request.getRoomNo() != null) {
+                roomParticipantsMapper.incrementStudySeconds(request.getRoomNo(), userUuid, seconds);
+            }
         }
         return ResponseEntity.ok().build();
     }

@@ -11,4 +11,5 @@ import lombok.Setter;
 @AllArgsConstructor
 public class AccumulateStudyRequest {
     private Integer studySeconds;
+    private Long roomNo; // 방에 머무는 동안 호출된 경우, 이 방의 누적 공부 시간도 같이 가산
 }

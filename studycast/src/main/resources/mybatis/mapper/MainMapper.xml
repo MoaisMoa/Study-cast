@@ -73,8 +73,12 @@
             r.expired_at,
             rvh.last_visited_at,
 
-            <!-- **평균 공부 시간은 스터디방 상세 통계 구현 후 연결 -->
-            NULL::BIGINT AS average_study_seconds
+            <!-- 이 방의 active 참여자들이 각각 이 방에서 누적한 공부 시간(room_participants.study_seconds)의 평균 -->
+            (
+                SELECT COALESCE(AVG(rp2.study_seconds), 0)::BIGINT
+                FROM room_participants rp2
+                WHERE rp2.room_no = r.room_no AND rp2.active = TRUE
+            ) AS average_study_seconds
 
         FROM rooms r
         <!-- 카테고리명 조회 -->
@@ -161,8 +165,7 @@
         - 최근 활동 기준
             room_visit_histories의 방별 MAX(last_visited_at)
         - 보류
-            live: WebSocket 연결 전까지 false
-            averageStudySeconds: 스터디방 상세 통계 구현 전까지 null -->
+            live: WebSocket 연결 전까지 false -->
     <select id="findRecommendedRooms" resultMap="MainRoomResultMap">
         SELECT
             <!-- 스터디방 기본 정보 -->
@@ -197,8 +200,12 @@
             r.expired_at,
             NULL::TIMESTAMP AS last_visited_at,
 
-            <!-- 평균 공부 시간은 추후 연결 -->
-            NULL::BIGINT AS average_study_seconds
+            <!-- 이 방의 active 참여자들이 각각 이 방에서 누적한 공부 시간(room_participants.study_seconds)의 평균 -->
+            (
+                SELECT COALESCE(AVG(rp2.study_seconds), 0)::BIGINT
+                FROM room_participants rp2
+                WHERE rp2.room_no = r.room_no AND rp2.active = TRUE
+            ) AS average_study_seconds
 
         FROM rooms r
         <!-- 카테고리명 조회  -->
@@ -283,8 +290,12 @@
             r.expired_at,
             NULL::TIMESTAMP AS last_visited_at,
 
-            <!-- 평균 공부 시간은 추후 연결 -->
-            NULL::BIGINT AS average_study_seconds
+            <!-- 이 방의 active 참여자들이 각각 이 방에서 누적한 공부 시간(room_participants.study_seconds)의 평균 -->
+            (
+                SELECT COALESCE(AVG(rp2.study_seconds), 0)::BIGINT
+                FROM room_participants rp2
+                WHERE rp2.room_no = r.room_no AND rp2.active = TRUE
+            ) AS average_study_seconds
 
         FROM rooms r
         <!-- 카테고리명 조회 -->
@@ -353,7 +364,6 @@
         - room_visit_histories의 방별 MAX(last_visited_at)
         보류:
         - live: WebSocket 연결 전까지 false
-        - averageStudySeconds: 스터디방 상세 통계 구현 전까지 null
      -->
     <select id="findGuestRecommendedRooms" resultMap="MainRoomResultMap">
         SELECT
@@ -389,8 +399,12 @@
             r.expired_at,
             NULL::TIMESTAMP AS last_visited_at,
 
-            <!-- 평균 공부 시간은 추후 연결 -->
-            NULL::BIGINT AS average_study_seconds
+            <!-- 이 방의 active 참여자들이 각각 이 방에서 누적한 공부 시간(room_participants.study_seconds)의 평균 -->
+            (
+                SELECT COALESCE(AVG(rp2.study_seconds), 0)::BIGINT
+                FROM room_participants rp2
+                WHERE rp2.room_no = r.room_no AND rp2.active = TRUE
+            ) AS average_study_seconds
 
         FROM rooms r
 
@@ -452,7 +466,11 @@
             r.expired_at,
             NULL::TIMESTAMP AS last_visited_at,
 
-            NULL::BIGINT AS average_study_seconds
+            (
+                SELECT COALESCE(AVG(rp2.study_seconds), 0)::BIGINT
+                FROM room_participants rp2
+                WHERE rp2.room_no = r.room_no AND rp2.active = TRUE
+            ) AS average_study_seconds
 
         FROM rooms r
         INNER JOIN categories c
