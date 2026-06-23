@@ -14,8 +14,6 @@ export interface MemberModalProps {
   /** 본인(HOST) 장치 상태 — 첫 행 표시용 */
   mic?: boolean;
   cam?: boolean;
-  /** 멤버별 경과 시간 가산(초) — 참석 시간 누적 */
-  joinElapsed?: number;
   isHost: boolean;
   isPrivate?: boolean;
   joinCode?: string;
@@ -26,7 +24,7 @@ export interface MemberModalProps {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function MemberModal({
-  roomId, members, elapsed, myUuid, mic = true, cam = true, joinElapsed = 0, isHost, isPrivate = false, joinCode, onClose, onKickRequest,
+  roomId, members, elapsed, myUuid, mic = true, cam = true, isHost, isPrivate = false, joinCode, onClose, onKickRequest,
 }: MemberModalProps) {
   const T = useT();
   const [showInvite, setShowInvite] = useState(false);
@@ -93,7 +91,7 @@ export function MemberModal({
                   </div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: T.text }}>{isSelf ? m.joinMin + Math.floor(joinElapsed / 60) : m.joinMin}분</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: T.text }}>{Math.max(0, Math.floor((Date.now() - m.joinedAtMs) / 60_000))}분</div>
                 </div>
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: T.red, marginBottom: 4 }}>{fmtT(elapsed[m.id] || 0)}</div>

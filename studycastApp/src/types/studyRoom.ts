@@ -10,8 +10,8 @@ export interface RoomMember {
   email: string;
   role?: StudyRole;
   color: string;
-  sec: number;       // 누적 공부 시간(초)
-  joinMin: number;   // 참석 시간(분)
+  sec: number;          // 누적 공부 시간(초)
+  joinedAtMs: number;   // 방 입장 시각(epoch ms) — 참석 시간은 이 값 기준으로 매번 계산
   mic: boolean;
   cam: boolean;
   profileImage?: string;

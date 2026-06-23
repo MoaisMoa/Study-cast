@@ -218,7 +218,7 @@ export default function StudyRoomPage() {
             role: event.owner ? "HOST" : "MEMBER",
             color: MEMBER_COLORS[idx % MEMBER_COLORS.length],
             sec: 0,
-            joinMin: 0,
+            joinedAtMs: Date.now(),
             mic: event.micStatus ?? false,
             cam: event.cameraStatus ?? true,
           };
@@ -385,7 +385,7 @@ export default function StudyRoomPage() {
   const modals = (
     <>
       {modal === "cal" && <LearningPlannerModal open onClose={() => setModal(null)} />}
-      {modal === "members" && <MemberModal roomId={roomId} members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} myUuid={myUuid} mic={mic} cam={cam} joinElapsed={roomSec} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
+      {modal === "members" && <MemberModal roomId={roomId} members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} myUuid={myUuid} mic={mic} cam={cam} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
       {modal === "settings" && <SettingModal onClose={() => setModal(null)} isHost={isHost} roomTitle={roomTitle} setRoomTitle={setRoomTitle} settingCamOn={settingCamOn} setSettingCamOn={setSettingCamOn} settingMicOn={settingMicOn} setSettingMicOn={setSettingMicOn} maxMembers={maxMembers} setMaxMembers={setMaxMembers} roomThumbnail={roomThumbnail} setRoomThumbnail={setRoomThumbnail} roomId={roomId} categoryNo={categoryNo} setCategoryNo={setCategoryNo} expiredAt={expiredAt} setExpiredAt={setExpiredAt} roomNotice={noticeMsg} roomPrivate={roomPrivate} />}
       {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={async (msg) => { try { const r = await saveNotice(roomId!, msg); setNoticeMsg(r.notice); } catch { setNoticeMsg(msg); } }} noticeMsg={noticeMsg} isHost={isHost} />}
       {kickTarget && <KickConfirm member={kickTarget} onConfirm={doKick} onCancel={() => setKickTarget(null)} />}

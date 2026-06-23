@@ -58,8 +58,7 @@ function nowT(): string {
 }
 
 function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean): RoomMember {
-  const joinedAt = p.joinedAt ? new Date(p.joinedAt) : new Date();
-  const joinMin = Math.max(0, Math.floor((Date.now() - joinedAt.getTime()) / 60_000));
+  const joinedAtMs = p.joinedAt ? new Date(p.joinedAt).getTime() : Date.now();
   return {
     id: index + 1,
     userUuid: p.userUuid,
@@ -72,7 +71,7 @@ function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean): Roo
     role: p.owner ? "HOST" : "MEMBER",
     color: isMe ? MEMBER_COLORS[0] : MEMBER_COLORS[(index % (MEMBER_COLORS.length - 1)) + 1],
     sec: p.todayStudySeconds ?? 0,
-    joinMin,
+    joinedAtMs,
     mic: p.micStatus,
     cam: p.cameraStatus,
     // 본인 여부와 무관하게 실제 등록된 프로필 사진이 있으면 보여줌
