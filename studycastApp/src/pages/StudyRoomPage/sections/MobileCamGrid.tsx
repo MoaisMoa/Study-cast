@@ -79,9 +79,9 @@ export function MobileCamGrid(props: MobileCamGridProps) {
                 </div>
               )
             }
-            {camOn && !showVideo && (
+            {isFocused && !showVideo && (
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.18 }}>
-                <Av name={m.short} color={m.color} size={isFocused ? 90 : isShrunk ? 32 : 56} profileImage={m.profileImage} />
+                <Av name={m.short} color={m.color} size={90} profileImage={m.profileImage} />
               </div>
             )}
             {/* 그라디언트 */}

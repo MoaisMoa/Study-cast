@@ -44,6 +44,7 @@ interface CamCellProps {
   m: RoomMember;
   avSize?: number;
   showTimer?: boolean;
+  isFocused?: boolean;
   isSelf: boolean;
   camOn: boolean;
   camError: boolean;
@@ -59,7 +60,7 @@ interface CamCellProps {
 }
 
 function CamCell({
-  m, avSize = 56, showTimer = false,
+  m, avSize = 56, showTimer = false, isFocused = false,
   isSelf, camOn, camError, videoTrack,
   timerSec, timerState, totalSec, elapsed,
   onTimerStart, onTimerPause, onTimerResume, onTimerReset,
@@ -76,6 +77,12 @@ function CamCell({
       {showVideo
         ? <LiveVideo track={videoTrack!} mirrored={isSelf} />
         : <Av name={m.short} color={m.color} size={avSize} profileImage={m.profileImage} />}
+
+      {isFocused && !showVideo && (
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.18 }}>
+          <Av name={m.short} color={m.color} size={90} profileImage={m.profileImage} />
+        </div>
+      )}
 
       {((isSelf && timerState === "running" && camOn) || (!isSelf && camOn)) && (
         <div style={{ position: "absolute", top: 8, left: 8, display: "flex", alignItems: "center", gap: 3, background: "#E53935", color: "#fff", fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 5, zIndex: 2 }}>
@@ -138,40 +145,63 @@ export function CamGrid(props: CamGridProps) {
     };
   }
 
-  // 포커스 모드
-  if (focusedId) {
-    const main = all.find((m) => m.id === focusedId) || all[0];
-    const thumbs = all.filter((m) => m.id !== main.id);
-    const mainIsSelf = main.userUuid === myUuid;
-    return (
-      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, padding: 8, gap: 6 }}>
-        <div style={{ flex: 1, minHeight: 0 }} onClick={() => setFocusedId(null)}>
-          <CamCell m={main} avSize={90} showTimer={mainIsSelf} {...cellProps(main)} />
-        </div>
-        {thumbs.length > 0 && (
-          <div style={{ flexShrink: 0, display: "flex", gap: 6, height: 110 }}>
-            {thumbs.map((m) => (
-              <div key={m.userUuid} style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setFocusedId(m.id)}>
-                <CamCell m={m} avSize={36} {...cellProps(m)} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
+  // 모든 멤버를 같은 DOM에 유지한 채 위치/크기만 바꿔서 부드럽게 확대/축소되도록 함
+  // (이전엔 포커스 모드/기본 그리드가 서로 다른 return 분기라 DOM이 통째로 교체돼 애니메이션이 불가능했음)
+  const GAP = 8;
+  const thumbs = focusedId ? all.filter((m) => m.id !== focusedId) : [];
+
+  function getRect(m: RoomMember, idx: number): { top: string; left: string; width: string; height: string } {
+    if (focusedId) {
+      if (m.id === focusedId) {
+        const reserved = thumbs.length > 0 ? 110 + GAP : 0;
+        return { top: "0%", left: "0%", width: "100%", height: `calc(100% - ${reserved}px)` };
+      }
+      const thumbIdx = thumbs.findIndex((t) => t.id === m.id);
+      const thumbCount = thumbs.length;
+      const w = `calc((100% - ${GAP * (thumbCount - 1)}px) / ${thumbCount})`;
+      return {
+        top: `calc(100% - 110px)`,
+        left: `calc(${thumbIdx} * (${w} + ${GAP}px))`,
+        width: w,
+        height: "110px",
+      };
+    }
+
+    // 기본 그리드 (count별 배치, count===3은 마지막 칸이 2칸 차지)
+    const halfW = `calc(50% - ${GAP / 2}px)`;
+    const halfH = `calc(50% - ${GAP / 2}px)`;
+    const rightX = `calc(50% + ${GAP / 2}px)`;
+    const bottomY = `calc(50% + ${GAP / 2}px)`;
+    if (count === 1) return { top: "0%", left: "0%", width: "100%", height: "100%" };
+    if (count === 2) return { top: "0%", left: idx === 0 ? "0%" : rightX, width: halfW, height: "100%" };
+    if (count === 3 && idx === 2) return { top: bottomY, left: "0%", width: "100%", height: halfH };
+    return {
+      top: idx < 2 ? "0%" : bottomY,
+      left: idx % 2 === 0 ? "0%" : rightX,
+      width: halfW,
+      height: halfH,
+    };
   }
 
-  // 기본 그리드
-  const cols = count === 1 ? 1 : 2;
-  const rows = count <= 2 ? 1 : 2;
   return (
-    <div style={{ flex: 1, display: "grid", gap: 8, padding: 8, gridTemplateColumns: `repeat(${cols},1fr)`, gridTemplateRows: `repeat(${rows},1fr)`, minHeight: 0 }}>
+    <div style={{ flex: 1, position: "relative", padding: 8, minHeight: 0 }}>
       {all.map((m, idx) => {
-        const isLast = idx === all.length - 1;
         const isSelf = m.userUuid === myUuid;
+        const isFocused = m.id === focusedId;
+        const isThumb = focusedId !== null && !isFocused;
+        const avSize = focusedId ? (isFocused ? 72 : 36) : 60;
         return (
-          <div key={m.userUuid} style={{ gridColumn: count === 3 && isLast ? "1 / span 2" : undefined, minHeight: 0, height: "100%" }} onClick={() => setFocusedId(m.id)}>
-            <CamCell m={m} avSize={count === 1 ? 90 : count === 2 ? 70 : 56} showTimer={isSelf} {...cellProps(m)} />
+          <div
+            key={m.userUuid}
+            onClick={() => setFocusedId(isFocused ? null : m.id)}
+            style={{
+              position: "absolute",
+              ...getRect(m, idx),
+              cursor: "pointer",
+              transition: "top 280ms cubic-bezier(.4,0,.2,1), left 280ms cubic-bezier(.4,0,.2,1), width 280ms cubic-bezier(.4,0,.2,1), height 280ms cubic-bezier(.4,0,.2,1)",
+            }}
+          >
+            <CamCell m={m} avSize={avSize} showTimer={isSelf && !isThumb} isFocused={isFocused} {...cellProps(m)} />
           </div>
         );
       })}
