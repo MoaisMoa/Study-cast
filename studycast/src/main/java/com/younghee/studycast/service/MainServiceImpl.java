@@ -23,7 +23,9 @@ public class MainServiceImpl implements MainService {
     private final MainMapper mainMapper;
 
     private static final Set<String> ALLOWED_TABS = Set.of("ALL", "NEW");
+    // 일반/프리미엄 필터 — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정. 삭제하지 말 것
     private static final Set<String> ALLOWED_ROOM_TYPES = Set.of("ALL", "FREE", "PREMIUM");
+    private static final Set<String> ALLOWED_VISIBILITY = Set.of("ALL", "PUBLIC", "PRIVATE");
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 10;
@@ -118,6 +120,10 @@ public class MainServiceImpl implements MainService {
         if (request.getRoomType() == null || request.getRoomType().isBlank()) {
             request.setRoomType("ALL");
         }
+        // 3-1. visibility 기본값 설정
+        if (request.getVisibility() == null || request.getVisibility().isBlank()) {
+            request.setVisibility("ALL");
+        }
         // 4. joinableOnly 기본값 설정
         if (request.getJoinableOnly() == null) {
             request.setJoinableOnly(false);
@@ -130,9 +136,10 @@ public class MainServiceImpl implements MainService {
         if (request.getSize() == null) {
             request.setSize(DEFAULT_SIZE);
         }
-        // 7. tab / roomType 정규화 (대문자 변환)
+        // 7. tab / roomType / visibility 정규화 (대문자 변환)
         request.setTab(request.getTab().trim().toUpperCase());
         request.setRoomType(request.getRoomType().trim().toUpperCase());
+        request.setVisibility(request.getVisibility().trim().toUpperCase());
 
         // 8. tab 검증
         if (!ALLOWED_TABS.contains(request.getTab())) {
@@ -141,6 +148,10 @@ public class MainServiceImpl implements MainService {
         // 9. roomType 검증
         if (!ALLOWED_ROOM_TYPES.contains(request.getRoomType())) {
             throw new IllegalArgumentException("잘못된 스터디 유형 값입니다.");
+        }
+        // 9-1. visibility 검증
+        if (!ALLOWED_VISIBILITY.contains(request.getVisibility())) {
+            throw new IllegalArgumentException("잘못된 공개 여부 값입니다.");
         }
         // 10. page 검증
         if (request.getPage() < 0) {

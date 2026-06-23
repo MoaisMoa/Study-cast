@@ -2,8 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import type { Room, RoomCategory } from "@/types";
 import { useT } from "@/theme";
 import { useAuth } from "@/contexts/AuthContext";
-import { CATS_FILTER, TABS, TYPE_OPTS } from "@/data/categories";
-import type { TypeOpt } from "@/data/categories";
+import { CATS_FILTER, TABS, VISIBILITY_OPTS } from "@/data/categories";
+import type { VisibilityOpt } from "@/data/categories";
+// 일반/프리미엄 필터 — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정. 삭제하지 말 것
+// import { TYPE_OPTS } from "@/data/categories";
+// import type { TypeOpt } from "@/data/categories";
 import { Icon } from "@/components/ui/Icon";
 import { DropdownModal, DropdownModalHeader } from "@/components/ui/Modal";
 import { LiveStudyCard } from "@/components/study/LiveStudyCard";
@@ -31,7 +34,10 @@ export function Browse() {
   const [tab, setTab] = useState(0);
   const [selCats, setSelCats] = useState<RoomCategory[]>([]);
   const [catOpen, setCatOpen] = useState(false);
-  const [roomType, setRoomType] = useState<TypeOpt>("전체 스터디");
+  // 일반/프리미엄 필터 — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정. 삭제하지 말 것
+  // const [roomType, setRoomType] = useState<TypeOpt>("전체 스터디");
+  // const [typeOpen, setTypeOpen] = useState(false);
+  const [visibility, setVisibility] = useState<VisibilityOpt>("전체 스터디");
   const [typeOpen, setTypeOpen] = useState(false);
   const [onlyAvail, setOnlyAvail] = useState(false);
   const [cols, setCols] = useState<number>(getCol);
@@ -40,9 +46,16 @@ export function Browse() {
   // 필터값 변환 함수
   const toApiTab = () => (tab === 1 ? "NEW" : "ALL");
 
-  const toApiRoomType = () => {
-    if (roomType === "일반") return "FREE";
-    if (roomType === "프리미엄") return "PREMIUM";
+  // 일반/프리미엄 필터 — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정. 삭제하지 말 것
+  // const toApiRoomType = () => {
+  //   if (roomType === "일반") return "FREE";
+  //   if (roomType === "프리미엄") return "PREMIUM";
+  //   return "ALL";
+  // };
+
+  const toApiVisibility = () => {
+    if (visibility === "공개") return "PUBLIC";
+    if (visibility === "비공개") return "PRIVATE";
     return "ALL";
   };
 
@@ -69,7 +82,8 @@ export function Browse() {
       const response = await listRoomCards({
         tab: toApiTab(),
         categoryNos: toApiCategoryNos(),
-        roomType: toApiRoomType(),
+        // roomType: toApiRoomType(), — 일반/프리미엄 필터 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정
+        visibility: toApiVisibility(),
         joinableOnly: onlyAvail,
         page: nextPage,
         size: PAGE,
@@ -91,7 +105,7 @@ export function Browse() {
   // 필터 변경 시 첫 페이지 재조회 (로그인 상태가 바뀌어도 — joinable 등 결과가 달라질 수 있음)
   useEffect(() => {
     fetchRooms(0, false);
-  }, [tab, selCats, roomType, onlyAvail, PAGE, isLoggedIn]);
+  }, [tab, selCats, visibility, onlyAvail, PAGE, isLoggedIn]);
 
   // 다른 탭에서 방 입장/퇴장이 완료되면(참여 인원 변경) 첫 페이지 재조회
   // — 마침 다른 fetch가 진행 중이면 요청이 그냥 버려지지 않도록 큐에 적어두고 끝나는 즉시 재시도
@@ -260,7 +274,76 @@ export function Browse() {
 
           <div style={{ width: 1, height: 18, background: T.borderStrong }} />
 
-          {/* 전체 스터디 */}
+          {/*
+            일반/프리미엄 필터 — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정. 삭제하지 말 것
+            <div ref={typeRef} style={{ position: "relative" }}>
+              <button
+                onClick={() => {
+                  setTypeOpen((v) => !v);
+                  setCatOpen(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  background: "none",
+                  border: "none",
+                  fontSize: 14,
+                  color: T.text2,
+                  cursor: "pointer",
+                  fontWeight: roomType !== "전체 스터디" ? 600 : 400,
+                  padding: "4px 2px",
+                }}
+              >
+                {roomType}
+                <Icon name="chevDown" size={14} color={T.text3} />
+              </button>
+              {typeOpen && (
+                <DropdownModal style={{ width: 200 }}>
+                  <DropdownModalHeader title="스터디 유형" />
+                  <div style={{
+                    padding: "12px 14px 14px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }}>
+                    {TYPE_OPTS.map((opt) => {
+                      const sel = roomType === opt;
+                      return (
+                        <button
+                          key={opt}
+                          onClick={() => {
+                            setRoomType(opt);
+                            setTypeOpen(false);
+                          }}
+                          style={{
+                            padding: "9px 12px",
+                            borderRadius: 9,
+                            border: `1.5px solid ${sel ? T.red : T.border}`,
+                            background: sel ? T.redLight : T.bg,
+                            color: sel ? T.red : T.text2,
+                            fontWeight: sel ? 700 : 400,
+                            fontSize: 13,
+                            cursor: "pointer",
+                            transition: "all 0.15s",
+                            textAlign: "left",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          {sel && <Icon name="check" size={12} color={T.red} strokeWidth={2.5} />}
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </DropdownModal>
+              )}
+            </div>
+          */}
+
+          {/* 공개/비공개 */}
           <div ref={typeRef} style={{ position: "relative" }}>
             <button
               onClick={() => {
@@ -276,29 +359,29 @@ export function Browse() {
                 fontSize: 14,
                 color: T.text2,
                 cursor: "pointer",
-                fontWeight: roomType !== "전체 스터디" ? 600 : 400,
+                fontWeight: visibility !== "전체 스터디" ? 600 : 400,
                 padding: "4px 2px",
               }}
             >
-              {roomType}
+              {visibility}
               <Icon name="chevDown" size={14} color={T.text3} />
             </button>
             {typeOpen && (
               <DropdownModal style={{ width: 200 }}>
-                <DropdownModalHeader title="스터디 유형" />
+                <DropdownModalHeader title="공개 여부" />
                 <div style={{
                   padding: "12px 14px 14px",
                   display: "flex",
                   flexDirection: "column",
                   gap: 8,
                 }}>
-                  {TYPE_OPTS.map((opt) => {
-                    const sel = roomType === opt;
+                  {VISIBILITY_OPTS.map((opt) => {
+                    const sel = visibility === opt;
                     return (
                       <button
                         key={opt}
                         onClick={() => {
-                          setRoomType(opt);
+                          setVisibility(opt);
                           setTypeOpen(false);
                         }}
                         style={{

@@ -322,13 +322,22 @@
                     #{categoryNo}
                 </foreach>
             </if>
-            <!-- 조건3) 일반 스터디만 조회 -->
-            <if test="'FREE'.equals(request.roomType)">
-                AND r.room_premium = FALSE
+            <!--
+                조건3/4) 일반/프리미엄 필터 — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정. 삭제하지 말 것
+                <if test="'FREE'.equals(request.roomType)">
+                    AND r.room_premium = FALSE
+                </if>
+                <if test="'PREMIUM'.equals(request.roomType)">
+                    AND r.room_premium = TRUE
+                </if>
+            -->
+            <!-- 조건3-1) 공개 스터디만 조회 -->
+            <if test="'PUBLIC'.equals(request.visibility)">
+                AND r.room_private = FALSE
             </if>
-            <!-- 조건4) 프리미엄 스터디만 조회 -->
-            <if test="'PREMIUM'.equals(request.roomType)">
-                AND r.room_premium = TRUE
+            <!-- 조건3-2) 비공개 스터디만 조회 -->
+            <if test="'PRIVATE'.equals(request.visibility)">
+                AND r.room_private = TRUE
             </if>
             <!-- 조건5) 바로 참여 가능한 방만 조회 -->
             <if test="request.joinableOnly != null and request.joinableOnly == true">

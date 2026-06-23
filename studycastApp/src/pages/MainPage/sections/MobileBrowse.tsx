@@ -5,8 +5,11 @@ import { useWindowWidth } from "@/hooks/useWindowWidth";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/contexts/ModalContext";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import { CATS_FILTER, TYPE_OPTS } from "@/data/categories";
-import type { TypeOpt } from "@/data/categories";
+import { CATS_FILTER, VISIBILITY_OPTS } from "@/data/categories";
+import type { VisibilityOpt } from "@/data/categories";
+// 일반/프리미엄 필터 — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정. 삭제하지 말 것
+// import { TYPE_OPTS } from "@/data/categories";
+// import type { TypeOpt } from "@/data/categories";
 import { listRoomCards } from "@/services/roomService";
 import { subscribeRoomJoined } from "@/utils/roomSession";
 import { Icon } from "@/components/ui/Icon";
@@ -23,7 +26,9 @@ export function MobileBrowse() {
   const [tab, setTab] = useState<number>(0);
   const [selCats, setSelCats] = useState<RoomCategory[]>([]);
   const [catOpen, setCatOpen] = useState(false);
-  const [roomType, setRoomType] = useState<TypeOpt>("전체 스터디");
+  // 일반/프리미엄 필터 — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정. 삭제하지 말 것
+  // const [roomType, setRoomType] = useState<TypeOpt>("전체 스터디");
+  const [visibility, setVisibility] = useState<VisibilityOpt>("전체 스터디");
   const [typeOpen, setTypeOpen] = useState(false);
   const [onlyAvail, setOnlyAvail] = useState(false);
 
@@ -41,7 +46,7 @@ export function MobileBrowse() {
 
   useEffect(() => {
     fetchRooms(0, false);
-  }, [tab, selCats, roomType, onlyAvail, isLoggedIn]);
+  }, [tab, selCats, visibility, onlyAvail, isLoggedIn]);
 
   const toApiCategoryNos = () => {
     const map: Record<RoomCategory, number> = {
@@ -65,11 +70,18 @@ export function MobileBrowse() {
       const response = await listRoomCards({
         tab: tab === 1 ? "NEW" : "ALL",
         categoryNos: toApiCategoryNos(),
-        roomType:
-          roomType === "일반"
-            ? "FREE"
-            : roomType === "프리미엄"
-            ? "PREMIUM"
+        // 일반/프리미엄 필터 — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정
+        // roomType:
+        //   roomType === "일반"
+        //     ? "FREE"
+        //     : roomType === "프리미엄"
+        //     ? "PREMIUM"
+        //     : "ALL",
+        visibility:
+          visibility === "공개"
+            ? "PUBLIC"
+            : visibility === "비공개"
+            ? "PRIVATE"
             : "ALL",
         joinableOnly: onlyAvail,
         page: nextPage,
@@ -240,6 +252,71 @@ export function MobileBrowse() {
 
         <div style={{ width: 1, height: 16, background: T.borderStrong, flexShrink: 0 }} />
 
+        {/*
+          일반/프리미엄 필터 — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정. 삭제하지 말 것
+          <div ref={typeRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => { setTypeOpen((v) => !v); setCatOpen(false); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 3,
+                background: "none", border: "none",
+                fontSize: 13, color: T.text2, cursor: "pointer",
+                fontWeight: roomType !== "전체 스터디" ? 600 : 400,
+                padding: 0,
+              }}
+            >
+              {roomType}
+              <Icon name="chevDown" size={13} color={T.text3} />
+            </button>
+            {typeOpen && (
+              <div style={{
+                position: "absolute",
+                left: 0, top: "calc(100% + 8px)",
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                borderRadius: 12,
+                boxShadow: T.shadowModal,
+                zIndex: 300,
+                width: 170,
+                overflow: "hidden",
+              }}>
+                <div style={{ padding: "10px 12px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  {TYPE_OPTS.map((opt) => {
+                    const sel = roomType === opt;
+                    return (
+                      <button
+                        key={opt}
+                        onClick={() => {
+                          setRoomType(opt);
+                          setTypeOpen(false);
+                        }}
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          border: `1.5px solid ${sel ? T.red : T.border}`,
+                          background: sel ? T.redLight : T.bg,
+                          color: sel ? T.red : T.text2,
+                          fontWeight: sel ? 700 : 400,
+                          fontSize: 12,
+                          cursor: "pointer",
+                          transition: "all 0.15s",
+                          textAlign: "left",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5,
+                        }}
+                      >
+                        {sel && <Icon name="check" size={11} color={T.red} strokeWidth={2.5} />}
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        */}
+
         <div ref={typeRef} style={{ position: "relative" }}>
           <button
             onClick={() => { setTypeOpen((v) => !v); setCatOpen(false); }}
@@ -247,11 +324,11 @@ export function MobileBrowse() {
               display: "flex", alignItems: "center", gap: 3,
               background: "none", border: "none",
               fontSize: 13, color: T.text2, cursor: "pointer",
-              fontWeight: roomType !== "전체 스터디" ? 600 : 400,
+              fontWeight: visibility !== "전체 스터디" ? 600 : 400,
               padding: 0,
             }}
           >
-            {roomType}
+            {visibility}
             <Icon name="chevDown" size={13} color={T.text3} />
           </button>
           {typeOpen && (
@@ -267,13 +344,13 @@ export function MobileBrowse() {
               overflow: "hidden",
             }}>
               <div style={{ padding: "10px 12px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-                {TYPE_OPTS.map((opt) => {
-                  const sel = roomType === opt;
+                {VISIBILITY_OPTS.map((opt) => {
+                  const sel = visibility === opt;
                   return (
                     <button
                       key={opt}
                       onClick={() => {
-                        setRoomType(opt);
+                        setVisibility(opt);
                         setTypeOpen(false);
                       }}
                       style={{

@@ -7,7 +7,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/contexts/ModalContext";
 import { Icon } from "@/components/ui/Icon";
 import { fmtTimer } from "@/utils/time";
-import { useClock } from "@/hooks/useClock";
 import { getMainSummary, listMyRooms } from "@/services/roomService";
 import { subscribeRoomJoined } from "@/utils/roomSession";
 import { LearningPlannerModal } from "./planner/LearningPlannerModal";
@@ -21,7 +20,6 @@ export function Dashboard() {
   const [plannerOpen, setPlannerOpen] = useState(false);
 
   const [rooms, setRooms] = useState<MyRoom[]>([]);
-  const { dateStr, timeStr } = useClock();
 
   const [myIdx, setMyIdx] = useState(0);
 
@@ -73,7 +71,7 @@ export function Dashboard() {
   }, [isLoggedIn]);
 
   const { h, m, s } = fmtTimer(todayStudySeconds);
-  const pct = Math.min((todayStudySeconds / (8 * 3600)) * 100, 100);
+  const pct = Math.min((todayStudySeconds / (10 * 3600)) * 100, 100);
 
   const hasRooms = rooms.length > 0;
   const curRoom = hasRooms ? rooms[Math.min(myIdx, rooms.length - 1)] : null;
@@ -347,17 +345,6 @@ export function Dashboard() {
         boxShadow: T.shadow,
         transition: "background 0.25s,border-color 0.25s",
       }}>
-        {/* 날짜 및 시간 */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, paddingBottom: 12, borderBottom: `1px solid ${T.border}` }}>
-          <span style={{ fontSize: 12, color: T.text2, fontWeight: 500 }}>{dateStr}</span>
-          <span style={{
-            fontFamily: "'JetBrains Mono',monospace",
-            fontSize: 14,
-            fontWeight: 700,
-            color: T.text,
-            letterSpacing: "0.05em",
-          }}>{timeStr}</span>
-        </div>
 
         <div style={{ marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -402,7 +389,7 @@ export function Dashboard() {
             }} />
           </div>
           <div style={{ marginTop: 5 }}>
-            <span style={{ fontSize: 11, color: T.text2, fontWeight: 500 }}>오늘 {Math.round(pct)}% 달성 (총 8시간)</span>
+            <span style={{ fontSize: 11, color: T.text2, fontWeight: 500 }}>오늘 {Math.round(pct)}% 달성 (총 10시간)</span>
           </div>
         </div>
 

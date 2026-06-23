@@ -6,7 +6,6 @@ import type { MyRoom } from "@/types";
 import { listMyRooms, getMainSummary } from "@/services/roomService";
 import { subscribeRoomJoined } from "@/utils/roomSession";
 import { fmtTimer } from "@/utils/time";
-import { useClock } from "@/hooks/useClock";
 import { useModal } from "@/contexts/ModalContext";
 import { Icon } from "@/components/ui/Icon";
 import { LearningPlannerModal } from "./planner/LearningPlannerModal";
@@ -57,8 +56,6 @@ export function MobileDashboard() {
     loadDashboard();
   }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { dateStr, timeStr } = useClock();
-
   // 다른 탭에서 방 입장이 완료되면 (참여 인원 변경) 다시 조회
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -69,32 +66,12 @@ export function MobileDashboard() {
   const curRoom = hasRooms && myIdx < rooms.length ? rooms[myIdx] : null;
 
   const { h, m, s } = fmtTimer(todayStudySeconds);
-  const pct = Math.min((todayStudySeconds / (8 * 3600)) * 100, 100);
+  const pct = Math.min((todayStudySeconds / (10 * 3600)) * 100, 100);
 
   return (
     <>
     <LearningPlannerModal open={plannerOpen} onClose={() => setPlannerOpen(false)} onScheduleChanged={loadDashboard} />
     <section style={{ padding: "14px 16px 0" }}>
-      {/* 날짜 및 시간 */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: 14,
-        padding: "8px 12px",
-        background: T.surface,
-        borderRadius: T.radius,
-        border: `1px solid ${T.border}`,
-      }}>
-        <span style={{ fontSize: 11, color: T.text2, fontWeight: 500 }}>{dateStr}</span>
-        <span style={{
-          fontFamily: "'JetBrains Mono',monospace",
-          fontSize: 13,
-          fontWeight: 700,
-          color: T.text,
-          letterSpacing: "0.05em",
-        }}>{timeStr}</span>
-      </div>
 
       {/* 내 스터디 */}
       <div style={{ marginBottom: 12 }}>
@@ -205,7 +182,7 @@ export function MobileDashboard() {
             }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
-            <span style={{ fontSize: 9, color: T.text3 }}>오늘 {Math.round(pct)}% 달성 (총 8시간)</span>
+            <span style={{ fontSize: 9, color: T.text3 }}>오늘 {Math.round(pct)}% 달성 (총 10시간)</span>
           </div>
         </div>
 

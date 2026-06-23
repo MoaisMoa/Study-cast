@@ -1,9 +1,11 @@
 // 메인페이지 공개 스터디 목록 탭
 export type MainRoomTab = "ALL" | "NEW";
-// 메인페이지 스터디 및 유형 필터
+// 메인페이지 스터디 유형 필터 — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정. 삭제하지 말 것
 export type MainRoomType = "ALL" | "FREE" | "PREMIUM";
-// 카드 표시용 방 유형 (ALL 제외)
+// 카드 표시용 방 유형 (ALL 제외) — 위와 동일하게 보류 중
 export type RoomType = "FREE" | "PREMIUM";
+// 메인페이지 스터디 공개/비공개 필터 — roomType(일반/프리미엄) 대신 사용하는 필터
+export type MainRoomVisibility = "ALL" | "PUBLIC" | "PRIVATE";
 // 관심 카테고리
 export type RoomCategory =
   | "어학"
@@ -25,7 +27,9 @@ export const ROOM_CATEGORY_NO: Record<RoomCategory, number> = {
 export interface MainRoomSearchParams {
   tab?: MainRoomTab;
   categoryNos?: number[];
+  // roomType — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정. 삭제하지 말 것
   roomType?: MainRoomType;
+  visibility?: MainRoomVisibility;
   joinableOnly?: boolean;
   page?: number;
   size?: number;

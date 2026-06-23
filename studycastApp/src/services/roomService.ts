@@ -141,14 +141,12 @@ export async function createRoom(
  * 초 단위 공부 시간을 화면 표시용 문자열로 변환
  */
 function formatStudyTime(seconds: number | null): string {
-  if (seconds == null) return "-";
+  if (seconds == null || seconds <= 0) return "-";
 
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
 
-  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
-  if (hours > 0) return `${hours}h`;
-  return `${minutes}m`;
+  return `${hours}h ${minutes}m`;
 }
 
 /**

@@ -108,14 +108,18 @@ export function CreateSuccess({
               {categories.join(" · ")}
             </div>
           )}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon name="camera" size={14} color={T.muted} />
-            카메라 {camOn ? "ON" : "OFF"}
-            <Icon name="mic" size={14} color={T.muted} style={{ marginLeft: 4 }} />
-            마이크 {micOn ? "ON" : "OFF"}
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <Icon name="camera" size={14} color={T.muted} />
+              <span>카메라 {camOn ? "ON" : "OFF"}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <Icon name="mic" size={14} color={T.muted} />
+              <span>마이크 {micOn ? "ON" : "OFF"}</span>
+            </div>
           </div>
           {notice && (
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <Icon name="bell" size={14} color={T.muted} />
               <span>{notice}</span>
             </div>
