@@ -185,7 +185,7 @@ export default function StudyRoomPage() {
   // 이 방에서의 누적 타이머 1초 틱 브로드캐스트 (다른 멤버 화면에 실시간 반영, 방 단위 — 유저 총 공부시간인 totalSec과는 별개)
   useEffect(() => {
     if (!roomId || !joined || timerState !== "running") return;
-    reportTimerTick(roomId, myUuidRef.current, (membersRef.current[0]?.sec ?? 0) + roomSec);
+    reportTimerTick(roomId, myUuidRef.current, roomSec);
   }, [roomId, joined, timerState, roomSec]);
 
   // 다른 멤버의 누적 공부 타이머 실시간 구독
@@ -379,13 +379,13 @@ export default function StudyRoomPage() {
     else if (timerState === "running") handleTimerPause();
     else handleTimerResume();
   };
-  const rightPanelProps = { chatTab, setChatTab, msgs, inp, setInp, send, isSending, sendError, setSendError, members, elapsed: { ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }, totalSec: roomSec, timerState, noticeMsg, myUuid, mic, cam, maxMembers, setNoticeMsg };
+  const rightPanelProps = { chatTab, setChatTab, msgs, inp, setInp, send, isSending, sendError, setSendError, members, elapsed: { ...elapsed, 1: roomSec }, totalSec: roomSec, timerState, noticeMsg, myUuid, mic, cam, maxMembers, setNoticeMsg };
 
   // ── 공통 모달 묶음 ──
   const modals = (
     <>
       {modal === "cal" && <LearningPlannerModal open onClose={() => setModal(null)} />}
-      {modal === "members" && <MemberModal roomId={roomId} members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} myUuid={myUuid} mic={mic} cam={cam} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
+      {modal === "members" && <MemberModal roomId={roomId} members={members} elapsed={{ ...elapsed, 1: roomSec }} myUuid={myUuid} mic={mic} cam={cam} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
       {modal === "settings" && <SettingModal onClose={() => setModal(null)} isHost={isHost} roomTitle={roomTitle} setRoomTitle={setRoomTitle} settingCamOn={settingCamOn} setSettingCamOn={setSettingCamOn} settingMicOn={settingMicOn} setSettingMicOn={setSettingMicOn} maxMembers={maxMembers} setMaxMembers={setMaxMembers} roomThumbnail={roomThumbnail} setRoomThumbnail={setRoomThumbnail} roomId={roomId} categoryNo={categoryNo} setCategoryNo={setCategoryNo} expiredAt={expiredAt} setExpiredAt={setExpiredAt} roomNotice={noticeMsg} roomPrivate={roomPrivate} />}
       {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={async (msg) => { try { const r = await saveNotice(roomId!, msg); setNoticeMsg(r.notice); } catch { setNoticeMsg(msg); } }} noticeMsg={noticeMsg} isHost={isHost} />}
       {kickTarget && <KickConfirm member={kickTarget} onConfirm={doKick} onCancel={() => setKickTarget(null)} />}
@@ -463,7 +463,7 @@ export default function StudyRoomPage() {
 
         {/* 캠 그리드 (모바일 전용 4분할 확대/축소) */}
         <MobileCamGrid
-          members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} totalSec={totalSec} timerSec={timerSec}
+          members={members} elapsed={{ ...elapsed, 1: roomSec }} totalSec={roomSec} timerSec={timerSec}
           timerState={timerState} cam={cam} mic={mic} focused={focusedId}
           setFocused={setFocusedId}
           onTimerToggle={timerAction} onTimerReset={handleTimerReset}
@@ -551,7 +551,7 @@ export default function StudyRoomPage() {
               <span style={{ color: T.text, fontWeight: 700, fontSize: 15 }}>멤버 <span style={{ color: T.text3, fontWeight: 400, fontSize: 13 }}>{members.length}명</span></span>
               <button onClick={() => setDrawer(null)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}><XIc s={18} c={T.text3} /></button>
             </div>
-            <MobileMemberDrawer members={members} elapsed={{ ...elapsed, 1: (members[0]?.sec ?? 0) + roomSec }} totalSec={totalSec} timerState={timerState} mic={mic} cam={cam} myUuid={myUuid} />
+            <MobileMemberDrawer members={members} elapsed={{ ...elapsed, 1: roomSec }} totalSec={roomSec} timerState={timerState} mic={mic} cam={cam} myUuid={myUuid} />
           </div>
         )}
 
