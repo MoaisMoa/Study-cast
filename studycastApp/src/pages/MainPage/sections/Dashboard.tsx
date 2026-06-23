@@ -402,7 +402,7 @@ export function Dashboard() {
             }} />
           </div>
           <div style={{ marginTop: 5 }}>
-            <span style={{ fontSize: 11, color: T.text2, fontWeight: 500 }}>오늘 {h}h</span>
+            <span style={{ fontSize: 11, color: T.text2, fontWeight: 500 }}>오늘 {Math.round(pct)}% 달성 (총 8시간)</span>
           </div>
         </div>
 

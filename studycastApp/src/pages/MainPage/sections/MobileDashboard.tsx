@@ -205,7 +205,7 @@ export function MobileDashboard() {
             }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
-            <span style={{ fontSize: 9, color: T.text3 }}>오늘 {String(h).padStart(2, "0")}:{String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}</span>
+            <span style={{ fontSize: 9, color: T.text3 }}>오늘 {Math.round(pct)}% 달성 (총 8시간)</span>
           </div>
         </div>
 
