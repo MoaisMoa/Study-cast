@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import type { VisitedRoom } from "@/types/visitedRoom";
 import { useT } from "@/theme";
 import { joinRoom } from "@/services/visitedRoomService";
-import { canEnterRoom } from "@/utils/roomSession";
+import { openStudyRoom } from "@/utils/openStudyRoom";
+import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
 import { Icon } from "@/components/ui/Icon";
 
 const CODE_RE = /^[0-9]{4,6}$/;
@@ -15,7 +15,6 @@ export interface EntryModalProps {
 
 export function EntryModal({ room, onClose }: EntryModalProps) {
   const T = useT();
-  const navigate = useNavigate();
   const [codeStep, setCodeStep] = useState(false);
   const [codeVal, setCodeVal] = useState("");
   const [codeError, setCodeError] = useState<null | "format" | "wrong">(null);
@@ -37,8 +36,9 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
     const allowed = await canEnterRoom();
     setEntering(false);
     if (!allowed) { setEntryBlocked(true); return; }
+    setPendingEntry(String(room.id));
+    openStudyRoom(room.id);
     handleClose();
-    navigate(`/rooms/${room.id}`);
   };
 
   const handleCodeSubmit = async () => {
@@ -48,7 +48,7 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
     if (!allowed) { setVerifying(false); setEntryBlocked(true); setCodeStep(false); return; }
     const ok = await joinRoom(room.id, codeVal.trim());
     setVerifying(false);
-    if (ok) { handleClose(); navigate(`/rooms/${room.id}`); return; }
+    if (ok) { setPendingEntry(String(room.id)); openStudyRoom(room.id); handleClose(); return; }
     setCodeError("wrong");
   };
 
