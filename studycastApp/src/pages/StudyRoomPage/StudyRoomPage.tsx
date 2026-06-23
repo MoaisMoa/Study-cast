@@ -358,6 +358,7 @@ export default function StudyRoomPage() {
       body: JSON.stringify({ studiedSeconds: remaining }),
     });
     unregisterSession();
+    broadcastRoomJoined(); // 메인페이지 등 다른 탭의 LIVE뱃지/접속 인원 새로고침 트리거 (나가기 버튼과 동일하게 처리)
   }, [roomId]);
 
   useEffect(() => {
