@@ -65,7 +65,8 @@ function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean): Roo
     userUuid: p.userUuid,
     // 본인 화면에서는 "나", 다른 사람 화면에서는 실명으로 보임 (각자의 클라이언트에서 본인 기준으로 판별)
     name: isMe ? "나" : p.userName,
-    short: isMe ? "나" : p.userName.slice(0, 2),
+    // 아바타 fallback 이니셜은 본인 여부와 무관하게 실명 기준 (사진 없을 때 "나"가 아닌 실제 이름 첫 글자가 보여야 함)
+    short: p.userName.slice(0, 2),
     // 개인정보 보호 — 본인 이메일만 노출, 다른 멤버에게는 보여주지 않음
     email: isMe ? p.userEmail : "",
     role: p.owner ? "HOST" : "MEMBER",
