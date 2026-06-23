@@ -6,6 +6,7 @@ import { CATS_FILTER } from "@/data/categories";
 import { XIc, PlusIc } from "../components/RoomIcons";
 import { getDefaultRoomImage } from "@/utils/roomImage";
 import { updateRoom } from "@/services/studyRoomService";
+import { broadcastRoomJoined } from "@/utils/roomSession";
 
 const NO_TO_CAT = Object.fromEntries(
   Object.entries(ROOM_CATEGORY_NO).map(([k, v]) => [v, k as RoomCategory])
@@ -124,6 +125,7 @@ export function SettingModal(props: SettingModalProps) {
       setExpiredAt?.(endDate2);
       if (result.thumbnail) setImgSrc(result.thumbnail);
       setImgFile(null);
+      broadcastRoomJoined(); // 메인페이지 등 다른 탭의 방 카드(제목/카테고리/썸네일 등) 새로고침 트리거
 
       setSaveStatus("success");
       window.setTimeout(() => { setSaveStatus(null); onClose(); }, 1500);
