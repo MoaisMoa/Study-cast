@@ -85,6 +85,8 @@ public class RoomServiceImpl implements RoomService {
                                     .roomNotice(trimToNull(request.getRoomNotice()))
                                     .roomPrivate(request.getRoomPrivate())
                                     .roomPremium(false)
+                                    .cameraStatus(request.getCameraStatus() != null ? request.getCameraStatus() : true)
+                                    .micStatus(request.getMicStatus() != null ? request.getMicStatus() : false)
                                     .roomThumbnail(thumbnailPath)
                                     .expiredAt(expiredAt)
                                     .build();
@@ -189,8 +191,8 @@ public class RoomServiceImpl implements RoomService {
         // 6. 방장 여부 계산
         boolean owner = userUuid.equals(room.getUserUuid());
 
-        // 7. 비공개방이면 joinCode 검증 (방장은 코드 없이 입장 가능)
-        if (Boolean.TRUE.equals(room.getRoomPrivate()) && !owner) {
+        // 7. 비공개방이면 joinCode 검증 (방장도 동일하게 코드 검증, 첫 입장 이후엔 5번의 active 체크로 재검증 면제)
+        if (Boolean.TRUE.equals(room.getRoomPrivate())) {
             String joinCode = request == null ? null : request.getJoinCode();
 
             if (joinCode == null || joinCode.trim().isEmpty()) {
@@ -426,7 +428,8 @@ public class RoomServiceImpl implements RoomService {
             throw new IllegalArgumentException("이메일 주소를 입력해주세요.");
         }
 
-        String roomLink = frontendUrl + "/rooms/" + roomNo;
+        // 방 페이지로 직행하지 않고 메인페이지 카드 모달(코드 입력 등 동일한 입장 절차)을 거치도록 함
+        String roomLink = frontendUrl + "/?room=" + roomNo;
         String joinCode = Boolean.TRUE.equals(room.getRoomPrivate()) ? room.getRoomPassword() : null;
 
         emailService.sendRoomInvitation(toEmail.trim(), room.getRoomTitle(), roomLink, joinCode);

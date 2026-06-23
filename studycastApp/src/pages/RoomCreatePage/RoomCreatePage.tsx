@@ -210,7 +210,11 @@ export default function RoomCreatePage() {
         return;
       }
       setPendingEntry(String(createdRoomId));
-      window.open(`${window.location.origin}/rooms/${createdRoomId}`, "_blank", "noopener,noreferrer");
+      // 비공개방이면, 방금 직접 설정한 참여 코드를 그대로 같이 전달 (방장 본인이 만든 방이므로 재입력 요구하지 않음)
+      const codeParam = visibility === "private" && code.trim()
+        ? `?code=${encodeURIComponent(code.trim())}`
+        : "";
+      window.open(`${window.location.origin}/rooms/${createdRoomId}${codeParam}`, "_blank", "noopener,noreferrer");
     } else {
       navigate("/");
     }

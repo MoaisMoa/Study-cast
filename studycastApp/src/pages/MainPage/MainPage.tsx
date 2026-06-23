@@ -1,11 +1,14 @@
+import { useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useT } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Footer } from "@/components/layout/Footer";
-import { ModalProvider } from "@/contexts/ModalContext";
+import { ModalProvider, useModal } from "@/contexts/ModalContext";
 import { usePage } from "@/contexts/PageContext";
+import { getRoomSummary } from "@/services/roomService";
 import { Dashboard } from "./sections/Dashboard";
 import { Recommended } from "./sections/Recommended";
 import { Browse } from "./sections/Browse";
@@ -29,8 +32,33 @@ export default function MainPage() {
 function MainPageInner() {
   const T = useT();
   const isMobile = useIsMobile();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, isLoading: authLoading } = useAuth();
   const { page } = usePage();
+  const setModalRoom = useModal();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // 이메일 초대 링크(`/?room=21`) 등으로 들어왔을 때 — 카드 클릭과 동일한 모달(코드 입력 포함)을 띄움
+  useEffect(() => {
+    const roomParam = searchParams.get("room");
+    if (!roomParam || authLoading) return;
+
+    // 비로그인이면 로그인 페이지로 이동, 로그인 후 같은 위치(?room=)로 복귀
+    if (!isLoggedIn) {
+      navigate(`/login?redirect=${encodeURIComponent(`/?room=${roomParam}`)}`);
+      return;
+    }
+
+    getRoomSummary(roomParam)
+      .then(setModalRoom)
+      .catch(() => { /* 존재하지 않거나 조회 실패 시 그냥 무시 */ })
+      .finally(() => {
+        const next = new URLSearchParams(searchParams);
+        next.delete("room");
+        setSearchParams(next, { replace: true });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, isLoggedIn]);
 
   return (
     <div style={{

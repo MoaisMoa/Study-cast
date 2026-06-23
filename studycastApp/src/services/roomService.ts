@@ -206,3 +206,37 @@ function toMyRoom(response: MainRoomResponse): MyRoom {
       : null,
   };
 }
+
+interface RoomDetailResponse {
+  roomNo: number;
+  roomTitle: string;
+  roomThumbnail: string | null;
+  categoryNo: number;
+  categoryName: string;
+  currentUsers: number;
+  maxUsers: number;
+  roomPrivate: boolean;
+  owner: boolean;
+  expired: boolean;
+  createdAt: string;
+  expiredAt: string;
+}
+
+/** 이메일 초대 링크 등으로 roomNo만 가지고 있을 때, 메인페이지 카드 모달을 띄우기 위한 최소 정보 조회 */
+export async function getRoomSummary(roomId: number | string): Promise<Room> {
+  const { data } = await apiClient.get<RoomDetailResponse>(`/api/rooms/${roomId}`);
+  return {
+    id: data.roomNo,
+    title: data.roomTitle,
+    cat: data.categoryName as Room["cat"],
+    time: "-",
+    members: data.currentUsers,
+    max: data.maxUsers,
+    img: data.roomThumbnail || getDefaultRoomImage(data.roomNo),
+    live: data.currentUsers > 0,
+    type: "FREE",
+    isPrivate: data.roomPrivate,
+    createdAt: data.createdAt ?? null,
+    expiredAt: data.expiredAt ?? null,
+  };
+}

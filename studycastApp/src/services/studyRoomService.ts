@@ -80,9 +80,9 @@ function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean): Roo
 }
 
 /** 방 입장 + 초기 스냅샷 조회 */
-export async function fetchRoom(roomId: string, myUuid: string): Promise<RoomSnapshot> {
-  // 입장 처리 (이미 active 상태면 백엔드가 중복 처리)
-  await apiClient.post(`/api/rooms/${roomId}/join`);
+export async function fetchRoom(roomId: string, myUuid: string, joinCode?: string): Promise<RoomSnapshot> {
+  // 입장 처리 (이미 active 상태면 백엔드가 중복 처리, 비공개방은 joinCode 필요)
+  await apiClient.post(`/api/rooms/${roomId}/join`, joinCode ? { joinCode } : undefined);
 
   const [detailRes, participantsRes] = await Promise.all([
     apiClient.get<RoomDetailResponse>(`/api/rooms/${roomId}`),
@@ -318,8 +318,11 @@ export function subscribeTimerUpdates(
   onUpdate: (event: TimerUpdateEvent) => void
 ): () => void {
   let sub: ReturnType<Client["subscribe"]> | null = null;
+  let active = true;
+  subscriptionCount++;
 
   whenConnected(() => {
+    if (!active) return;
     sub = getClient().subscribe(`/sub/room/${roomId}/timer`, (frame) => {
       try {
         onUpdate(JSON.parse(frame.body));
@@ -328,7 +331,11 @@ export function subscribeTimerUpdates(
   });
 
   return () => {
+    active = false;
     sub?.unsubscribe();
+    sub = null;
+    subscriptionCount--;
+    disconnectIfIdle();
   };
 }
 

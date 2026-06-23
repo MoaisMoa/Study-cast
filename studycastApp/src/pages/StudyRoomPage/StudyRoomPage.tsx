@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import type { ChatMessage, RoomMember, RoomModal, TimerState } from "@/types/studyRoom";
 import { useT, useThemeCtx } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -27,6 +27,7 @@ export default function StudyRoomPage() {
   const { mode, toggle } = useThemeCtx();
   const { roomId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile(768);
   const { user, isLoggedIn, isLoading: authLoading } = useAuth();
   // "나" 식별 기준 — 화상화면/멤버관리/멤버목록/채팅 전체 공통
@@ -114,7 +115,7 @@ export default function StudyRoomPage() {
     registerSession(roomId, () => doExitRef.current());
     let cancelled = false;
     Promise.all([
-      fetchRoom(roomId, myUuid),
+      fetchRoom(roomId, myUuid, searchParams.get("code") ?? undefined),
       getTodayStudySeconds(),
     ]).then(([snap, todaySeconds]) => {
       if (cancelled) return;
@@ -143,6 +144,18 @@ export default function StudyRoomPage() {
       setJoined(true);
       // 메인페이지 등 다른 탭의 방 목록 새로고침 트리거
       broadcastRoomJoined();
+      // URL에 남은 참여 코드 제거 (브라우저 히스토리에 비밀번호가 그대로 남지 않도록)
+      if (searchParams.get("code")) {
+        const next = new URLSearchParams(searchParams);
+        next.delete("code");
+        setSearchParams(next, { replace: true });
+      }
+    }).catch((e: unknown) => {
+      if (cancelled) return;
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? "스터디방에 입장할 수 없습니다.";
+      alert(msg);
+      navigate("/");
     });
     return () => { cancelled = true; };
   }, [roomId, authLoading, isLoggedIn, myUuid]);
