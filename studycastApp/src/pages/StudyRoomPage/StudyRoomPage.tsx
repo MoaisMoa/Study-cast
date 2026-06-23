@@ -245,8 +245,8 @@ export default function StudyRoomPage() {
         }
       } else if (event.type === "KICKED") {
         if (event.userUuid === myUuidRef.current) {
-          // 자신이 추방됨 → 퇴장 처리 없이 메인으로 이동
-          navigate("/");
+          // 자신이 추방됨 → 퇴장 처리 없이 창 닫기
+          window.close();
           return;
         }
         const kicked = membersRef.current.find((m) => m.userUuid === event.userUuid);
@@ -341,7 +341,7 @@ export default function StudyRoomPage() {
       broadcastRoomJoined(); // 메인페이지 등 다른 탭의 "오늘 공부한 시간"/방 목록 새로고침 트리거
     } catch { /* ignore — pagehide fallback will handle cleanup */ }
     unregisterSession();
-    navigate("/");
+    window.close();
   };
   useEffect(() => { doExitRef.current = doExit; }, [doExit]);
 
