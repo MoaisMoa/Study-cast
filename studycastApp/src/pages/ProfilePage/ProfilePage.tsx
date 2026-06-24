@@ -383,6 +383,7 @@ export default function ProfilePage() {
         onSuccess={(newName) => {
           setNameChangeOpen(false);
           setReadonly((p) => ({ ...p, name: newName, nameChangeAvailable: false }));
+          refreshUser();
         }}
       />
       {isMobile && <MobileTabBar />}

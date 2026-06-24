@@ -14,6 +14,7 @@
         <result property="providerProfileImage" column="provider_profile_image"/>
         <result property="connectedAt" column="connected_at"/>
         <result property="lastLoginAt" column="last_login_at"/>
+        <result property="refreshTokenEncrypted" column="refresh_token_encrypted"/>
     </resultMap>
 
     <!-- provider + provider_user_id로 소셜 연동 정보 조회 -->
@@ -63,5 +64,12 @@
         UPDATE user_auths
         SET last_login_at = CURRENT_TIMESTAMP
         WHERE auth_no = #{authNo}
+    </update>
+
+    <!-- 구글 refresh token 갱신 (로그인마다 최신 토큰으로 덮어씀) -->
+    <update id="updateRefreshToken">
+        UPDATE user_auths
+        SET refresh_token_encrypted = #{refreshTokenEncrypted}
+        WHERE user_uuid = #{userUuid} AND provider = #{provider}
     </update>
 </mapper>

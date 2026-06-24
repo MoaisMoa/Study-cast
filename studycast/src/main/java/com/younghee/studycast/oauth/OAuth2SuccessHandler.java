@@ -8,15 +8,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.younghee.studycast.config.OAuthRedirectCaptureFilter;
 import com.younghee.studycast.dao.RefreshTokenMapper;
+import com.younghee.studycast.dao.UserAuthMapper;
 import com.younghee.studycast.dto.RefreshTokenDTO;
 import com.younghee.studycast.security.JwtProvider;
 import com.younghee.studycast.util.AuthCookieUtil;
+import com.younghee.studycast.util.CryptoUtil;
 import com.younghee.studycast.util.TokenHashUtil;
 
 import jakarta.servlet.ServletException;
@@ -35,6 +40,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler{
     private final JwtProvider jwtProvider;
     private final RefreshTokenMapper refreshTokenMapper;
     private final AuthCookieUtil authCookieUtil;
+    private final UserAuthMapper userAuthMapper;
+    private final OAuth2AuthorizedClientRepository authorizedClientRepository;
+    private final CryptoUtil cryptoUtil;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
@@ -52,6 +60,10 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler{
         }
         // 2. 회원 UUID 추출
         UUID userUuid = oAuth2User.getUserUuid();
+
+        // 구글 로그인이면 refresh token을 받아 암호화 저장 (탈퇴 시 연동 해제용, best-effort)
+        captureGoogleRefreshTokenIfPresent(request, authentication, userUuid);
+
         // 3. Access Token / Refresh Token 생성
         String accessToken = jwtProvider.createAccessToken(userUuid);
         String refreshToken = jwtProvider.createRefreshToken(userUuid);
@@ -90,6 +102,37 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler{
         // oauthLogin=1 — 프론트에서 다른 탭에 로그인 완료를 알리는 신호로 사용
         String separator = target.contains("?") ? "&" : "?";
         response.sendRedirect(target + separator + "oauthLogin=1");
+    }
+
+    // 구글 OAuth2AuthorizedClient에서 refresh token을 꺼내 암호화 후 저장 (없으면 조용히 스킵)
+    private void captureGoogleRefreshTokenIfPresent(
+        HttpServletRequest request,
+        Authentication authentication,
+        UUID userUuid
+    ) {
+        if (!(authentication instanceof OAuth2AuthenticationToken oauthToken)) {
+            return;
+        }
+        if (!"google".equals(oauthToken.getAuthorizedClientRegistrationId())) {
+            return;
+        }
+
+        try {
+            OAuth2AuthorizedClient authorizedClient = authorizedClientRepository.loadAuthorizedClient(
+                "google", authentication, request
+            );
+
+            if (authorizedClient == null || authorizedClient.getRefreshToken() == null) {
+                return;
+            }
+
+            String encrypted = cryptoUtil.encrypt(authorizedClient.getRefreshToken().getTokenValue());
+            userAuthMapper.updateRefreshToken(userUuid, "GOOGLE", encrypted);
+
+            log.info("구글 refresh token 저장 완료: userUuid={}", userUuid);
+        } catch (Exception e) {
+            log.warn("구글 refresh token 저장 실패: userUuid={}, reason={}", userUuid, e.getMessage());
+        }
     }
 
     // Refresh Token 원문은 DB 저장하지 않고, SHA-256 해시로 저장

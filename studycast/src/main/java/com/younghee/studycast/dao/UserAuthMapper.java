@@ -21,4 +21,10 @@ public interface UserAuthMapper {
     int insertUserAuth(UserAuthDTO userAuth);
     // 소셜 로그인 마지막 로그인 시간 갱신
     int updateLastLoginAt(@Param("authNo") Long authNo);
+    // 구글 refresh token 갱신 (탈퇴 시 연동 해제용)
+    int updateRefreshToken(
+        @Param("userUuid") UUID userUuid,
+        @Param("provider") String provider,
+        @Param("refreshTokenEncrypted") String refreshTokenEncrypted
+    );
 }

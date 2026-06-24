@@ -35,6 +35,8 @@ public class SecurityConfig {
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final OAuth2FailureHandler oAuth2FailureHandler;
     private final OAuthRedirectCaptureFilter oAuthRedirectCaptureFilter;
+    // 구글 로그인 시 access_type=offline, prompt=consent 추가 (refresh token 발급용)
+    private final GoogleAuthorizationRequestResolver googleAuthorizationRequestResolver;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -59,6 +61,9 @@ public class SecurityConfig {
             // oauth2Login 설정 추가
             // OAuth 로그인 성공 후 사용자 정보 조회
             .oauth2Login(oauth2 -> oauth2
+                .authorizationEndpoint(endpoint -> endpoint
+                    .authorizationRequestResolver(googleAuthorizationRequestResolver)
+                )
                 .userInfoEndpoint(userInfo -> userInfo
                     .userService(customOAuth2UserService)
                 )

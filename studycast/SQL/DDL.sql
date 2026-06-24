@@ -71,6 +71,9 @@ CREATE TABLE IF NOT EXISTS user_auths (
     connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login_at TIMESTAMP,
 
+    -- 구글 refresh token (AES-GCM 암호화) - 회원 탈퇴 시 연동 해제(revoke)에 사용. 카카오는 Admin Key 방식이라 불필요
+    refresh_token_encrypted TEXT,
+
     CONSTRAINT fk_user_auths_user_uuid --users 테이블 외래 키 설정
         FOREIGN KEY (user_uuid)
         REFERENCES users(user_uuid)
@@ -95,6 +98,7 @@ COMMENT ON COLUMN user_auths.provider_name IS '소셜 플랫폼에서 제공한 
 COMMENT ON COLUMN user_auths.provider_profile_image IS '소셜 플랫폼에서 제공한 프로필 이미지 URL';
 COMMENT ON COLUMN user_auths.connected_at IS '소셜 계정 최초 연동 시각';
 COMMENT ON COLUMN user_auths.last_login_at IS '해당 소셜 계정 마지막 로그인 시각';
+COMMENT ON COLUMN user_auths.refresh_token_encrypted IS '구글 refresh token (암호화 저장) - 탈퇴 시 연동 해제용';
 
 -- 4. 권한 관리
 CREATE TABLE IF NOT EXISTS roles (

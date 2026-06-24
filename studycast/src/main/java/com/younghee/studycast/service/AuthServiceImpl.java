@@ -16,6 +16,7 @@ import com.younghee.studycast.dto.response.AuthResponse;
 import com.younghee.studycast.dto.RefreshTokenDTO;
 import com.younghee.studycast.dto.UserDTO;
 import com.younghee.studycast.security.JwtProvider;
+import com.younghee.studycast.util.CryptoUtil;
 import com.younghee.studycast.util.TokenHashUtil;
 
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,8 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final KakaoUnlinkService kakaoUnlinkService;
+    private final GoogleRevokeService googleRevokeService;
+    private final CryptoUtil cryptoUtil;
 
     @Override
     @Transactional
@@ -252,10 +255,13 @@ public class AuthServiceImpl implements AuthService {
 
         userMapper.updateUserStatus(userUuid, "WITHDRAWN");
 
-        // 카카오 연동이 있으면 제공자 쪽 동의도 같이 해제 (best-effort, 실패해도 탈퇴는 완료된 상태로 유지)
+        // 소셜 연동이 있으면 제공자 쪽 동의도 같이 해제 (best-effort, 실패해도 탈퇴는 완료된 상태로 유지)
         for (UserAuthDTO userAuth : userAuthMapper.findByUserUuid(userUuid)) {
             if ("KAKAO".equals(userAuth.getProvider())) {
                 kakaoUnlinkService.unlink(userAuth.getProviderUserId());
+            } else if ("GOOGLE".equals(userAuth.getProvider()) && userAuth.getRefreshTokenEncrypted() != null) {
+                // 기존에 연동돼 있던 계정은 토큰이 없어 스킵될 수 있음 — 이 기능 적용 이후 재로그인해야 대상이 됨
+                googleRevokeService.revoke(cryptoUtil.decrypt(userAuth.getRefreshTokenEncrypted()));
             }
         }
 

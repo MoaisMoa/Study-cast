@@ -18,4 +18,6 @@ public class UserAuthDTO {
 
     private LocalDateTime connectedAt;
     private LocalDateTime lastLoginAt;
+
+    private String refreshTokenEncrypted; // 구글 refresh token (암호화) - 탈퇴 시 연동 해제용
 }
