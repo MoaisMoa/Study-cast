@@ -19,7 +19,7 @@ export function KickConfirm({ member, onConfirm, onCancel }: { member: RoomMembe
             <div style={{ fontSize: 12, color: T.text3 }}>{member.email}</div>
           </div>
         </div>
-        <p style={{ fontSize: 13, color: T.text2, textAlign: "center", lineHeight: 1.8, marginBottom: 22 }}>
+        <p style={{ fontSize: 13, color: T.text2, textAlign: "left", lineHeight: 1.8, marginBottom: 22, width: "100%" }}>
           추방된 멤버는 즉시 퇴장되며<br />다시 초대해야 입장할 수 있습니다.
         </p>
         <div style={{ display: "flex", gap: 10, width: "100%" }}>

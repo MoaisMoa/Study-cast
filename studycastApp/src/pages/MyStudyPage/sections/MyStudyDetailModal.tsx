@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import type { MyStudyRoom } from "@/types/myStudy";
 import { useT } from "@/theme";
 import { Icon } from "@/components/ui/Icon";
@@ -23,7 +22,6 @@ export interface MyStudyDetailModalProps {
 
 export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   const T = useT();
-  const navigate = useNavigate();
   const [codeStep, setCodeStep] = useState(false);
   const [codeVal, setCodeVal] = useState("");
   const [codeError, setCodeError] = useState<null | "format" | "wrong">(null);
@@ -227,17 +225,6 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
               </button>
             </>
           )}
-
-          <button
-            onClick={() => { onClose(); navigate("/rooms/new"); }}
-            style={{
-              width: "100%", marginTop: 10, padding: "11px 0", borderRadius: 12,
-              border: `1px solid ${T.border}`, background: "none", color: T.text2,
-              fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Noto Sans KR',sans-serif",
-            }}
-          >
-            방 설정 / 새 방 만들기
-          </button>
         </div>
       </div>
     </div>

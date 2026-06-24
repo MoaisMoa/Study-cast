@@ -17,6 +17,7 @@ import { Footer } from "@/components/layout/Footer";
 import { MobileTabBar } from "@/pages/MainPage/sections/MobileTabBar";
 import { Icon } from "@/components/ui/Icon";
 import { closeRooms, deleteRooms, listMyRooms } from "@/services/myStudyService";
+import { subscribeRoomJoined } from "@/utils/roomSession";
 import { calcRoomStatus, parseDate } from "@/utils/myStudyDate";
 import { MyStudyToolbar } from "./sections/MyStudyToolbar";
 import { MyStudyCard } from "./sections/MyStudyCard";
@@ -55,6 +56,7 @@ export default function MyStudyPage() {
   const [detailRoom, setDetailRoom] = useState<MyStudyRoom | null>(null);
   const [confirm, setConfirm] = useState<ConfirmModalState | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   function load() {
     setLoadState("loading");
@@ -65,6 +67,12 @@ export default function MyStudyPage() {
   useEffect(() => {
     if (!authLoading && user) load();
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [authLoading, user]);
+
+  // 다른 탭에서 방 입장/퇴장이 발생하면 목록을 다시 불러와 라이브 상태를 최신화
+  useEffect(() => {
+    if (authLoading || !user) return;
+    return subscribeRoomJoined(load);
   }, [authLoading, user]);
 
   // 정렬 + 필터
@@ -111,13 +119,22 @@ export default function MyStudyPage() {
   async function runConfirmedAction() {
     if (!confirm) return;
     setActionLoading(true);
+    setActionError("");
     const ids = confirm.rooms.map((r) => r.id);
     try {
       if (confirm.type === "delete") {
-        await deleteRooms(ids);
+        const result = await deleteRooms(ids);
+        if (!result.ok) {
+          setActionError(result.message ?? "스터디 삭제 처리 중 오류가 발생했습니다.");
+          return;
+        }
         setRooms((prev) => prev.filter((r) => !selectedIds.has(r.id)));
       } else {
-        await closeRooms(ids);
+        const result = await closeRooms(ids);
+        if (!result.ok) {
+          setActionError(result.message ?? "스터디 종료 처리 중 오류가 발생했습니다.");
+          return;
+        }
         // 종료 처리: periodEnd 를 과거로 만들어 상태를 "종료"로 — mock 반영
         setRooms((prev) =>
           prev.map((r) =>
@@ -125,10 +142,10 @@ export default function MyStudyPage() {
           )
         );
       }
-    } finally {
-      setActionLoading(false);
       setConfirm(null);
       exitSelectMode();
+    } finally {
+      setActionLoading(false);
     }
   }
 
@@ -347,7 +364,8 @@ export default function MyStudyPage() {
       <ConfirmActionModal
         state={confirm}
         loading={actionLoading}
-        onClose={() => setConfirm(null)}
+        error={actionError}
+        onClose={() => { setConfirm(null); setActionError(""); }}
         onConfirm={runConfirmedAction}
       />
     </div>

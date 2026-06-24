@@ -1,5 +1,6 @@
 import { useRT } from "@/theme";
 import { Icon } from "@/components/ui/Icon";
+import { getDefaultRoomImage } from "@/utils/roomImage";
 
 export interface CreateSuccessProps {
   thumbnail: string | null;
@@ -32,36 +33,34 @@ export function CreateSuccess({
         padding: isMobile ? "1.5rem 1rem" : "2.5rem",
         textAlign: "center",
       }}>
-      {thumbnail && (
+      <div style={{
+        position: "relative",
+        borderRadius: 10,
+        overflow: "hidden",
+        maxWidth: 480,
+        margin: "0 auto 24px",
+      }}>
+        <img
+          src={thumbnail ?? getDefaultRoomImage(roomId)}
+          alt="thumbnail"
+          style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover" }}
+        />
         <div style={{
-          position: "relative",
-          borderRadius: 10,
-          overflow: "hidden",
-          maxWidth: 480,
-          margin: "0 auto 24px",
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(to top,rgba(0,0,0,0.65) 0%,transparent 55%)",
+        }} />
+        <div style={{
+          position: "absolute",
+          bottom: 14,
+          left: 14,
+          fontSize: 16,
+          fontWeight: 700,
+          color: "#fff",
         }}>
-          <img
-            src={thumbnail}
-            alt="thumbnail"
-            style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover" }}
-          />
-          <div style={{
-            position: "absolute",
-            inset: 0,
-            background: "linear-gradient(to top,rgba(0,0,0,0.65) 0%,transparent 55%)",
-          }} />
-          <div style={{
-            position: "absolute",
-            bottom: 14,
-            left: 14,
-            fontSize: 16,
-            fontWeight: 700,
-            color: "#fff",
-          }}>
-            {name}
-          </div>
+          {name}
         </div>
-      )}
+      </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.85rem" }}>
         <div style={{
           width: 52,

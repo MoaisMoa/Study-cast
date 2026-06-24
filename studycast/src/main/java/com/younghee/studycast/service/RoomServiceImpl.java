@@ -408,6 +408,13 @@ public class RoomServiceImpl implements RoomService {
         if (!userUuid.equals(room.getUserUuid())) {
             throw new SecurityException("방장만 스터디방을 삭제할 수 있습니다.");
         }
+
+        // 접속 중인 참여자가 있으면 삭제 차단 (탭만 닫고 나가기를 안 누른 경우도 active로 남아있어 여기서 걸러짐)
+        List<RoomParticipantResponse> activeParticipants = roomParticipantsMapper.findActiveParticipantsByRoomNo(roomNo);
+        if (!activeParticipants.isEmpty()) {
+            throw new IllegalStateException("스터디방에 접속 중인 사용자가 있어 삭제할 수 없습니다.");
+        }
+
         String thumbnail = room.getRoomThumbnail();
         roomsMapper.deleteRoom(roomNo);
         if (thumbnail != null) {

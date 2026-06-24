@@ -1,7 +1,7 @@
 import { useRT } from "@/theme";
-import { Icon } from "@/components/ui/Icon";
 import { Dialog } from "@/components/ui/Modal";
 import { calcDays } from "@/utils/date";
+import { getDefaultRoomImage } from "@/utils/roomImage";
 
 export interface SubmitConfirmModalProps {
   open: boolean;
@@ -65,45 +65,27 @@ export function SubmitConfirmModal(props: SubmitConfirmModalProps) {
           marginBottom: 14,
           aspectRatio: "4/3",
         }}>
-          {thumbnail ? (
-            <>
-              <img
-                src={thumbnail}
-                alt="대표 이미지"
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-              />
-              <div style={{
-                position: "absolute",
-                inset: 0,
-                background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)",
-              }} />
-              <span style={{
-                position: "absolute",
-                bottom: 8,
-                left: 10,
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#fff",
-                textShadow: "0 1px 4px rgba(0,0,0,0.6)",
-              }}>
-                {name}
-              </span>
-            </>
-          ) : (
-            <div style={{
-              width: "100%",
-              height: "100%",
-              background: T.surface3,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-            }}>
-              <Icon name="image" size={28} color={T.muted2} />
-              <span style={{ fontSize: 11, color: T.muted2 }}>기본 이미지</span>
-            </div>
-          )}
+          <img
+            src={thumbnail ?? getDefaultRoomImage(0)}
+            alt="대표 이미지"
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)",
+          }} />
+          <span style={{
+            position: "absolute",
+            bottom: 8,
+            left: 10,
+            fontSize: 13,
+            fontWeight: 700,
+            color: "#fff",
+            textShadow: "0 1px 4px rgba(0,0,0,0.6)",
+          }}>
+            {name}
+          </span>
         </div>
 
         <div style={{

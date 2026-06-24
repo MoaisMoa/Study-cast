@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useT } from "@/theme";
 import { Dialog } from "@/components/ui/Modal";
+import { Icon } from "@/components/ui/Icon";
 import { useAuth } from "@/contexts/AuthContext";
 import { withdraw } from "@/services/profileService";
 import { forceLeaveActiveRoom } from "@/utils/roomSession";
@@ -79,15 +80,17 @@ export function WithdrawModal({ open, onClose, hasPassword }: WithdrawModalProps
           boxShadow: T.shadowHover,
         }}
       >
-        <div
-          style={{
-            fontSize: 16,
-            fontWeight: 700,
-            color: T.text,
-            marginBottom: 8,
-          }}
-        >
-          정말 탈퇴하시겠어요?
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 8 }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: "50%",
+            background: T.redLight,
+            display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12,
+          }}>
+            <Icon name="trash" size={22} color={T.red} />
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: T.text, textAlign: "center" }}>
+            정말 탈퇴하시겠어요?
+          </div>
         </div>
         <div
           style={{
@@ -95,6 +98,7 @@ export function WithdrawModal({ open, onClose, hasPassword }: WithdrawModalProps
             color: T.text2,
             lineHeight: 1.6,
             marginBottom: 20,
+            textAlign: "left",
           }}
         >
           탈퇴 시 계정이 비활성화되며 30일 후 완전 삭제됩니다.

@@ -5,11 +5,12 @@ import { Icon } from "@/components/ui/Icon";
 export interface ConfirmActionModalProps {
   state: ConfirmModalState | null;
   loading: boolean;
+  error?: string;
   onClose: () => void;
   onConfirm: () => void;
 }
 
-export function ConfirmActionModal({ state, loading, onClose, onConfirm }: ConfirmActionModalProps) {
+export function ConfirmActionModal({ state, loading, error, onClose, onConfirm }: ConfirmActionModalProps) {
   const T = useT();
   if (!state) return null;
 
@@ -37,22 +38,28 @@ export function ConfirmActionModal({ state, loading, onClose, onConfirm }: Confi
           boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
         }}
       >
-        <div style={{
-          width: 48, height: 48, borderRadius: "50%",
-          background: isDelete ? "#FFEBEE" : "#FFF3E0",
-          display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16,
-        }}>
-          <Icon name={isDelete ? "trash" : "alertTri"} size={22} color={isDelete ? T.red : "#E65100"} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 16 }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: "50%",
+            background: isDelete ? "#FFEBEE" : "#FFF3E0",
+            display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12,
+          }}>
+            <Icon name={isDelete ? "trash" : "alertTri"} size={22} color={isDelete ? T.red : "#E65100"} />
+          </div>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: T.text, textAlign: "center" }}>{title}</p>
         </div>
-        <p style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: T.text }}>{title}</p>
-        <p style={{ margin: "0 0 24px", fontSize: 13, color: T.text3, lineHeight: 1.6 }}>{desc}</p>
+        <p style={{ margin: "0 0 24px", fontSize: 13, color: T.text3, lineHeight: 1.6, textAlign: "left" }}>{desc}</p>
 
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        {error && (
+          <p style={{ margin: "0 0 16px", fontSize: 12, color: T.red, lineHeight: 1.6, textAlign: "left" }}>{error}</p>
+        )}
+
+        <div style={{ display: "flex", gap: 8 }}>
           <button
             onClick={onClose}
             disabled={loading}
             style={{
-              padding: "9px 20px", fontSize: 13, fontWeight: 600, borderRadius: 8,
+              flex: 1, padding: "9px 0", fontSize: 13, fontWeight: 600, borderRadius: 8,
               border: `1px solid ${T.border}`, background: "transparent", color: T.text2,
               cursor: loading ? "not-allowed" : "pointer", fontFamily: "'Noto Sans KR',sans-serif",
             }}
@@ -63,10 +70,10 @@ export function ConfirmActionModal({ state, loading, onClose, onConfirm }: Confi
             onClick={onConfirm}
             disabled={loading}
             style={{
-              padding: "9px 20px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "none",
+              flex: 1, padding: "9px 0", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "none",
               background: T.red, color: "#fff",
               cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1,
-              minWidth: 80, fontFamily: "'Noto Sans KR',sans-serif",
+              fontFamily: "'Noto Sans KR',sans-serif",
             }}
           >
             {loading ? "처리 중..." : confirmLabel}

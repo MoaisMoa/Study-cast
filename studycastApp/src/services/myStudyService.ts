@@ -10,15 +10,29 @@ export async function listMyRooms(): Promise<MyStudyRoom[]> {
 }
 
 /** 스터디 종료 — PATCH /api/rooms/{id}/close */
-export async function closeRooms(ids: string[]): Promise<{ ok: boolean }> {
-  await Promise.all(ids.map((id) => apiClient.patch(`/api/rooms/${id}/close`)));
-  return { ok: true };
+export async function closeRooms(ids: string[]): Promise<{ ok: boolean; message?: string }> {
+  try {
+    await Promise.all(ids.map((id) => apiClient.patch(`/api/rooms/${id}/close`)));
+    return { ok: true };
+  } catch (error: any) {
+    return {
+      ok: false,
+      message: error.response?.data?.message || "스터디 종료 처리 중 오류가 발생했습니다.",
+    };
+  }
 }
 
 /** 스터디 삭제 — DELETE /api/rooms/{id} */
-export async function deleteRooms(ids: string[]): Promise<{ ok: boolean }> {
-  await Promise.all(ids.map((id) => apiClient.delete(`/api/rooms/${id}`)));
-  return { ok: true };
+export async function deleteRooms(ids: string[]): Promise<{ ok: boolean; message?: string }> {
+  try {
+    await Promise.all(ids.map((id) => apiClient.delete(`/api/rooms/${id}`)));
+    return { ok: true };
+  } catch (error: any) {
+    return {
+      ok: false,
+      message: error.response?.data?.message || "스터디 삭제 처리 중 오류가 발생했습니다.",
+    };
+  }
 }
 
 /** 비공개 방 참여 코드 검증 — POST /api/rooms/{id}/verify-code */

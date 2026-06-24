@@ -117,9 +117,18 @@ export function PlanEditModal({ plan, onClose, onSave, onDelete, T, weekPlan = [
 
       {showConfirm && (
         <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: T.surface, borderRadius: 14, width: 280, padding: "24px 20px", boxShadow: "0 12px 40px rgba(0,0,0,.3)", textAlign: "center" }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 8 }}>계획을 삭제할까요?</div>
-            <div style={{ fontSize: 13, color: T.text3, marginBottom: 20 }}>"{plan.title}"을(를) 삭제합니다.</div>
+          <div style={{ background: T.surface, borderRadius: 14, width: 280, padding: "24px 20px", boxShadow: "0 12px 40px rgba(0,0,0,.3)" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 8 }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: "50%",
+                background: "#FFEBEE",
+                display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12,
+              }}>
+                <Icon name="trash" size={22} color={T.red} />
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: T.text, textAlign: "center" }}>계획을 삭제할까요?</div>
+            </div>
+            <div style={{ fontSize: 13, color: T.text3, marginBottom: 20, textAlign: "left" }}>"{plan.title}"을(를) 삭제합니다.</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setShowConfirm(false)}
                 style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${T.border}`, background: "none", color: T.text2, fontSize: 13, cursor: "pointer" }}>
