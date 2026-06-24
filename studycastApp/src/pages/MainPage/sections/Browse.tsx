@@ -31,6 +31,7 @@ export function Browse() {
   const [page, setPage] = useState(0);
   const [last, setLast] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [tab, setTab] = useState(0);
   const [selCats, setSelCats] = useState<RoomCategory[]>([]);
   const [catOpen, setCatOpen] = useState(false);
@@ -92,6 +93,9 @@ export function Browse() {
       setRooms((prev) => (append ? [...prev, ...response.rooms] : response.rooms));
       setPage(response.page);
       setLast(response.last);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
     } finally {
       setIsLoading(false);
       // 로딩 중이라 무시됐던 새로고침 요청이 있으면 끝나는 즉시 재시도 (요청 누락 방지)
@@ -448,7 +452,29 @@ export function Browse() {
         {visible.map((r) => (
           <LiveStudyCard key={r.id} room={r} />
         ))}
-        {visible.length === 0 && (
+        {visible.length === 0 && loadError && (
+          <div style={{
+            gridColumn: "1/-1",
+            textAlign: "center",
+            padding: "48px 0",
+            color: T.red,
+            fontSize: 14,
+          }}>
+            스터디 목록을 불러오지 못했습니다.
+            <div style={{ marginTop: 10 }}>
+              <button
+                onClick={() => fetchRooms(0, false)}
+                style={{
+                  padding: "8px 20px", borderRadius: 8, border: `1.5px solid ${T.red}`,
+                  background: "none", color: T.red, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                다시 시도
+              </button>
+            </div>
+          </div>
+        )}
+        {visible.length === 0 && !loadError && (
           <div style={{
             gridColumn: "1/-1",
             textAlign: "center",
@@ -492,6 +518,9 @@ export function Browse() {
         >
           {isLoading ? "불러오는 중..." : "더 많은 스터디 보기"}
         </button>
+        {loadError && visible.length > 0 && (
+          <div style={{ marginTop: 10, fontSize: 12, color: T.red }}>목록을 불러오지 못했습니다. 다시 시도해주세요.</div>
+        )}
         {!hasMore && (
           <div style={{ marginTop: 10, fontSize: 12, color: T.text3 }}>모든 항목을 불러왔습니다.</div>
         )}

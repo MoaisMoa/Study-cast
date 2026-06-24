@@ -24,7 +24,7 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   const T = useT();
   const [codeStep, setCodeStep] = useState(false);
   const [codeVal, setCodeVal] = useState("");
-  const [codeError, setCodeError] = useState<null | "format" | "wrong">(null);
+  const [codeError, setCodeError] = useState<string>("");
   const [verifying, setVerifying] = useState(false);
   const [entering, setEntering] = useState(false);
   const [entryBlocked, setEntryBlocked] = useState(false);
@@ -42,7 +42,7 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   const handleClose = () => {
     setCodeStep(false);
     setCodeVal("");
-    setCodeError(null);
+    setCodeError("");
     setEntryBlocked(false);
     onClose();
   };
@@ -59,14 +59,14 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   };
 
   const handleCodeSubmit = async () => {
-    if (!CODE_RE.test(codeVal.trim())) { setCodeError("format"); return; }
+    if (!CODE_RE.test(codeVal.trim())) { setCodeError("4~6자리 숫자를 입력해주세요."); return; }
     setVerifying(true);
     const allowed = await canEnterRoom();
     if (!allowed) { setVerifying(false); setEntryBlocked(true); setCodeStep(false); return; }
-    const ok = await joinRoom(Number(room.id), codeVal.trim());
+    const result = await joinRoom(Number(room.id), codeVal.trim());
     setVerifying(false);
-    if (ok) { setPendingEntry(String(room.id)); openStudyRoom(room.id); handleClose(); return; }
-    setCodeError("wrong");
+    if (result.ok) { setPendingEntry(String(room.id)); openStudyRoom(room.id); handleClose(); return; }
+    setCodeError(result.message ?? "참여 코드가 올바르지 않습니다.");
   };
 
   return (
@@ -163,7 +163,7 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
               <input
                 type="text"
                 value={codeVal}
-                onChange={(e) => { setCodeVal(e.target.value.replace(/\D/g, "").slice(0, 6)); setCodeError(null); }}
+                onChange={(e) => { setCodeVal(e.target.value.replace(/\D/g, "").slice(0, 6)); setCodeError(""); }}
                 onKeyDown={(e) => { if (e.key === "Enter") handleCodeSubmit(); }}
                 placeholder="참여 코드 입력 (4~6자리 숫자)"
                 maxLength={6}
@@ -175,12 +175,11 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
                   boxSizing: "border-box", letterSpacing: "0.15em", fontWeight: 700,
                 }}
               />
-              {codeError === "format" && <div style={{ fontSize: 12, color: T.red, marginBottom: 10 }}>4~6자리 숫자를 입력해주세요.</div>}
-              {codeError === "wrong" && <div style={{ fontSize: 12, color: T.red, marginBottom: 10 }}>참여 코드가 올바르지 않습니다.</div>}
+              {codeError && <div style={{ fontSize: 12, color: T.red, marginBottom: 10 }}>{codeError}</div>}
               {!codeError && <div style={{ marginBottom: 10 }} />}
               <div style={{ display: "flex", gap: 8 }}>
                 <button
-                  onClick={() => { setCodeStep(false); setCodeVal(""); setCodeError(null); }}
+                  onClick={() => { setCodeStep(false); setCodeVal(""); setCodeError(""); }}
                   style={{ flex: 1, padding: "13px 0", borderRadius: 12, border: `1.5px solid ${T.border}`, background: "none", color: T.text2, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                 >
                   취소

@@ -37,6 +37,7 @@ export function MobileBrowse() {
   const [page, setPage] = useState(0);
   const [last, setLast] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const visible = rooms;
 
   const catRef = useRef<HTMLDivElement>(null);
@@ -91,6 +92,9 @@ export function MobileBrowse() {
       setRooms((prev) => (append ? [...prev, ...response.rooms] : response.rooms));
       setPage(response.page);
       setLast(response.last);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
     } finally {
       setIsLoading(false);
       // 로딩 중이라 무시됐던 새로고침 요청이 있으면 끝나는 즉시 재시도 (요청 누락 방지)
@@ -500,7 +504,18 @@ export function MobileBrowse() {
             </div>
           );
         })}
-        {visible.length === 0 && (
+        {visible.length === 0 && loadError && (
+          <div style={{ gridColumn: is2col ? "1 / -1" : undefined, textAlign: "center", padding: "36px 0" }}>
+            <div style={{ color: T.red, fontSize: 13, marginBottom: 10 }}>스터디 목록을 불러오지 못했습니다.</div>
+            <button
+              onClick={() => fetchRooms(0, false)}
+              style={{ padding: "8px 18px", borderRadius: 8, border: `1.5px solid ${T.red}`, background: "none", color: T.red, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              다시 시도
+            </button>
+          </div>
+        )}
+        {visible.length === 0 && !loadError && (
           <div style={{ gridColumn: is2col ? "1 / -1" : undefined, textAlign: "center", padding: "36px 0", color: T.text3, fontSize: 13 }}>
             해당 조건의 스터디가 없습니다.
           </div>
@@ -526,6 +541,9 @@ export function MobileBrowse() {
           >
             {isLoading ? "불러오는 중..." : "더 보기"}
           </button>
+          {loadError && visible.length > 0 && (
+            <div style={{ marginTop: 8, fontSize: 12, color: T.red }}>목록을 불러오지 못했습니다. 다시 시도해주세요.</div>
+          )}
         </div>
       )}
     </section>

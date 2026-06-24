@@ -27,13 +27,19 @@ export async function recordVisit(roomNo: number): Promise<void> {
 }
 
 /** 스터디방 입장 — 비공개방은 joinCode 포함 */
-export async function joinRoom(roomId: number, joinCode?: string): Promise<boolean> {
+export async function joinRoom(
+  roomId: number,
+  joinCode?: string
+): Promise<{ ok: boolean; message?: string }> {
   try {
     const body = joinCode ? { joinCode } : null;
     await apiClient.post(`/api/rooms/${roomId}/join`, body);
-    return true;
-  } catch {
-    return false;
+    return { ok: true };
+  } catch (error: any) {
+    return {
+      ok: false,
+      message: error.response?.data?.message || "참여 코드가 올바르지 않습니다.",
+    };
   }
 }
 

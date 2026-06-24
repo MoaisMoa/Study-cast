@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.younghee.studycast.exception.ForbiddenException;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -61,6 +63,19 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
             .status(HttpStatus.UNAUTHORIZED)
+            .body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+    }
+
+    // 로그인은 됐지만 권한이 없는 경우 (예: 방장만 가능한 동작) — 401과 구분되는 403
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, Object>> handleForbiddenException(ForbiddenException e) {
+        log.warn(">>>ForbiddenException 발생: {}", e.getMessage());
+
+        return ResponseEntity
+            .status(HttpStatus.FORBIDDEN)
             .body(Map.of(
                 "success", false,
                 "message", e.getMessage()

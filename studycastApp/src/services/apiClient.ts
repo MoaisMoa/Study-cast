@@ -86,6 +86,16 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // "현재 비밀번호/참여 코드가 틀림" 같은 입력값 오류도 401로 내려오는 엔드포인트 —
+    // 로그인 세션 만료와는 무관하므로 캐시 정리/강제 로그아웃 대상에서 제외하고 그대로 에러만 전달
+    if (
+      url.includes("/api/auth/change-password") ||
+      url.includes("/api/auth/withdraw") ||
+      url.includes("/join")
+    ) {
+      return Promise.reject(error);
+    }
+
     // 인증 관련 요청 자체가 실패한 경우 재시도하지 않음
     // /api/auth/me는 비로그인 사용자가 공개 페이지에서도 호출하므로 401이 정상 케이스 — 강제 리다이렉트 대상에서 제외
     if (

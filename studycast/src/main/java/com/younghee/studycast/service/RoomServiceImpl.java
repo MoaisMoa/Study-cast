@@ -15,6 +15,7 @@ import com.younghee.studycast.config.StudyRoomPolicyProperties;
 import com.younghee.studycast.dao.RoomParticipantsMapper;
 import com.younghee.studycast.dao.RoomsMapper;
 import com.younghee.studycast.domain.RoomCategory;
+import com.younghee.studycast.exception.ForbiddenException;
 import com.younghee.studycast.dto.RoomParticipantDTO;
 import com.younghee.studycast.dto.RoomsDTO;
 import com.younghee.studycast.dto.request.RoomCreateRequest;
@@ -322,7 +323,7 @@ public class RoomServiceImpl implements RoomService {
         }
         // 2. 방장 권한 확인
         if (!userUuid.equals(room.getUserUuid())) {
-            throw new SecurityException("방장만 설정을 변경할 수 있습니다.");
+            throw new ForbiddenException("방장만 설정을 변경할 수 있습니다.");
         }
         // 3. 요청값 검증
         validateRoomTitle(request.getRoomTitle());
@@ -361,7 +362,7 @@ public class RoomServiceImpl implements RoomService {
             throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
         }
         if (!userUuid.equals(room.getUserUuid())) {
-            throw new SecurityException("방장만 공지를 수정할 수 있습니다.");
+            throw new ForbiddenException("방장만 공지를 수정할 수 있습니다.");
         }
         String trimmed = (notice != null && !notice.trim().isEmpty()) ? notice.trim() : null;
         roomsMapper.updateRoomNotice(roomNo, trimmed);
@@ -376,7 +377,7 @@ public class RoomServiceImpl implements RoomService {
             throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
         }
         if (!hostUuid.equals(room.getUserUuid())) {
-            throw new SecurityException("방장만 멤버를 추방할 수 있습니다.");
+            throw new ForbiddenException("방장만 멤버를 추방할 수 있습니다.");
         }
         if (hostUuid.equals(targetUuid)) {
             throw new IllegalArgumentException("자신을 추방할 수 없습니다.");
@@ -393,7 +394,7 @@ public class RoomServiceImpl implements RoomService {
             throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
         }
         if (!userUuid.equals(room.getUserUuid())) {
-            throw new SecurityException("방장만 스터디방을 종료할 수 있습니다.");
+            throw new ForbiddenException("방장만 스터디방을 종료할 수 있습니다.");
         }
         roomsMapper.closeRoom(roomNo);
     }
@@ -406,7 +407,7 @@ public class RoomServiceImpl implements RoomService {
             throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
         }
         if (!userUuid.equals(room.getUserUuid())) {
-            throw new SecurityException("방장만 스터디방을 삭제할 수 있습니다.");
+            throw new ForbiddenException("방장만 스터디방을 삭제할 수 있습니다.");
         }
 
         // 접속 중인 참여자가 있으면 삭제 차단 (탭만 닫고 나가기를 안 누른 경우도 active로 남아있어 여기서 걸러짐)
@@ -429,7 +430,7 @@ public class RoomServiceImpl implements RoomService {
             throw new NoSuchElementException("존재하지 않는 스터디방입니다.");
         }
         if (!hostUuid.equals(room.getUserUuid())) {
-            throw new SecurityException("방장만 초대할 수 있습니다.");
+            throw new ForbiddenException("방장만 초대할 수 있습니다.");
         }
         if (toEmail == null || toEmail.isBlank()) {
             throw new IllegalArgumentException("이메일 주소를 입력해주세요.");
