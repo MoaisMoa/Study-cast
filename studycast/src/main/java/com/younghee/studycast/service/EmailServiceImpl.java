@@ -37,6 +37,22 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void sendSignupLinkCode(String toEmail, String code) {
+        String subject = "[Study-cast] 계정 연결 인증번호";
+        String html = """
+            <div style="font-family:'Apple SD Gothic Neo',sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff;border-radius:12px;border:1px solid #eee;">
+              <h2 style="color:#E53935;font-size:20px;margin-bottom:8px;">Study-cast</h2>
+              <p style="color:#333;font-size:15px;margin-bottom:24px;">소셜 계정에 비밀번호를 연결하기 위한 인증번호입니다.</p>
+              <div style="background:#FFF5F5;border-radius:8px;padding:20px;text-align:center;letter-spacing:0.3em;font-size:28px;font-weight:700;color:#E53935;font-family:monospace;">
+                %s
+              </div>
+              <p style="color:#888;font-size:12px;margin-top:20px;">인증번호는 5분간 유효합니다. 본인이 요청하지 않았다면 무시해주세요.</p>
+            </div>
+            """.formatted(code);
+        send(toEmail, subject, html);
+    }
+
+    @Override
     public void sendRoomInvitation(String toEmail, String roomTitle, String roomLink, String joinCode) {
         String subject = "[Study-cast] 스터디룸 초대장 — " + roomTitle;
 

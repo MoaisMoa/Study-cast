@@ -17,4 +17,6 @@ public class SignupRequest {
     private String userPasswordConfirm;
     // 사용자 이름
     private String userName;
+    // 소셜 전용 계정에 비밀번호를 연결할 때 사용하는 인증번호 (선택)
+    private String verificationCode;
 }

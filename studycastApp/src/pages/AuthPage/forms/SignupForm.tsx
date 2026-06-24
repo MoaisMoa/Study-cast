@@ -9,6 +9,7 @@ import { isEmail, isNameValid, isPwValidStrict } from "@/utils/validators";
 import { isEmailTaken, signup } from "@/services/authService";
 import { SocialButtons } from "../components/SocialButtons";
 import { PwStrengthBar } from "../components/PwStrengthBar";
+import { LinkAccountModal } from "../components/LinkAccountModal";
 
 interface SignupFormProps {
   onNavigate: AuthNavigate;
@@ -26,6 +27,7 @@ export function SignupForm({ onNavigate }: SignupFormProps) {
   const [pw2Success, setPw2Success] = useState("");
   const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
 
   function validateEmail(v: string): string {
     if (!v) return "";
@@ -73,6 +75,10 @@ export function SignupForm({ onNavigate }: SignupFormProps) {
         confirmPassword: pw2
       });
       if (!result.ok) {
+        if (result.errorCode === "social_account_exists") {
+          setLinkModalOpen(true);
+          return;
+        }
         setServerError(result.message ?? "회원가입 처리 중 오류가 발생했습니다.");
         return;
       }
@@ -179,6 +185,19 @@ export function SignupForm({ onNavigate }: SignupFormProps) {
           로그인
         </span>
       </div>
+
+      <LinkAccountModal
+        open={linkModalOpen}
+        email={email}
+        name={name}
+        password={pw}
+        confirmPassword={pw2}
+        onClose={() => setLinkModalOpen(false)}
+        onLinked={() => {
+          setLinkModalOpen(false);
+          onNavigate("login");
+        }}
+      />
     </div>
   );
 }

@@ -74,15 +74,28 @@ export async function login(
 /** 회원가입 */
 export async function signup(payload: SignupPayload): Promise<AuthResult> {
   try {
-    await apiClient.post("/api/auth/signup", {
+    const response = await apiClient.post("/api/auth/signup", {
       userEmail: payload.email,
       userPassword: payload.password,
       userPasswordConfirm: payload.confirmPassword,
-      userName: payload.name
+      userName: payload.name,
+      verificationCode: payload.verificationCode
     });
+
+    if (response.data && response.data.success === false) {
+      return {
+        ok: false,
+        errorCode: response.data.errorCode,
+        message: response.data.message,
+      };
+    }
 
     return {ok: true};
   } catch (e: any) {
+    const errorCode = e.response?.data?.errorCode;
+    if (errorCode === "social_account_exists") {
+      return { ok: false, errorCode, message: e.response?.data?.message };
+    }
     if (axios.isAxiosError(e) && e.response?.status === 409) {
       return { ok: false, message: "이미 가입된 이메일입니다." };
     }
@@ -92,6 +105,43 @@ export async function signup(payload: SignupPayload): Promise<AuthResult> {
         e.response?.data?.message ||
         "회원가입 처리 중 오류가 발생했습니다."
     }
+  }
+}
+
+/** 소셜 전용 계정 - 비밀번호 연결용 인증번호 발송 */
+export async function sendSignupLinkCode(payload: FindPwPayload): Promise<AuthResult> {
+  try {
+    await apiClient.post("/api/auth/signup/send-link-code", {
+      userEmail: payload.email
+    });
+
+    return { ok: true };
+  } catch (e: any) {
+    return {
+      ok: false,
+      message:
+        e.response?.data?.message ||
+        "인증번호 발송에 실패했습니다. 다시 시도해주세요."
+    };
+  }
+}
+
+/** 소셜 전용 계정 - 비밀번호 연결용 인증번호 확인 */
+export async function verifySignupLinkCode(payload: VerifyCodePayload): Promise<AuthResult> {
+  try {
+    await apiClient.post("/api/auth/signup/verify-link-code", {
+      userEmail: payload.email,
+      verificationCode: payload.code
+    });
+
+    return { ok: true };
+  } catch (e: any) {
+    return {
+      ok: false,
+      message:
+        e.response?.data?.message ||
+        "인증번호가 올바르지 않습니다."
+    };
   }
 }
 

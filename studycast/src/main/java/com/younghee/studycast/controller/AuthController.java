@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.younghee.studycast.dto.response.AuthResponse;
 import com.younghee.studycast.dto.UserDTO;
 import com.younghee.studycast.dto.request.SignupRequest;
+import com.younghee.studycast.exception.SocialAccountLinkRequiredException;
 import com.younghee.studycast.security.JwtProvider;
 import com.younghee.studycast.service.AuthService;
 import com.younghee.studycast.service.UserService;
@@ -41,11 +42,43 @@ public class AuthController {
     @PostMapping("/api/auth/signup")
     public Map<String, Object> signup(@RequestBody SignupRequest request) {
 
-        userService.signup(request);
+        try {
+            userService.signup(request);
+            return Map.of(
+                "success", true,
+                "message", "회원가입이 완료되었습니다."
+            );
+        } catch (SocialAccountLinkRequiredException e) {
+            return Map.of("success", false, "message", e.getMessage(), "errorCode", "social_account_exists");
+        }
+    }
+
+    // 소셜 전용 계정 - 비밀번호 연결용 인증번호 발송
+    @PostMapping("/api/auth/signup/send-link-code")
+    public Map<String, Object> sendSignupLinkCode(@RequestBody Map<String, String> request) {
+
+        String userEmail = request.get("userEmail");
+
+        userService.sendLinkCode(userEmail);
 
         return Map.of(
             "success", true,
-            "message", "회원가입이 완료되었습니다."
+            "message", "인증번호가 발송되었습니다."
+        );
+    }
+
+    // 소셜 전용 계정 - 비밀번호 연결용 인증번호 확인
+    @PostMapping("/api/auth/signup/verify-link-code")
+    public Map<String, Object> verifySignupLinkCode(@RequestBody Map<String, String> request) {
+
+        String userEmail = request.get("userEmail");
+        String verificationCode = request.get("verificationCode");
+
+        userService.verifyLinkCode(userEmail, verificationCode);
+
+        return Map.of(
+            "success", true,
+            "message", "인증번호가 확인되었습니다."
         );
     }
 

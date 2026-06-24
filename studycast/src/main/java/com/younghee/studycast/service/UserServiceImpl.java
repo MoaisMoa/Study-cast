@@ -1,15 +1,21 @@
 package com.younghee.studycast.service;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.younghee.studycast.dao.EmailVerificationMapper;
 import com.younghee.studycast.dao.RoleMapper;
 import com.younghee.studycast.dao.UserMapper;
+import com.younghee.studycast.dto.EmailVerificationDTO;
 import com.younghee.studycast.dto.UserDTO;
 import com.younghee.studycast.dto.request.SignupRequest;
+import com.younghee.studycast.exception.SocialAccountLinkRequiredException;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,10 +24,19 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService{
-    
+
+    private static final String PURPOSE_SIGNUP_LINK = "SIGNUP_LINK";
+    private static final int CODE_EXPIRY_MINUTES = 5;
+    private static final int MAX_ATTEMPT_COUNT = 3;
+    private static final int RESEND_LIMIT_SECONDS = 60;
+    private static final SecureRandom secureRandom = new SecureRandom();
+
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
     private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationMapper emailVerificationMapper;
+    private final EmailService emailService;
+    private final EmailVerificationAttemptService emailVerificationAttemptService;
 
     @Override
     @Transactional
@@ -33,9 +48,22 @@ public class UserServiceImpl implements UserService{
         log.info("***회원가입 요청: email={}", request.getUserEmail());
         // 2. 이메일 중복 확인
         UserDTO existingUser = userMapper.findByEmail(request.getUserEmail());
-        // 예외처리: 이메일 중복은 DB 상태와 충돌
+
         if (existingUser != null) {
-            throw new IllegalStateException("이미 사용 중인 이메일입니다.");
+            boolean isSocialOnly = existingUser.getUserPassword() == null
+                && "ACTIVE".equals(existingUser.getUserStatus());
+
+            // 예외처리: 소셜 전용 계정이 아니면 이메일 중복은 DB 상태와 충돌
+            if (!isSocialOnly) {
+                throw new IllegalStateException("이미 사용 중인 이메일입니다.");
+            }
+
+            linkPasswordToSocialAccount(existingUser, request);
+
+            log.info("소셜 계정에 비밀번호 연결 완료: userUuid={}, email={}",
+                existingUser.getUserUuid(), existingUser.getUserEmail());
+
+            return 1;
         }
         // 3. UserDTO 생성
         UserDTO user = new UserDTO();
@@ -57,6 +85,142 @@ public class UserServiceImpl implements UserService{
         log.info("회원가입 성공: userUuid={}, email={}", user.getUserUuid(), user.getUserEmail());
 
         return result;
+    }
+
+    // 소셜 전용 계정에 이메일 인증된 비밀번호를 연결
+    private void linkPasswordToSocialAccount(UserDTO existingUser, SignupRequest request) {
+        String code = request.getVerificationCode();
+
+        if (code == null || code.isBlank()) {
+            throw new SocialAccountLinkRequiredException(
+                "이미 소셜 로그인으로 가입된 이메일입니다. 이메일 인증 후 비밀번호를 연결할 수 있습니다."
+            );
+        }
+
+        EmailVerificationDTO savedCode =
+            emailVerificationMapper.findLatestByEmailAndPurpose(request.getUserEmail(), PURPOSE_SIGNUP_LINK);
+
+        validateSavedCode(savedCode);
+
+        if (!savedCode.isVerified()) {
+            throw new IllegalStateException("이메일 인증을 다시 진행해주세요.");
+        }
+
+        if (!passwordEncoder.matches(code, savedCode.getVerificationCode())) {
+            emailVerificationAttemptService.increaseAttemptCount(savedCode.getVerificationNo());
+            throw new SecurityException("인증번호가 올바르지 않습니다.");
+        }
+
+        String encodedPassword = passwordEncoder.encode(request.getUserPassword());
+        userMapper.updatePassword(existingUser.getUserUuid(), encodedPassword);
+
+        emailVerificationMapper.markUsed(savedCode.getVerificationNo());
+    }
+
+    @Override
+    @Transactional
+    public void sendLinkCode(String userEmail) {
+        validateEmail(userEmail);
+
+        UserDTO user = userMapper.findByEmail(userEmail);
+
+        if (user == null || user.getUserPassword() != null) {
+            throw new NoSuchElementException("연결 가능한 소셜 계정이 없습니다.");
+        }
+
+        if (!"ACTIVE".equals(user.getUserStatus())) {
+            throw new IllegalStateException("사용할 수 없는 계정입니다.");
+        }
+
+        EmailVerificationDTO latestCode =
+            emailVerificationMapper.findLatestByEmailAndPurpose(userEmail, PURPOSE_SIGNUP_LINK);
+
+        if (latestCode != null &&
+            latestCode.getCreatedAt().plusSeconds(RESEND_LIMIT_SECONDS).isAfter(LocalDateTime.now())
+        ) {
+            throw new IllegalStateException("인증번호는 1분 후 다시 요청할 수 있습니다.");
+        }
+
+        emailVerificationMapper.markUnusedCodesAsUsed(user.getUserUuid(), PURPOSE_SIGNUP_LINK);
+
+        String rawCode = generateCode();
+        String encodedCode = passwordEncoder.encode(rawCode);
+
+        EmailVerificationDTO verification = new EmailVerificationDTO();
+        verification.setUserUuid(user.getUserUuid());
+        verification.setUserEmail(user.getUserEmail());
+        verification.setVerificationCode(encodedCode);
+        verification.setPurpose(PURPOSE_SIGNUP_LINK);
+        verification.setVerified(false);
+        verification.setUsed(false);
+        verification.setAttemptCount(0);
+        verification.setExpiryDate(LocalDateTime.now().plusMinutes(CODE_EXPIRY_MINUTES));
+
+        emailVerificationMapper.insert(verification);
+
+        emailService.sendSignupLinkCode(userEmail, rawCode);
+
+        log.info("계정 연결 인증번호 발송 완료: email={}", userEmail);
+    }
+
+    @Override
+    @Transactional
+    public void verifyLinkCode(String userEmail, String verificationCode) {
+        validateEmail(userEmail);
+        validateVerificationCode(verificationCode);
+
+        EmailVerificationDTO savedCode =
+            emailVerificationMapper.findLatestByEmailAndPurpose(userEmail, PURPOSE_SIGNUP_LINK);
+
+        validateSavedCode(savedCode);
+
+        if (savedCode.getAttemptCount() >= MAX_ATTEMPT_COUNT) {
+            throw new IllegalStateException("인증번호 입력 횟수를 초과했습니다.");
+        }
+
+        if (!passwordEncoder.matches(verificationCode, savedCode.getVerificationCode())) {
+            emailVerificationAttemptService.increaseAttemptCount(savedCode.getVerificationNo());
+            throw new SecurityException("인증번호가 올바르지 않습니다.");
+        }
+
+        emailVerificationMapper.markVerified(savedCode.getVerificationNo());
+
+        log.info("계정 연결 인증번호 확인 성공: email={}", userEmail);
+    }
+
+    private void validateSavedCode(EmailVerificationDTO savedCode) {
+        if (savedCode == null) {
+            throw new NoSuchElementException("인증번호가 존재하지 않습니다.");
+        }
+        if (savedCode.isUsed()) {
+            throw new IllegalStateException("이미 사용된 인증번호입니다.");
+        }
+        if (savedCode.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new IllegalStateException("인증번호가 만료되었습니다.");
+        }
+    }
+
+    private void validateVerificationCode(String verificationCode) {
+        if (verificationCode == null || verificationCode.isBlank()) {
+            throw new IllegalArgumentException("인증번호를 입력하세요.");
+        }
+        if (!verificationCode.matches("^\\d{6}$")) {
+            throw new IllegalArgumentException("인증번호는 6자리 숫자여야 합니다.");
+        }
+    }
+
+    private void validateEmail(String userEmail) {
+        if (userEmail == null || userEmail.isBlank()) {
+            throw new IllegalArgumentException("이메일을 입력하세요.");
+        }
+        if (!userEmail.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            throw new IllegalArgumentException("이메일 형식이 올바르지 않습니다.");
+        }
+    }
+
+    private String generateCode() {
+        int number = secureRandom.nextInt(1_000_000);
+        return String.format("%06d", number);
     }
 
     @Override

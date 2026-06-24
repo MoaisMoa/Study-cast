@@ -322,7 +322,7 @@ CREATE TABLE IF NOT EXISTS email_verifications (
         ON DELETE CASCADE,
     
     CONSTRAINT chk_email_verifications_purpose
-        CHECK (purpose IN ('PASSWORD_RESET')),
+        CHECK (purpose IN ('PASSWORD_RESET', 'SIGNUP_LINK')),
     
     CONSTRAINT chk_email_verifications_attempt_count
         CHECK (attempt_count >= 0)

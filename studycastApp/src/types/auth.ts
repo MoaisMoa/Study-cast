@@ -17,6 +17,7 @@ export interface SignupPayload {
   email: string;
   password: string;
   confirmPassword: string;
+  verificationCode?: string;
 }
 
 export interface FindPwPayload {
@@ -38,4 +39,5 @@ export interface ResetPwPayload {
 export interface AuthResult {
   ok: boolean;
   message?: string;
+  errorCode?: string;
 }
