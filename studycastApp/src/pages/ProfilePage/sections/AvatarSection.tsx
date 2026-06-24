@@ -6,16 +6,19 @@ export interface AvatarSectionProps {
   name: string;
   email: string;
   avatarUrl: string | null;
+  /** 비밀번호 등록 여부 (false면 소셜 전용 계정 — 버튼 문구가 "비밀번호 등록"으로 바뀜) */
+  hasPassword: boolean;
   onAvatarChange: (next: string | null) => void;
   onChangePasswordClick: () => void;
   isMobile: boolean;
 }
 
-/** 아바타 + 이름/이메일(읽기 전용) + 비밀번호 변경 버튼 */
+/** 아바타 + 이름/이메일(읽기 전용) + 비밀번호 변경/등록 버튼 */
 export function AvatarSection({
   name,
   email,
   avatarUrl,
+  hasPassword,
   onAvatarChange,
   onChangePasswordClick,
   isMobile,
@@ -158,7 +161,7 @@ export function AvatarSection({
           onMouseEnter={(e) => (e.currentTarget.style.borderColor = T.red)}
           onMouseLeave={(e) => (e.currentTarget.style.borderColor = T.border)}
         >
-          비밀번호 변경
+          {hasPassword ? "비밀번호 변경" : "비밀번호 등록"}
         </button>
       </div>
     </div>

@@ -49,4 +49,10 @@ public interface UserMapper {
 
     // 탈퇴 후 30일 경과한 회원 완전 삭제
     int deleteExpiredWithdrawnUsers();
+
+    // 이름 최초 1회 변경 (소셜 가입 계정 한정)
+    int updateNameOnce(
+        @Param("userUuid") UUID userUuid,
+        @Param("userName") String userName
+    );
 }

@@ -138,6 +138,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService{
         user.setUserEmail(email);
         user.setUserPassword(null);
         user.setUserName(resolveName(oAuthUserInfo, email));
+        // 소셜 제공자 닉네임이 자동 등록되므로 본인이 직접 고를 수 있도록 최초 1회 변경 허용
+        user.setNameChangeAvailable(true);
         user.setUserProfileImage(oAuthUserInfo.getProfileImage());
         user.setUserStatus("ACTIVE");
 

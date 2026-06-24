@@ -29,6 +29,8 @@ export const DAYS: string[] = Array.from({ length: 31 }, (_, i) =>
 export const PROFILE_READONLY: ProfileReadOnly = {
   name: "",
   email: "",
+  hasPassword: true,
+  nameChangeAvailable: false,
 };
 
 /** 프로필 초기값 — mock */

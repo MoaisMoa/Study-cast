@@ -117,6 +117,7 @@ public class UserServiceImpl implements UserService{
         emailVerificationMapper.markUsed(savedCode.getVerificationNo());
     }
 
+    // 소셜 전용 계정과 같은 이메일인 경우에만 인증번호 생성·발송 (1분 재발송 제한)
     @Override
     @Transactional
     public void sendLinkCode(String userEmail) {
@@ -163,6 +164,7 @@ public class UserServiceImpl implements UserService{
         log.info("계정 연결 인증번호 발송 완료: email={}", userEmail);
     }
 
+    // 인증번호 일치 여부만 확인 — 실제 비밀번호 연결은 signup() 재호출 시 처리
     @Override
     @Transactional
     public void verifyLinkCode(String userEmail, String verificationCode) {
@@ -186,6 +188,26 @@ public class UserServiceImpl implements UserService{
         emailVerificationMapper.markVerified(savedCode.getVerificationNo());
 
         log.info("계정 연결 인증번호 확인 성공: email={}", userEmail);
+    }
+
+    // 소셜 가입으로 자동 등록된 이름을 본인이 직접 고를 수 있도록 최초 1회만 변경 허용
+    @Override
+    @Transactional
+    public void changeNameOnce(UUID userUuid, String newName) {
+        if (newName == null || newName.isBlank()) {
+            throw new IllegalArgumentException("이름을 입력하세요.");
+        }
+        if (!newName.matches("^[가-힣]{2,5}$")) {
+            throw new IllegalArgumentException("한글 2~5자 이내로 입력해주세요.");
+        }
+
+        int result = userMapper.updateNameOnce(userUuid, newName);
+
+        if (result != 1) {
+            throw new IllegalStateException("이미 이름을 변경했거나 변경할 수 없는 계정입니다.");
+        }
+
+        log.info("이름 변경 성공(최초 1회): userUuid={}", userUuid);
     }
 
     private void validateSavedCode(EmailVerificationDTO savedCode) {

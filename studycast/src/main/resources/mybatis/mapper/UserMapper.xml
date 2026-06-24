@@ -8,6 +8,7 @@
         <result property="userEmail" column="user_email"/>
         <result property="userPassword" column="user_password"/>
         <result property="userName" column="user_name"/>
+        <result property="nameChangeAvailable" column="name_change_available"/>
         <result property="userProfileImage" column="user_profile_image"/>
         <result property="userGender" column="user_gender"/>
         <result property="userBirthDate" column="user_birth_date"/>
@@ -25,6 +26,7 @@
             user_email,
             user_password,
             user_name,
+            name_change_available,
             user_profile_image,
             user_gender,
             user_birth_date,
@@ -44,6 +46,7 @@
             user_email,
             user_password,
             user_name,
+            name_change_available,
             user_profile_image,
             user_gender,
             user_birth_date,
@@ -63,18 +66,30 @@
             user_email,
             user_password,
             user_name,
+            name_change_available,
             user_profile_image,
             user_status
-        ) 
+        )
         VALUES (
             #{userUuid},
             #{userEmail},
             #{userPassword},
             #{userName},
+            #{nameChangeAvailable},
             #{userProfileImage},
             COALESCE(#{userStatus}, 'ACTIVE')
         )
     </insert>
+
+    <!-- 이름 최초 1회 변경 (소셜 가입 계정에 한정, 이미 사용했으면 0건 영향) -->
+    <update id="updateNameOnce">
+        UPDATE users
+        SET
+            user_name = #{userName},
+            name_change_available = FALSE,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_uuid = #{userUuid} AND name_change_available = TRUE
+    </update>
 
     <!-- 사용자 상태 변경 (WITHDRAWN으로 바뀌는 시점에 탈퇴 일시 기록 — 30일 후 완전 삭제 기준일) -->
     <update id="updateUserStatus">

@@ -4,6 +4,7 @@ import type {
   ProfileDraft,
   ProfileReadOnly,
   ProfileServiceResult,
+  RegisterPasswordPayload,
   WithdrawPayload,
 } from "@/types/profile";
 
@@ -30,6 +31,8 @@ export async function fetchProfile(): Promise<{
     readonly: {
       name: data.userName,
       email: data.userEmail,
+      hasPassword: !!data.hasPassword,
+      nameChangeAvailable: !!data.nameChangeAvailable,
     },
     draft: {
       gender: data.userGender || "설정 안 함",
@@ -102,6 +105,58 @@ export async function changePassword(
     return {
       ok: false,
       message: error.response?.data?.message || "비밀번호 변경 처리 중 오류가 발생했습니다.",
+      errorCode: error.response?.data?.errorCode || "server_error",
+    };
+  }
+}
+
+/** 소셜 전용 계정 - 비밀번호 등록 */
+export async function registerPassword(
+  payload: RegisterPasswordPayload
+): Promise<ProfileServiceResult> {
+  try {
+    const response = await apiClient.post("/api/auth/register-password", {
+      newPassword: payload.next,
+    });
+
+    if (response.data && response.data.success) {
+      return { ok: true };
+    }
+
+    return {
+      ok: false,
+      message: response.data?.message || "비밀번호 등록에 실패했습니다.",
+      errorCode: response.data?.errorCode as any || "server_error",
+    };
+  } catch (error: any) {
+    return {
+      ok: false,
+      message: error.response?.data?.message || "비밀번호 등록 처리 중 오류가 발생했습니다.",
+      errorCode: error.response?.data?.errorCode || "server_error",
+    };
+  }
+}
+
+/** 소셜 가입 계정 - 이름 최초 1회 변경 */
+export async function changeName(name: string): Promise<ProfileServiceResult> {
+  try {
+    const response = await apiClient.patch("/api/auth/me/name", {
+      userName: name,
+    });
+
+    if (response.data && response.data.success) {
+      return { ok: true };
+    }
+
+    return {
+      ok: false,
+      message: response.data?.message || "이름 변경에 실패했습니다.",
+      errorCode: response.data?.errorCode as any || "server_error",
+    };
+  } catch (error: any) {
+    return {
+      ok: false,
+      message: error.response?.data?.message || "이름 변경 처리 중 오류가 발생했습니다.",
       errorCode: error.response?.data?.errorCode || "server_error",
     };
   }

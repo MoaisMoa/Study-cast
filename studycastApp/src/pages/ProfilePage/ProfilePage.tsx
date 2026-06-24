@@ -21,6 +21,7 @@ import { MottoField } from "./sections/MottoField";
 import { CategoryPicker } from "./sections/CategoryPicker";
 import { PasswordChangeModal } from "./sections/PasswordChangeModal";
 import { WithdrawModal } from "./sections/WithdrawModal";
+import { NameChangeModal } from "./sections/NameChangeModal";
 
 interface ProfileErrors {
   birth?: string;
@@ -34,7 +35,7 @@ export default function ProfilePage() {
   const ff = "'Noto Sans KR', sans-serif";
 
   // 읽기 전용 (회원가입 등록 정보)
-  const [readonly, setReadonly] = useState<ProfileReadOnly>({ name: "", email: "" });
+  const [readonly, setReadonly] = useState<ProfileReadOnly>({ name: "", email: "", hasPassword: true, nameChangeAvailable: false });
 
   // 저장된 상태(서버 기준값) + 편집 중인 draft 상태
   const [saved, setSaved] = useState<ProfileDraft>(INITIAL_PROFILE);
@@ -54,6 +55,9 @@ export default function ProfilePage() {
   // 회원 탈퇴 모달
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
+  // 이름 변경 모달 (소셜 가입 계정 최초 1회)
+  const [nameChangeOpen, setNameChangeOpen] = useState(false);
+
   useEffect(() => {
     if (authLoading || !isLoggedIn) return;
     let alive = true;
@@ -63,7 +67,9 @@ export default function ProfilePage() {
       if (!alive) return;
       setReadonly({
         name: res.readonly.name,
-        email: res.readonly.email
+        email: res.readonly.email,
+        hasPassword: res.readonly.hasPassword,
+        nameChangeAvailable: res.readonly.nameChangeAvailable
       });
       setSaved(res.draft);
       setDraft(res.draft);
@@ -176,6 +182,7 @@ export default function ProfilePage() {
           name={readonly.name}
           email={readonly.email}
           avatarUrl={draft.avatarUrl}
+          hasPassword={readonly.hasPassword}
           onAvatarChange={(v) => updateDraft("avatarUrl", v)}
           onChangePasswordClick={() => setPwOpen(true)}
           isMobile={isMobile}
@@ -201,7 +208,26 @@ export default function ProfilePage() {
               >
                 이름
               </div>
-              <span style={{ fontSize: 10, color: T.text3, background: T.surface2, padding: "2px 8px", borderRadius: 5 }}>변경 불가</span>
+              {readonly.nameChangeAvailable ? (
+                <button
+                  type="button"
+                  onClick={() => setNameChangeOpen(true)}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: T.red,
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  이름 변경 (최초 1회 가능)
+                </button>
+              ) : (
+                <span style={{ fontSize: 10, color: T.text3, background: T.surface2, padding: "2px 8px", borderRadius: 5 }}>변경 불가</span>
+              )}
             </div>
             <div
               style={{
@@ -337,15 +363,28 @@ export default function ProfilePage() {
 
       <PasswordChangeModal
         open={pwOpen}
+        mode={readonly.hasPassword ? "change" : "register"}
         onClose={() => setPwOpen(false)}
         onSuccess={() => {
           setPwOpen(false);
           setPwSavedOk(true);
+          if (!readonly.hasPassword) {
+            setReadonly((p) => ({ ...p, hasPassword: true }));
+          }
           window.setTimeout(() => setPwSavedOk(false), 2500);
         }}
       />
 
       <WithdrawModal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} />
+
+      <NameChangeModal
+        open={nameChangeOpen}
+        onClose={() => setNameChangeOpen(false)}
+        onSuccess={(newName) => {
+          setNameChangeOpen(false);
+          setReadonly((p) => ({ ...p, name: newName, nameChangeAvailable: false }));
+        }}
+      />
       {isMobile && <MobileTabBar />}
     </div>
   );

@@ -9,6 +9,10 @@ export type ProfileCategory = RoomCategory;
 export interface ProfileReadOnly {
   name: string;
   email: string;
+  /** 비밀번호 등록 여부 (false면 소셜 전용 계정) */
+  hasPassword: boolean;
+  /** 이름 변경 가능 여부 (소셜 가입 시 true, 1회 사용 후 false) */
+  nameChangeAvailable: boolean;
 }
 
 /** 프로필 페이지에서 편집 가능한 필드들 */
@@ -28,11 +32,15 @@ export interface ChangePasswordPayload {
   next: string;
 }
 
+export interface RegisterPasswordPayload {
+  next: string;
+}
+
 export interface WithdrawPayload {
   password: string;
 }
 
-export type ProfileErrorCode = "wrong_password" | "social_account" | "server_error";
+export type ProfileErrorCode = "wrong_password" | "social_account" | "already_has_password" | "name_change_unavailable" | "server_error";
 
 export interface ProfileServiceResult {
   ok: boolean;

@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS users (
     -- 소셜 전용 가입자 비밀번호X / 일반 로그인 비밀번호O
     user_password VARCHAR(255),
     user_name VARCHAR(255) NOT NULL,
+    -- 소셜 가입 시 제공자 닉네임이 자동 등록되므로 최초 1회 변경 허용 (일반 가입은 본인이 직접 입력해서 FALSE 유지)
+    name_change_available BOOLEAN NOT NULL DEFAULT FALSE,
     user_gender VARCHAR(50) NOT NULL DEFAULT '설정 안 함' CHECK (user_gender IN ('남자', '여자', '설정 안 함')),
     user_birth_date DATE,
     user_profile_image TEXT,

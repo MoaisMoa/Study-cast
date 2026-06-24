@@ -178,6 +178,23 @@ public class AuthController {
         return Map.of("success", true, "message", "프로필이 저장되었습니다.");
     }
 
+    // 소셜 가입 계정 - 이름 최초 1회 변경
+    @PatchMapping("/api/auth/me/name")
+    public Map<String, Object> changeName(
+        Authentication authentication,
+        @RequestBody Map<String, String> body
+    ) {
+        UUID userUuid = (UUID) authentication.getPrincipal();
+        String userName = body.get("userName");
+
+        try {
+            userService.changeNameOnce(userUuid, userName);
+            return Map.of("success", true, "message", "이름이 변경되었습니다.");
+        } catch (IllegalStateException e) {
+            return Map.of("success", false, "message", e.getMessage(), "errorCode", "name_change_unavailable");
+        }
+    }
+
     // 비밀번호 변경
     @PostMapping("/api/auth/change-password")
     public Map<String, Object> changePassword(
@@ -199,6 +216,27 @@ public class AuthController {
             return Map.of("success", false, "message", e.getMessage(), "errorCode", "wrong_password");
         } catch (IllegalStateException e) {
             return Map.of("success", false, "message", e.getMessage(), "errorCode", "social_account");
+        }
+    }
+
+    // 소셜 전용 계정 - 비밀번호 등록
+    @PostMapping("/api/auth/register-password")
+    public Map<String, Object> registerPassword(
+        Authentication authentication,
+        @RequestBody Map<String, String> body
+    ) {
+        UUID userUuid = (UUID) authentication.getPrincipal();
+        String newPassword = body.get("newPassword");
+
+        if (newPassword == null || newPassword.isBlank()) {
+            return Map.of("success", false, "message", "비밀번호를 입력해 주세요.");
+        }
+
+        try {
+            authService.registerPassword(userUuid, newPassword);
+            return Map.of("success", true, "message", "비밀번호가 등록되었습니다.");
+        } catch (IllegalStateException e) {
+            return Map.of("success", false, "message", e.getMessage(), "errorCode", "already_has_password");
         }
     }
 

@@ -3,7 +3,7 @@ import type { PasswordChangeForm, PasswordFieldKey } from "@/types/profile";
 import { useT } from "@/theme";
 import { Dialog } from "@/components/ui/Modal";
 import { PwStrengthBar } from "@/components/ui/PwStrengthBar";
-import { changePassword } from "@/services/profileService";
+import { changePassword, registerPassword } from "@/services/profileService";
 import { EyeButton } from "../components/EyeButton";
 
 const EMPTY_FORM: PasswordChangeForm = { current: "", next: "", confirm: "" };
@@ -32,12 +32,15 @@ export interface PasswordChangeModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  /** "register"면 소셜 전용 계정에 비밀번호를 처음 등록하는 모드 — 현재 비밀번호 입력 없음 */
+  mode?: "change" | "register";
 }
 
 export function PasswordChangeModal({
   open,
   onClose,
   onSuccess,
+  mode = "change",
 }: PasswordChangeModalProps) {
   const T = useT();
   const ff = "'Noto Sans KR', sans-serif";
@@ -65,7 +68,7 @@ export function PasswordChangeModal({
 
   function validateAll(): Partial<Record<PasswordFieldKey, string>> {
     const e: Partial<Record<PasswordFieldKey, string>> = {};
-    if (!pw.current) e.current = "현재 비밀번호를 입력해 주세요.";
+    if (mode === "change" && !pw.current) e.current = "현재 비밀번호를 입력해 주세요.";
     if (!pw.next) e.next = "새 비밀번호를 입력해 주세요.";
     else {
       const msg = validateNextField(pw.next, pw.current);
@@ -85,7 +88,10 @@ export function PasswordChangeModal({
     setLoading(true);
     setApiError("");
     try {
-      const result = await changePassword({ current: pw.current, next: pw.next });
+      const result =
+        mode === "register"
+          ? await registerPassword({ next: pw.next })
+          : await changePassword({ current: pw.current, next: pw.next });
       if (!result.ok) {
         if (result.errorCode === "wrong_password") {
           setErrors((p) => ({
@@ -93,14 +99,23 @@ export function PasswordChangeModal({
             current: result.message ?? "현재 비밀번호가 일치하지 않습니다.",
           }));
         } else {
-          setApiError(result.message ?? "비밀번호 변경 처리 중 오류가 발생했습니다.");
+          setApiError(
+            result.message ??
+              (mode === "register"
+                ? "비밀번호 등록 처리 중 오류가 발생했습니다."
+                : "비밀번호 변경 처리 중 오류가 발생했습니다.")
+          );
         }
         return;
       }
       reset();
       onSuccess();
     } catch {
-      setApiError("비밀번호 변경 처리 중 오류가 발생했습니다.");
+      setApiError(
+        mode === "register"
+          ? "비밀번호 등록 처리 중 오류가 발생했습니다."
+          : "비밀번호 변경 처리 중 오류가 발생했습니다."
+      );
     } finally {
       setLoading(false);
     }
@@ -143,10 +158,11 @@ export function PasswordChangeModal({
             marginBottom: 20,
           }}
         >
-          비밀번호 변경
+          {mode === "register" ? "비밀번호 등록" : "비밀번호 변경"}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* 현재 비밀번호 */}
+          {/* 현재 비밀번호 — 소셜 전용 계정 최초 등록 시에는 없음 */}
+          {mode === "change" && (
           <div>
             <div style={{ fontSize: 13, color: T.text2, marginBottom: 6 }}>
               현재 비밀번호
@@ -172,6 +188,7 @@ export function PasswordChangeModal({
               </div>
             )}
           </div>
+          )}
 
           {/* 새 비밀번호 */}
           <div>
@@ -303,7 +320,9 @@ export function PasswordChangeModal({
               transition: "opacity 0.15s",
             }}
           >
-            {loading ? "변경 중..." : "변경 완료"}
+            {loading
+              ? mode === "register" ? "등록 중..." : "변경 중..."
+              : mode === "register" ? "등록 완료" : "변경 완료"}
           </button>
         </div>
       </div>

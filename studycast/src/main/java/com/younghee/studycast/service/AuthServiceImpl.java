@@ -166,7 +166,8 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalStateException("사용할 수 없는 계정입니다.");
         }
 
-        // 비밀번호는 응답에 포함되면 안되므로 제거
+        // 비밀번호 등록 여부를 프론트에 알려준 뒤, 실제 비밀번호는 응답에 포함되면 안되므로 제거
+        user.setHasPassword(user.getUserPassword() != null && !user.getUserPassword().isBlank());
         user.setUserPassword(null);
 
         // 관심 카테고리 — users 테이블에는 없어서 별도 조회 후 채워줌
@@ -205,6 +206,24 @@ public class AuthServiceImpl implements AuthService {
         }
         userMapper.updatePassword(userUuid, passwordEncoder.encode(newPassword));
         log.info("비밀번호 변경 성공: userUuid={}", userUuid);
+    }
+
+    // 소셜 전용 계정에 비밀번호를 처음 등록 — 이미 로그인된 세션이 본인 확인 수단이라 현재 비밀번호 확인이 필요 없음
+    @Override
+    @Transactional
+    public void registerPassword(UUID userUuid, String newPassword) {
+        UserDTO user = userMapper.findByUuid(userUuid);
+        if (user == null || !"ACTIVE".equals(user.getUserStatus())) {
+            throw new NoSuchElementException("사용자를 찾을 수 없습니다.");
+        }
+        if (user.getUserPassword() != null && !user.getUserPassword().isBlank()) {
+            throw new IllegalStateException("이미 비밀번호가 등록된 계정입니다.");
+        }
+        if (newPassword == null || !newPassword.matches("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()]).{8,16}$")) {
+            throw new IllegalArgumentException("비밀번호는 영문자, 숫자, 특수문자를 포함한 8~16자리여야 합니다.");
+        }
+        userMapper.updatePassword(userUuid, passwordEncoder.encode(newPassword));
+        log.info("비밀번호 등록 성공(소셜 계정에 연결): userUuid={}", userUuid);
     }
 
     @Override

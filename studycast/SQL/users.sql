@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
     -- 소셜 전용 가입자 비밀번호X / 일반 로그인 비밀번호O
     user_password VARCHAR(255),
     user_name VARCHAR(255) NOT NULL,
+    name_change_available BOOLEAN NOT NULL DEFAULT FALSE,
     user_gender VARCHAR(50) NOT NULL DEFAULT '설정 안 함' CHECK (user_gender IN ('남자', '여자', '설정 안 함')),
     user_birth_date DATE,
     user_profile_image TEXT,
@@ -17,6 +18,7 @@ COMMENT ON COLUMN users.user_uuid IS '회원 식별 번호';
 COMMENT ON COLUMN users.user_email IS '회원 이메일';
 COMMENT ON COLUMN users.user_password IS '회원 비밀번호';
 COMMENT ON COLUMN users.user_name IS '회원 이름';
+COMMENT ON COLUMN users.name_change_available IS '이름 변경 가능 여부 (소셜 가입 시 true, 1회 사용 후 false)';
 COMMENT ON COLUMN users.user_gender IS '회원 성별 (남성, 여성, 선택안함)';
 COMMENT ON COLUMN users.user_birth_date IS '회원 생년월일';
 COMMENT ON COLUMN users.user_profile_image IS '회원 프로필 이미지 URL';
