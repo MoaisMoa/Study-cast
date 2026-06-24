@@ -76,14 +76,22 @@
         )
     </insert>
 
-    <!-- 사용자 상태 변경 -->
+    <!-- 사용자 상태 변경 (WITHDRAWN으로 바뀌는 시점에 탈퇴 일시 기록 — 30일 후 완전 삭제 기준일) -->
     <update id="updateUserStatus">
         UPDATE users
         SET
             user_status = #{userStatus},
+            deleted_at = CASE WHEN #{userStatus} = 'WITHDRAWN' THEN CURRENT_TIMESTAMP ELSE deleted_at END,
             updated_at = CURRENT_TIMESTAMP
         WHERE user_uuid = #{userUuid}
     </update>
+
+    <!-- 탈퇴 후 30일 경과한 회원 완전 삭제 -->
+    <delete id="deleteExpiredWithdrawnUsers">
+        DELETE FROM users
+        WHERE user_status = 'WITHDRAWN'
+          AND deleted_at &lt; NOW() - INTERVAL '30 days'
+    </delete>
 
     <!-- 프로필 정보 업데이트 -->
     <update id="updateProfile" parameterType="UserDTO">

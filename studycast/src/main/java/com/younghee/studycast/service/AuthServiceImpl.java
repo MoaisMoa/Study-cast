@@ -169,6 +169,9 @@ public class AuthServiceImpl implements AuthService {
         // 비밀번호는 응답에 포함되면 안되므로 제거
         user.setUserPassword(null);
 
+        // 관심 카테고리 — users 테이블에는 없어서 별도 조회 후 채워줌
+        user.setCategories(userMapper.selectCategoryNamesByUserUuid(userUuid));
+
         return user;
     }
 
@@ -185,6 +188,42 @@ public class AuthServiceImpl implements AuthService {
         token.setRevoked(false);
 
         refreshTokenMapper.insert(token);
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(UUID userUuid, String currentPassword, String newPassword) {
+        UserDTO user = userMapper.findByUuid(userUuid);
+        if (user == null || !"ACTIVE".equals(user.getUserStatus())) {
+            throw new NoSuchElementException("사용자를 찾을 수 없습니다.");
+        }
+        if (user.getUserPassword() == null || user.getUserPassword().isBlank()) {
+            throw new IllegalStateException("소셜 로그인 계정은 비밀번호를 변경할 수 없습니다.");
+        }
+        if (!passwordEncoder.matches(currentPassword, user.getUserPassword())) {
+            throw new SecurityException("현재 비밀번호가 일치하지 않습니다.");
+        }
+        userMapper.updatePassword(userUuid, passwordEncoder.encode(newPassword));
+        log.info("비밀번호 변경 성공: userUuid={}", userUuid);
+    }
+
+    @Override
+    @Transactional
+    public void withdraw(UUID userUuid, String password) {
+        if (password == null || password.isBlank()) {
+            throw new IllegalArgumentException("비밀번호를 입력해 주세요.");
+        }
+
+        UserDTO user = userMapper.findByUuid(userUuid);
+        if (user == null) {
+            throw new NoSuchElementException("사용자를 찾을 수 없습니다.");
+        }
+        if (!passwordEncoder.matches(password, user.getUserPassword())) {
+            throw new SecurityException("현재 비밀번호가 일치하지 않습니다.");
+        }
+
+        userMapper.updateUserStatus(userUuid, "WITHDRAWN");
+        log.info("회원 탈퇴 처리 완료: userUuid={}", userUuid);
     }
 
     private void validateLogin(UserDTO request) {

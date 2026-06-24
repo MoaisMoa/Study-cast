@@ -30,7 +30,7 @@ interface ProfileErrors {
 export default function ProfilePage() {
   const T = useT();
   const isMobile = useIsMobile();
-  const { isLoggedIn, isLoading: authLoading } = useAuth();
+  const { isLoggedIn, isLoading: authLoading, refreshUser } = useAuth();
   const ff = "'Noto Sans KR', sans-serif";
 
   // 읽기 전용 (회원가입 등록 정보)
@@ -126,6 +126,8 @@ export default function ProfilePage() {
       setErrors({});
       setSavedOk(true);
       window.setTimeout(() => setSavedOk(false), 2500);
+      // 헤더 등 전역에서 쓰는 user(프로필 사진/이름)도 같이 갱신
+      refreshUser();
     } catch {
       setSaveApiError("프로필 저장 중 오류가 발생했습니다.");
     } finally {
@@ -184,13 +186,22 @@ export default function ProfilePage() {
           <div>
             <div
               style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: T.text,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
                 marginBottom: 8,
               }}
             >
-              이름
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: T.text,
+                }}
+              >
+                이름
+              </div>
+              <span style={{ fontSize: 10, color: T.text3, background: T.surface2, padding: "2px 8px", borderRadius: 5 }}>변경 불가</span>
             </div>
             <div
               style={{
@@ -199,7 +210,7 @@ export default function ProfilePage() {
                 border: `1px solid ${T.border}`,
                 borderRadius: 8,
                 fontSize: 15,
-                background: T.bg,
+                background: T.surface2,
                 color: T.text,
                 display: "flex",
                 alignItems: "center",

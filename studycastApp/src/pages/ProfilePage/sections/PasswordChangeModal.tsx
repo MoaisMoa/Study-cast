@@ -87,7 +87,7 @@ export function PasswordChangeModal({
     try {
       const result = await changePassword({ current: pw.current, next: pw.next });
       if (!result.ok) {
-        if (result.errorCode === "pw_mismatch") {
+        if (result.errorCode === "wrong_password") {
           setErrors((p) => ({
             ...p,
             current: result.message ?? "현재 비밀번호가 일치하지 않습니다.",

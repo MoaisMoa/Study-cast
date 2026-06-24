@@ -46,4 +46,7 @@ public interface UserMapper {
 
     // 관심 카테고리 추가
     int insertUserInterest(@Param("userUuid") UUID userUuid, @Param("categoryName") String categoryName);
+
+    // 탈퇴 후 30일 경과한 회원 완전 삭제
+    int deleteExpiredWithdrawnUsers();
 }

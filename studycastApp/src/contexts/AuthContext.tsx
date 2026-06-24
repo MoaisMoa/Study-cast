@@ -11,6 +11,8 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (u: AuthUser) => void;
   logout: () => void;
+  /** 프로필 수정 등으로 서버의 사용자 정보가 바뀐 뒤, user를 다시 불러와 헤더 등 전역 표시를 갱신 */
+  refreshUser: () => Promise<void>;
 }
 
 const AuthCtx = createContext<AuthContextValue | null>(null);
@@ -98,8 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         broadcastAuthChange();
       },
+      refreshUser: () => refreshAuth(false),
     }),
-    [user, isLoading]
+    [user, isLoading, refreshAuth]
   );
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }

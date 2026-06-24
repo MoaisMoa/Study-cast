@@ -4,6 +4,7 @@ import { useT } from "@/theme";
 import { Dialog } from "@/components/ui/Modal";
 import { useAuth } from "@/contexts/AuthContext";
 import { withdraw } from "@/services/profileService";
+import { forceLeaveActiveRoom } from "@/utils/roomSession";
 import { EyeButton } from "../components/EyeButton";
 
 export interface WithdrawModalProps {
@@ -44,14 +45,15 @@ export function WithdrawModal({ open, onClose }: WithdrawModalProps) {
     try {
       const result = await withdraw({ password: pw });
       if (!result.ok) {
-        if (result.errorCode === "pw_mismatch") {
+        if (result.errorCode === "wrong_password") {
           setError(result.message ?? "현재 비밀번호가 일치하지 않습니다.");
         } else {
           setError(result.message ?? "탈퇴 처리 중 오류가 발생했습니다.");
         }
         return;
       }
-      // 성공: 로그아웃 후 로그인 페이지로 이동
+      // 성공: 접속 중인 스터디룸이 있으면 자동으로 나가기 처리 후 로그아웃 + 로그인 페이지로 이동
+      forceLeaveActiveRoom();
       reset();
       onClose();
       logout();

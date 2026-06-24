@@ -32,7 +32,7 @@ export interface WithdrawPayload {
   password: string;
 }
 
-export type ProfileErrorCode = "pw_mismatch" | "server_error";
+export type ProfileErrorCode = "wrong_password" | "social_account" | "server_error";
 
 export interface ProfileServiceResult {
   ok: boolean;
