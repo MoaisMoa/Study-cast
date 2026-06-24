@@ -210,6 +210,22 @@ public class UserServiceImpl implements UserService{
         log.info("이름 변경 성공(최초 1회): userUuid={}", userUuid);
     }
 
+    // 회원가입 폼에서 실시간 이메일 중복 확인 — signup()이 실제로 차단하는 경우(소셜 전용 계정은 연결 가능하므로 제외)와 동일한 기준
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isEmailTaken(String userEmail) {
+        if (userEmail == null || userEmail.isBlank()) {
+            return false;
+        }
+        UserDTO existingUser = userMapper.findByEmail(userEmail);
+        if (existingUser == null) {
+            return false;
+        }
+        boolean isSocialOnly = existingUser.getUserPassword() == null
+            && "ACTIVE".equals(existingUser.getUserStatus());
+        return !isSocialOnly;
+    }
+
     private void validateSavedCode(EmailVerificationDTO savedCode) {
         if (savedCode == null) {
             throw new NoSuchElementException("인증번호가 존재하지 않습니다.");

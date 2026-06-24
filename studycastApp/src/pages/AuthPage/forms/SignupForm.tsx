@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { AuthNavigate } from "@/types";
 import { useAT } from "@/theme";
 import { Field } from "@/components/ui/Field";
@@ -28,12 +28,22 @@ export function SignupForm({ onNavigate }: SignupFormProps) {
   const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const emailCheckTimer = useRef<number | null>(null);
 
   function validateEmail(v: string): string {
     if (!v) return "";
     if (!isEmail(v)) return "올바른 이메일 형식을 입력해주세요.";
-    if (isEmailTaken(v)) return "이미 가입된 이메일입니다.";
     return "";
+  }
+
+  // 형식이 유효한 이메일만 디바운스 후 실시간 중복 확인 (최종 차단은 어차피 회원가입 API에서 처리)
+  function scheduleEmailDupCheck(v: string) {
+    if (emailCheckTimer.current) window.clearTimeout(emailCheckTimer.current);
+    if (!v || !isEmail(v)) return;
+    emailCheckTimer.current = window.setTimeout(async () => {
+      const taken = await isEmailTaken(v);
+      if (taken) setErrors((p) => ({ ...p, email: "이미 가입된 이메일입니다." }));
+    }, 500);
   }
   function validatePw(v: string): string {
     if (!v) return "";
@@ -121,6 +131,7 @@ export function SignupForm({ onNavigate }: SignupFormProps) {
         onChange={(v) => {
           setEmail(v);
           setErrors((p) => ({ ...p, email: validateEmail(v) }));
+          scheduleEmailDupCheck(v);
         }}
         error={errors.email}
       />

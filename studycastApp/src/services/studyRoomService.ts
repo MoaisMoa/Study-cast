@@ -138,7 +138,8 @@ export async function updateRoom(
   if (image) formData.append("image", image);
   const res = await apiClient.patch<{ roomNo: number; roomThumbnail: string | null }>(
     `/api/rooms/${roomId}/settings`,
-    formData
+    formData,
+    { timeout: 30000 } // 이미지 업로드는 일반 요청보다 오래 걸릴 수 있어 타임아웃을 길게 지정
   );
   return { thumbnail: res.data.roomThumbnail ?? null };
 }

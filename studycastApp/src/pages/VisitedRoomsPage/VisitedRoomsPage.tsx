@@ -45,6 +45,7 @@ export default function VisitedRoomsPage() {
 
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
   const [modalRoom, setModalRoom] = useState<VisitedRoom | null>(null);
 
   useEffect(() => {
@@ -93,6 +94,7 @@ export default function VisitedRoomsPage() {
   const loadMore = async () => {
     if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
+    setLoadMoreError(false);
     try {
       if (tab === "recent") {
         const result = await fetchRecentVisitedRooms(recentPage + 1, PAGE);
@@ -106,7 +108,8 @@ export default function VisitedRoomsPage() {
         setFrequentLast(result.last);
       }
     } catch {
-      // 기존 데이터 유지
+      // 기존 데이터 유지, 에러만 안내
+      setLoadMoreError(true);
     } finally {
       setIsLoadingMore(false);
     }
@@ -182,7 +185,7 @@ export default function VisitedRoomsPage() {
 
             <FilterRow
               tab={tab}
-              onTabChange={(t) => { setTab(t); setCatFilter([]); setStatusFilter("전체"); }}
+              onTabChange={(t) => { setTab(t); setCatFilter([]); setStatusFilter("전체"); setLoadMoreError(false); }}
               catFilter={catFilter}
               setCatFilter={setCatFilter}
               statusFilter={statusFilter}
@@ -232,7 +235,10 @@ export default function VisitedRoomsPage() {
                   >
                     {isLoadingMore ? "불러오는 중..." : "더 많은 스터디 보기"}
                   </button>
-                  {!hasMore && (
+                  {loadMoreError && (
+                    <div style={{ marginTop: 10, fontSize: 12, color: T.red }}>목록을 불러오지 못했습니다. 다시 시도해주세요.</div>
+                  )}
+                  {!hasMore && !loadMoreError && (
                     <div style={{ marginTop: 10, fontSize: 12, color: T.text3 }}>모든 항목을 불러왔습니다.</div>
                   )}
                 </div>

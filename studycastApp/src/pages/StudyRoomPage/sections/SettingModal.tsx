@@ -280,8 +280,8 @@ export function SettingModal(props: SettingModalProps) {
             <div style={{ background: T.redLight, border: `1px solid ${T.dark ? "rgba(229,57,53,.4)" : "#FFCDD2"}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: T.red, fontWeight: 500, textAlign: "center" }}>⚠️ {errMsg}</div>
           )}
           {isHost
-            ? <button onClick={handleSave} disabled={saving} style={{ width: "100%", padding: "11px 0", borderRadius: 9, border: "none", background: T.red, color: "#fff", fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1, fontFamily: "inherit" }}>
-                {saving ? "저장 중..." : "저장"}
+            ? <button onClick={handleSave} disabled={saving || saveStatus === "success"} style={{ width: "100%", padding: "11px 0", borderRadius: 9, border: "none", background: T.red, color: "#fff", fontSize: 14, fontWeight: 600, cursor: saving || saveStatus === "success" ? "not-allowed" : "pointer", opacity: saving || saveStatus === "success" ? 0.7 : 1, fontFamily: "inherit" }}>
+                {saving ? "저장 중..." : saveStatus === "success" ? "저장 완료" : "저장"}
               </button>
             : <div style={{ fontSize: 12, color: T.text3, textAlign: "center", padding: "4px 0" }}>설정 변경은 HOST만 가능합니다.</div>}
         </div>

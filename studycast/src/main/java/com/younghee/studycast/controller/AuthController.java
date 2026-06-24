@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.younghee.studycast.dto.response.AuthResponse;
@@ -51,6 +52,13 @@ public class AuthController {
         } catch (SocialAccountLinkRequiredException e) {
             return Map.of("success", false, "message", e.getMessage(), "errorCode", "social_account_exists");
         }
+    }
+
+    // 회원가입 폼에서 실시간 이메일 중복 확인
+    @GetMapping("/api/auth/check-email")
+    public Map<String, Object> checkEmail(@RequestParam("email") String email) {
+        boolean taken = userService.isEmailTaken(email);
+        return Map.of("taken", taken);
     }
 
     // 소셜 전용 계정 - 비밀번호 연결용 인증번호 발송

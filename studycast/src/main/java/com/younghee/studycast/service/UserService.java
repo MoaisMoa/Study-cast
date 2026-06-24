@@ -16,4 +16,6 @@ public interface UserService {
     void verifyLinkCode(String userEmail, String verificationCode);
     // 소셜 가입 계정 - 이름 최초 1회 변경
     void changeNameOnce(UUID userUuid, String newName);
+    // 회원가입 폼에서 실시간 이메일 중복 확인 — signup()의 차단 조건과 동일한 기준
+    boolean isEmailTaken(String userEmail);
 }

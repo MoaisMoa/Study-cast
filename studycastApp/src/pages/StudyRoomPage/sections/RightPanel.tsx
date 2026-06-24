@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { ChatMessage, RoomMember, TimerState } from "@/types/studyRoom";
 import { useT } from "@/theme";
 import { fmtT } from "@/data/studyRoom";
@@ -40,6 +40,9 @@ export function RightPanel(props: RightPanelProps) {
   } = props;
   const T = useT();
   const chatRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }, [msgs]);
   const c2 = T.text2;
   const c3 = T.text3;
   const greenBg = T.dark ? "rgba(76,175,80,.16)" : "#E8F5E9";

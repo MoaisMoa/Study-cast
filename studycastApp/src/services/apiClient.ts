@@ -46,6 +46,9 @@ export const API_BASE_URL = "http://localhost:8080";
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
+  // 서버가 응답을 영원히 안 주는 경우(좀비 커넥션 등) 무한 로딩에 빠지지 않도록 기본 타임아웃 설정
+  // 파일 업로드처럼 오래 걸리는 요청은 호출하는 쪽에서 timeout을 더 길게 개별 지정
+  timeout: 10000,
 });
 
 /** 세션 저장소 초기화 — 토큰은 쿠키로 관리되므로 사용자 정보만 삭제 */

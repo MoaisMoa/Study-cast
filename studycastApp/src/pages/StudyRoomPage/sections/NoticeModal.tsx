@@ -4,7 +4,8 @@ import { XIc, BellIc } from "../components/RoomIcons";
 
 export interface NoticeModalProps {
   onClose: () => void;
-  onNoticePost: (msg: string | null) => void;
+  /** 성공하면 true, 저장/삭제 실패 시 false를 반환 */
+  onNoticePost: (msg: string | null) => Promise<boolean>;
   noticeMsg: string | null;
   isHost: boolean;
 }
@@ -14,21 +15,31 @@ export function NoticeModal({ onClose, onNoticePost, noticeMsg, isHost }: Notice
   const [editMode, setEditMode] = useState(!noticeMsg && isHost);
   const [draft, setDraft] = useState(noticeMsg ?? "");
   const [confirmDel, setConfirmDel] = useState(false);
+  const [error, setError] = useState("");
+  const [posting, setPosting] = useState(false);
 
   const greenBg = T.dark ? "rgba(76,175,80,.14)" : "#E8F5E9";
   const greenBorder = T.dark ? "rgba(76,175,80,.4)" : "#A5D6A7";
   const greenText = "#2e7d32";
   const noticeText = T.dark ? "#A5D6A7" : "#1B5E20";
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!draft.trim()) return;
-    onNoticePost(draft.trim());
-    setEditMode(false);
+    setPosting(true);
+    setError("");
+    const ok = await onNoticePost(draft.trim());
+    setPosting(false);
+    if (ok) setEditMode(false);
+    else setError("공지 저장에 실패했습니다. 다시 시도해주세요.");
   };
-  const handleDelete = () => {
-    onNoticePost(null);
+  const handleDelete = async () => {
+    setPosting(true);
+    setError("");
+    const ok = await onNoticePost(null);
+    setPosting(false);
     setConfirmDel(false);
-    onClose();
+    if (ok) onClose();
+    else setError("공지 삭제에 실패했습니다. 다시 시도해주세요.");
   };
 
   return (
@@ -75,12 +86,15 @@ export function NoticeModal({ onClose, onNoticePost, noticeMsg, isHost }: Notice
                         style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: `1px solid ${T.border}`, background: T.surface, color: T.text2, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                         취소
                       </button>
-                      <button onClick={handleDelete}
-                        style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: "none", background: T.red, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                      <button onClick={handleDelete} disabled={posting}
+                        style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: "none", background: T.red, color: "#fff", fontSize: 12, fontWeight: 600, cursor: posting ? "not-allowed" : "pointer", opacity: posting ? 0.7 : 1, fontFamily: "inherit" }}>
                         삭제 확인
                       </button>
                     </div>
                   </div>
+                )}
+                {error && !editMode && (
+                  <div style={{ fontSize: 12, color: T.red }}>{error}</div>
                 )}
               </>
             ) : (
@@ -102,14 +116,17 @@ export function NoticeModal({ onClose, onNoticePost, noticeMsg, isHost }: Notice
                   onFocus={(e) => { e.target.style.borderColor = T.red; }}
                   onBlur={(e) => { e.target.style.borderColor = T.border; }} />
               </div>
+              {error && (
+                <div style={{ fontSize: 12, color: T.red }}>{error}</div>
+              )}
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => { if (noticeMsg) setEditMode(false); else onClose(); }}
-                  style={{ flex: 1, padding: "11px 0", borderRadius: 9, border: `1px solid ${T.border}`, background: "none", color: T.text2, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                <button onClick={() => { if (noticeMsg) setEditMode(false); else onClose(); }} disabled={posting}
+                  style={{ flex: 1, padding: "11px 0", borderRadius: 9, border: `1px solid ${T.border}`, background: "none", color: T.text2, fontSize: 14, fontWeight: 600, cursor: posting ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
                   취소
                 </button>
-                <button onClick={handleSave} disabled={!draft.trim()}
-                  style={{ flex: 1, padding: "11px 0", borderRadius: 9, border: "none", background: draft.trim() ? T.red : T.surface2, color: draft.trim() ? "#fff" : T.text3, fontSize: 14, fontWeight: 600, cursor: draft.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-                  저장
+                <button onClick={handleSave} disabled={!draft.trim() || posting}
+                  style={{ flex: 1, padding: "11px 0", borderRadius: 9, border: "none", background: draft.trim() ? T.red : T.surface2, color: draft.trim() ? "#fff" : T.text3, fontSize: 14, fontWeight: 600, cursor: draft.trim() && !posting ? "pointer" : "not-allowed", opacity: posting ? 0.7 : 1, fontFamily: "inherit" }}>
+                  {posting ? "저장 중..." : "저장"}
                 </button>
               </div>
             </>

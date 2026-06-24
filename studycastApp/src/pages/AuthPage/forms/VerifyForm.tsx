@@ -22,6 +22,7 @@ export function VerifyForm({ email, onNavigate }: VerifyFormProps) {
   const [canResend, setCanResend] = useState(false);
   const [resendCount, setResendCount] = useState(0);
   const [verifyCount, setVerifyCount] = useState(0);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     if (secs <= 0) {
@@ -41,6 +42,7 @@ export function VerifyForm({ email, onNavigate }: VerifyFormProps) {
   const ss = String(secs % 60).padStart(2, "0");
 
   async function handleVerify() {
+    if (verifying) return;
     if (!code) { setError("인증번호를 입력해주세요."); return; }
     if (secs <= 0) { setError("인증번호 입력 시간이 만료되었습니다."); return; }
     if (verifyCount >= MAX_VERIFY) {
@@ -49,15 +51,20 @@ export function VerifyForm({ email, onNavigate }: VerifyFormProps) {
     }
     if (code.length < 6) { setError("인증번호 6자리를 입력해주세요."); return; }
 
-    const result = await verifyResetCode({ email, code });
-    if (!result.ok) {
-      const next = verifyCount + 1;
-      setVerifyCount(next);
-      if (next >= MAX_VERIFY) setError("인증 시도 3회를 초과했습니다. 인증번호를 다시 발급받아주세요.");
-      else setError(result.message ?? "인증번호가 올바르지 않습니다.");
-      return;
+    setVerifying(true);
+    try {
+      const result = await verifyResetCode({ email, code });
+      if (!result.ok) {
+        const next = verifyCount + 1;
+        setVerifyCount(next);
+        if (next >= MAX_VERIFY) setError("인증 시도 3회를 초과했습니다. 인증번호를 다시 발급받아주세요.");
+        else setError(result.message ?? "인증번호가 올바르지 않습니다.");
+        return;
+      }
+      onNavigate("reset", { email, verificationCode: code });
+    } finally {
+      setVerifying(false);
     }
-    onNavigate("reset", { email, verificationCode: code });
   }
 
   async function handleResend() {
@@ -170,8 +177,8 @@ export function VerifyForm({ email, onNavigate }: VerifyFormProps) {
         </span>
       </div>
 
-      <PrimaryButton onClick={handleVerify} disabled={verifyCount >= MAX_VERIFY || secs <= 0}>
-        확인
+      <PrimaryButton onClick={handleVerify} disabled={verifying || verifyCount >= MAX_VERIFY || secs <= 0}>
+        {verifying ? "확인 중..." : "확인"}
       </PrimaryButton>
       <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: T.textM }}>
         <span onClick={() => onNavigate("find-pw")} style={{ color: T.red, cursor: "pointer" }}>

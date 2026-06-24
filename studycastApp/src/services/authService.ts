@@ -145,10 +145,16 @@ export async function verifySignupLinkCode(payload: VerifyCodePayload): Promise<
   }
 }
 
-/** 이메일 중복 여부 */
-export function isEmailTaken(_email: string): boolean {
-  // 실제 중복 검사는 회원가입 API에서 처리하므로, 화면 즉시 검사용으로 일단 false 처리
-  return false;
+/** 이메일 중복 여부 — 회원가입 폼에서 실시간 안내용 (최종 차단은 회원가입 API에서 처리) */
+export async function isEmailTaken(email: string): Promise<boolean> {
+  try {
+    const res = await apiClient.get<{ taken: boolean }>("/api/auth/check-email", {
+      params: { email },
+    });
+    return res.data.taken;
+  } catch {
+    return false;
+  }
 }
 
 /** 인증 사용자 정보 조회 */

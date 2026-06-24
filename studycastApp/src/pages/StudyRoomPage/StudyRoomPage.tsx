@@ -96,6 +96,7 @@ export default function StudyRoomPage() {
   const [categoryNo, setCategoryNo] = useState(0);
   const [expiredAt, setExpiredAt] = useState("");
   const [kickedMsg, setKickedMsg] = useState<string | null>(null);
+  const [kickError, setKickError] = useState<string | null>(null);
 
   // 채팅
   const [chatTab, setChatTab] = useState<"채팅" | "멤버">("채팅");
@@ -331,14 +332,18 @@ export default function StudyRoomPage() {
 
   const doKick = async () => {
     if (!kickTarget || !roomId) return;
+    const targetName = kickTarget.name;
     setKickTarget(null);
     try {
       await svcKickMember(roomId, kickTarget.userUuid);
       // 추방 배너 표시 (멤버 목록 갱신은 KICKED WebSocket 이벤트가 처리)
-      setKickedMsg(kickTarget.name);
+      setKickedMsg(targetName);
       setTimeout(() => setKickedMsg(null), 3000);
-    } catch {
-      // 추방 실패 시 무시
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? `${targetName}님 추방에 실패했습니다. 다시 시도해주세요.`;
+      setKickError(msg);
+      setTimeout(() => setKickError(null), 3000);
     }
   };
 
@@ -401,7 +406,15 @@ export default function StudyRoomPage() {
       {modal === "cal" && <LearningPlannerModal open onClose={() => setModal(null)} />}
       {modal === "members" && <MemberModal roomId={roomId} members={members} elapsed={{ ...elapsed, 1: roomSec }} myUuid={myUuid} mic={mic} cam={cam} isHost={isHost} isPrivate={roomPrivate} joinCode={joinCode ?? undefined} onClose={() => setModal(null)} onKickRequest={setKickTarget} />}
       {modal === "settings" && <SettingModal onClose={() => setModal(null)} isHost={isHost} roomTitle={roomTitle} setRoomTitle={setRoomTitle} settingCamOn={settingCamOn} setSettingCamOn={setSettingCamOn} settingMicOn={settingMicOn} setSettingMicOn={setSettingMicOn} maxMembers={maxMembers} setMaxMembers={setMaxMembers} roomThumbnail={roomThumbnail} setRoomThumbnail={setRoomThumbnail} roomId={roomId} categoryNo={categoryNo} setCategoryNo={setCategoryNo} expiredAt={expiredAt} setExpiredAt={setExpiredAt} roomNotice={noticeMsg} roomPrivate={roomPrivate} />}
-      {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={async (msg) => { try { const r = await saveNotice(roomId!, msg); setNoticeMsg(r.notice); } catch { setNoticeMsg(msg); } }} noticeMsg={noticeMsg} isHost={isHost} />}
+      {modal === "notice" && <NoticeModal onClose={() => setModal(null)} onNoticePost={async (msg) => {
+        try {
+          const r = await saveNotice(roomId!, msg);
+          setNoticeMsg(r.notice);
+          return true;
+        } catch {
+          return false;
+        }
+      }} noticeMsg={noticeMsg} isHost={isHost} />}
       {kickTarget && <KickConfirm member={kickTarget} onConfirm={doKick} onCancel={() => setKickTarget(null)} />}
       {showExitConfirm && <ExitConfirm onConfirm={doExit} onCancel={() => setShowExitConfirm(false)} />}
     </>
@@ -612,6 +625,11 @@ export default function StudyRoomPage() {
       {kickedMsg && (
         <div style={{ flexShrink: 0, background: T.redLight, borderBottom: `1px solid ${T.border}`, padding: "6px 16px", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, color: T.red, fontWeight: 500 }}><b>{kickedMsg}</b> 님이 추방되었습니다.</span>
+        </div>
+      )}
+      {kickError && (
+        <div style={{ flexShrink: 0, background: T.redLight, borderBottom: `1px solid ${T.border}`, padding: "6px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 12, color: T.red, fontWeight: 500 }}>{kickError}</span>
         </div>
       )}
 

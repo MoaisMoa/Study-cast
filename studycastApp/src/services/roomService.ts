@@ -131,7 +131,8 @@ export async function createRoom(
   // 5. 방 생성 API 요청
   const response = await apiClient.post<CreateRoomResponse>(
     "/api/rooms",
-    formData
+    formData,
+    { timeout: 30000 } // 이미지 업로드는 일반 요청보다 오래 걸릴 수 있어 타임아웃을 길게 지정
   );
   // 6. 생성된 방 정보 반환
   return response.data;
