@@ -24,7 +24,6 @@ export function PlanEditModal({ plan, onClose, onSave, onDelete, T, weekPlan = [
   const [start, setStart] = useState(plan.start);
   const [end, setEnd] = useState(plan.end);
   const [color, setColor] = useState(plan.color || "#E57373");
-  const [showConfirm, setShowConfirm] = useState(false);
   const [editMsg, setEditMsg] = useState("");
 
   const inputStyle: React.CSSProperties = {
@@ -103,7 +102,7 @@ export function PlanEditModal({ plan, onClose, onSave, onDelete, T, weekPlan = [
           </div>
           {editMsg && <div style={{ fontSize: 12, color: T.red, textAlign: "center", padding: "6px 10px", background: "rgba(229,57,53,.12)", borderRadius: 7, border: "1px solid rgba(229,57,53,.25)" }}>{editMsg}</div>}
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setShowConfirm(true)}
+            <button onClick={() => { onDelete(plan.id); onClose(); }}
               style={{ flex: 1, padding: "10px 0", borderRadius: 9, border: `1.5px solid ${T.red}`, background: "none", color: T.red, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
               삭제
             </button>
@@ -114,34 +113,6 @@ export function PlanEditModal({ plan, onClose, onSave, onDelete, T, weekPlan = [
           </div>
         </div>
       </div>
-
-      {showConfirm && (
-        <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: T.surface, borderRadius: 14, width: 280, padding: "24px 20px", boxShadow: "0 12px 40px rgba(0,0,0,.3)" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 8 }}>
-              <div style={{
-                width: 48, height: 48, borderRadius: "50%",
-                background: "#FFEBEE",
-                display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12,
-              }}>
-                <Icon name="trash" size={22} color={T.red} />
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: T.text, textAlign: "center" }}>계획을 삭제할까요?</div>
-            </div>
-            <div style={{ fontSize: 13, color: T.text3, marginBottom: 20, textAlign: "left" }}>"{plan.title}"을(를) 삭제합니다.</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setShowConfirm(false)}
-                style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${T.border}`, background: "none", color: T.text2, fontSize: 13, cursor: "pointer" }}>
-                취소
-              </button>
-              <button onClick={() => { onDelete(plan.id); onClose(); }}
-                style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: T.red, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                삭제
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

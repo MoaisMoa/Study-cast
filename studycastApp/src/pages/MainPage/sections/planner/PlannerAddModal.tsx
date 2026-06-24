@@ -37,7 +37,8 @@ export function PlannerAddModal({ onClose, onAdd, T, mode = "schedule", overlapM
 
   // 플래너 모드
   const [pTitle, setPTitle] = useState("");
-  const [pDay, setPDay] = useState(0);
+  // 요일 기본값: 오늘 (W_DAYS_LABEL은 월요일이 0번 인덱스라 Date.getDay()의 일요일=0 기준을 보정)
+  const [pDay, setPDay] = useState(() => (new Date().getDay() + 6) % 7);
   const [pColor, setPColor] = useState("#E57373");
   const [pStart, setPStart] = useState("09:00");
   const [pEnd, setPEnd] = useState("10:00");

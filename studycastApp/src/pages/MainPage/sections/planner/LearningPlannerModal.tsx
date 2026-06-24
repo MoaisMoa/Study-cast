@@ -70,9 +70,7 @@ export function LearningPlannerModal({ open, onClose, onScheduleChanged }: Learn
     for (const [dayStr, secs] of Object.entries(monthlyStats.dailySeconds)) {
       const day = Number(dayStr);
       const h = secs / 3600;
-      if (isCurrentMonth && day === todayDate) {
-        result[day] = "today";
-      } else if (h >= 10) {
+      if (h >= 10) {
         result[day] = `${Math.floor(h)}h`;
       } else if (h >= 1) {
         const m = Math.floor((secs % 3600) / 60);
@@ -186,14 +184,17 @@ export function LearningPlannerModal({ open, onClose, onScheduleChanged }: Learn
       .catch(() => alert("계획 삭제에 실패했습니다."));
   };
 
-  const scheduleDays = new Set(
-    schedules
-      .filter((s) => {
-        const d = new Date(s.targetDate + "T00:00:00");
-        return d.getFullYear() === viewYear && d.getMonth() === viewMonth;
-      })
-      .map((s) => new Date(s.targetDate + "T00:00:00").getDate())
-  );
+  // 일자별 일정 개수 — 한 칸에 점은 최대 3개까지만 표시
+  const scheduleCountByDay = new Map<number, number>();
+  schedules
+    .filter((s) => {
+      const d = new Date(s.targetDate + "T00:00:00");
+      return d.getFullYear() === viewYear && d.getMonth() === viewMonth;
+    })
+    .forEach((s) => {
+      const day = new Date(s.targetDate + "T00:00:00").getDate();
+      scheduleCountByDay.set(day, (scheduleCountByDay.get(day) ?? 0) + 1);
+    });
   const upcomingDdays = [...schedules]
     .filter((s) => s.remainingDays >= 0)
     .sort((a, b) => a.remainingDays - b.remainingDays)
@@ -292,14 +293,20 @@ export function LearningPlannerModal({ open, onClose, onScheduleChanged }: Learn
                 {cells.map((d, i) => {
                   if (!d) return <div key={"e" + i} />;
                   const data = studyData[d], lvv = plannerLv(data), isT = isCurrentMonth && d === todayDate;
-                  const bg = isT ? (T.dark ? "transparent" : "#fff") : IC[Math.max(0, lvv < 0 ? 0 : lvv)];
-                  const tc = isT ? T.text : IC_TEXT[Math.max(0, lvv < 0 ? 0 : lvv)];
-                  const hasDot = scheduleDays.has(d);
+                  const bg = IC[Math.max(0, lvv < 0 ? 0 : lvv)];
+                  const tc = IC_TEXT[Math.max(0, lvv < 0 ? 0 : lvv)];
+                  const dotCount = Math.min(3, scheduleCountByDay.get(d) ?? 0);
                   return (
-                    <div key={d} style={{ background: bg, border: isT ? `2px solid ${T.red}` : `1px solid ${T.dark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.08)"}`, borderRadius: 6, padding: "3px 5px 2px", display: "flex", flexDirection: "column", justifyContent: "space-between", cursor: "pointer", minHeight: 0 }}>
-                      <span style={{ fontSize: 11, fontWeight: isT ? 700 : 400, color: T.text }}>{d}</span>
-                      {!isT && lvv >= 1 && data && <span style={{ fontSize: 9, fontFamily: "monospace", color: tc, fontWeight: 700 }}>{data}</span>}
-                      {hasDot && <span style={{ width: 4, height: 4, background: isT ? T.red : lvv >= 2 ? "#fff" : T.red, borderRadius: "50%", display: "block", flexShrink: 0 }} />}
+                    <div key={d} style={{ background: bg, border: isT ? `2px solid ${T.red}` : `1px solid ${T.dark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.08)"}`, borderRadius: 6, padding: "3px 5px 2px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 0 }}>
+                      <span style={{ fontSize: 11, fontWeight: isT ? 700 : 400, color: lvv >= 1 ? tc : T.text }}>{d}</span>
+                      {lvv >= 1 && data && <span style={{ fontSize: 9, fontFamily: "monospace", color: tc, fontWeight: 700 }}>{data}</span>}
+                      {dotCount > 0 && (
+                        <span style={{ display: "flex", gap: 2 }}>
+                          {Array.from({ length: dotCount }).map((_, dotIdx) => (
+                            <span key={dotIdx} style={{ width: 4, height: 4, background: lvv >= 2 ? "#fff" : T.red, borderRadius: "50%", display: "block", flexShrink: 0 }} />
+                          ))}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
@@ -320,8 +327,8 @@ export function LearningPlannerModal({ open, onClose, onScheduleChanged }: Learn
                       <div style={{ fontWeight: 700, fontSize: isNarrow ? 38 : 22, color: T.red, lineHeight: 1 }}>{ddayLabel(upcomingDdays[0].remainingDays)}</div>
                       <div style={{ fontSize: isNarrow ? 13 : 10, color: T.text2, marginTop: isNarrow ? 8 : 3 }}>{fmtDate(upcomingDdays[0].targetDate)}</div>
                     </div>
-                    {upcomingDdays.slice(1).map((s) => (
-                      <div key={s.ddayNo} style={{ padding: isNarrow ? "12px 0" : "6px 0", borderBottom: `1px solid ${T.border}` }}>
+                    {upcomingDdays.slice(1).map((s, i, arr) => (
+                      <div key={s.ddayNo} style={{ padding: isNarrow ? "12px 0" : "6px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" }}>
                         <div style={{ fontSize: isNarrow ? 15 : 12, fontWeight: 500, color: T.text, marginBottom: isNarrow ? 4 : 2 }}>{s.title}</div>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <span style={{ fontSize: isNarrow ? 13 : 10, color: T.text3 }}>{fmtDate(s.targetDate)}</span>

@@ -10,9 +10,9 @@ export const PLANNER_STUDY_DATA: Record<number, string> = {
 export const PLANNER_IC_LIGHT = ["#F5F5F5", "#FFCDD2", "#E53935", "#B71C1C"];
 export const PLANNER_IC_TEXT_LIGHT = ["#9e9e9e", "#B71C1C", "#fff", "#fff"];
 
-/** 출석 강도 색상 — 다크 */
-export const PLANNER_IC_DARK = ["#2a2a2a", "#7f1d1d", "#c62828", "#8B0000"];
-export const PLANNER_IC_TEXT_DARK = ["#ccc", "#ef9a9a", "#fff", "#fff"];
+/** 출석 강도 색상 — 다크 (0:미출석=달력 기본 배경은 다크 고유색 유지, 1~3 시간별 분류는 라이트와 동일) */
+export const PLANNER_IC_DARK = ["#2a2a2a", PLANNER_IC_LIGHT[1], PLANNER_IC_LIGHT[2], PLANNER_IC_LIGHT[3]];
+export const PLANNER_IC_TEXT_DARK = ["#ccc", PLANNER_IC_TEXT_LIGHT[1], PLANNER_IC_TEXT_LIGHT[2], PLANNER_IC_TEXT_LIGHT[3]];
 
 /** 테마별 출석 강도 색상 선택 */
 export const plannerIc = (dark: boolean): string[] => (dark ? PLANNER_IC_DARK : PLANNER_IC_LIGHT);
@@ -22,13 +22,15 @@ export const plannerIcText = (dark: boolean): string[] => (dark ? PLANNER_IC_TEX
 export const PLANNER_IC = PLANNER_IC_LIGHT;
 export const PLANNER_IC_TEXT = PLANNER_IC_TEXT_LIGHT;
 
-/** 공부 시간 문자열 → 강도 레벨 (-1: today, -2: dot, 0~3) */
+/** 공부 시간 문자열("2h10m" | "48m" 등) → 강도 레벨 (-1: today, -2: dot, 0~3) */
 export const plannerLv = (d?: string): number => {
   if (!d) return 0;
   if (d === "today") return -1;
   if (d === "dot") return -2;
-  const v = parseFloat(d);
-  return v >= 10 ? 3 : v >= 6 ? 2 : v >= 2 ? 1 : 0;
+  const hMatch = d.match(/(\d+)h/);
+  const mMatch = d.match(/(\d+)m/);
+  const hours = (hMatch ? Number(hMatch[1]) : 0) + (mMatch ? Number(mMatch[1]) : 0) / 60;
+  return hours >= 10 ? 3 : hours >= 6 ? 2 : hours >= 2 ? 1 : 0;
 };
 
 /** 카테고리별 대표 색상 */
