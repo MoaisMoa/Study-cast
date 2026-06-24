@@ -375,7 +375,7 @@ export default function ProfilePage() {
         }}
       />
 
-      <WithdrawModal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} />
+      <WithdrawModal open={withdrawOpen} hasPassword={readonly.hasPassword} onClose={() => setWithdrawOpen(false)} />
 
       <NameChangeModal
         open={nameChangeOpen}

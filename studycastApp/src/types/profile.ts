@@ -37,7 +37,8 @@ export interface RegisterPasswordPayload {
 }
 
 export interface WithdrawPayload {
-  password: string;
+  /** 소셜 전용 계정은 비밀번호가 없으므로 생략 가능 */
+  password?: string;
 }
 
 export type ProfileErrorCode = "wrong_password" | "social_account" | "already_has_password" | "name_change_unavailable" | "server_error";

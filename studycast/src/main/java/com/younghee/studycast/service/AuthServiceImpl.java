@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.younghee.studycast.dao.RefreshTokenMapper;
+import com.younghee.studycast.dao.UserAuthMapper;
 import com.younghee.studycast.dao.UserMapper;
+import com.younghee.studycast.dto.UserAuthDTO;
 import com.younghee.studycast.dto.response.AuthResponse;
 import com.younghee.studycast.dto.RefreshTokenDTO;
 import com.younghee.studycast.dto.UserDTO;
@@ -25,9 +27,11 @@ import lombok.extern.slf4j.Slf4j;
 public class AuthServiceImpl implements AuthService {
 
     private final UserMapper userMapper;
+    private final UserAuthMapper userAuthMapper;
     private final RefreshTokenMapper refreshTokenMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
+    private final KakaoUnlinkService kakaoUnlinkService;
 
     @Override
     @Transactional
@@ -229,19 +233,32 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void withdraw(UUID userUuid, String password) {
-        if (password == null || password.isBlank()) {
-            throw new IllegalArgumentException("비밀번호를 입력해 주세요.");
-        }
-
         UserDTO user = userMapper.findByUuid(userUuid);
         if (user == null) {
             throw new NoSuchElementException("사용자를 찾을 수 없습니다.");
         }
-        if (!passwordEncoder.matches(password, user.getUserPassword())) {
-            throw new SecurityException("현재 비밀번호가 일치하지 않습니다.");
+
+        boolean isSocialOnly = user.getUserPassword() == null || user.getUserPassword().isBlank();
+
+        // 소셜 전용 계정은 비밀번호가 없으므로, 이미 인증된 세션 자체를 본인 확인 수단으로 사용
+        if (!isSocialOnly) {
+            if (password == null || password.isBlank()) {
+                throw new IllegalArgumentException("비밀번호를 입력해 주세요.");
+            }
+            if (!passwordEncoder.matches(password, user.getUserPassword())) {
+                throw new SecurityException("현재 비밀번호가 일치하지 않습니다.");
+            }
         }
 
         userMapper.updateUserStatus(userUuid, "WITHDRAWN");
+
+        // 카카오 연동이 있으면 제공자 쪽 동의도 같이 해제 (best-effort, 실패해도 탈퇴는 완료된 상태로 유지)
+        for (UserAuthDTO userAuth : userAuthMapper.findByUserUuid(userUuid)) {
+            if ("KAKAO".equals(userAuth.getProvider())) {
+                kakaoUnlinkService.unlink(userAuth.getProviderUserId());
+            }
+        }
+
         log.info("회원 탈퇴 처리 완료: userUuid={}", userUuid);
     }
 

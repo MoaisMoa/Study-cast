@@ -166,10 +166,6 @@ export async function changeName(name: string): Promise<ProfileServiceResult> {
 export async function withdraw(
   payload: WithdrawPayload
 ): Promise<ProfileServiceResult> {
-  if (!payload.password) {
-    return { ok: false, message: "비밀번호를 입력해 주세요." };
-  }
-
   try {
     const response = await apiClient.post("/api/auth/withdraw", {
       password: payload.password,

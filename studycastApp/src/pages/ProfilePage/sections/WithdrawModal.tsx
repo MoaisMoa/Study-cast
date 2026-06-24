@@ -10,9 +10,11 @@ import { EyeButton } from "../components/EyeButton";
 export interface WithdrawModalProps {
   open: boolean;
   onClose: () => void;
+  /** 비밀번호 등록 여부 (false면 소셜 전용 계정 — 비밀번호 입력 없이 바로 확인만 거침) */
+  hasPassword: boolean;
 }
 
-export function WithdrawModal({ open, onClose }: WithdrawModalProps) {
+export function WithdrawModal({ open, onClose, hasPassword }: WithdrawModalProps) {
   const T = useT();
   const navigate = useNavigate();
   const { logout } = useAuth();
@@ -36,14 +38,14 @@ export function WithdrawModal({ open, onClose }: WithdrawModalProps) {
   }
 
   async function handleSubmit() {
-    if (!pw) {
+    if (hasPassword && !pw) {
       setError("비밀번호를 입력해 주세요.");
       return;
     }
     setLoading(true);
     setError("");
     try {
-      const result = await withdraw({ password: pw });
+      const result = await withdraw(hasPassword ? { password: pw } : {});
       if (!result.ok) {
         if (result.errorCode === "wrong_password") {
           setError(result.message ?? "현재 비밀번호가 일치하지 않습니다.");
@@ -96,45 +98,49 @@ export function WithdrawModal({ open, onClose }: WithdrawModalProps) {
           }}
         >
           탈퇴 시 계정이 비활성화되며 30일 후 완전 삭제됩니다.
-          <br />계속하려면 현재 비밀번호를 입력해 주세요.
+          {hasPassword && <><br />계속하려면 현재 비밀번호를 입력해 주세요.</>}
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 13, color: T.text2, marginBottom: 6 }}>
-            현재 비밀번호
-          </div>
-          <div style={{ position: "relative" }}>
-            <input
-              type={show ? "text" : "password"}
-              value={pw}
-              onChange={(e) => {
-                setPw(e.target.value);
-                setError("");
-              }}
-              placeholder="비밀번호를 입력해 주세요"
-              style={{
-                width: "100%",
-                height: 44,
-                padding: "0 40px 0 14px",
-                border: `1px solid ${error ? T.red : T.border}`,
-                borderRadius: 8,
-                fontSize: 14,
-                outline: "none",
-                background: T.bg,
-                color: T.text,
-                fontFamily: ff,
-                boxSizing: "border-box",
-                transition: "border-color 0.15s",
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = T.red;
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = error ? T.red : T.border;
-              }}
-            />
-            <EyeButton visible={show} onToggle={() => setShow((v) => !v)} />
-          </div>
+          {hasPassword && (
+            <>
+              <div style={{ fontSize: 13, color: T.text2, marginBottom: 6 }}>
+                현재 비밀번호
+              </div>
+              <div style={{ position: "relative" }}>
+                <input
+                  type={show ? "text" : "password"}
+                  value={pw}
+                  onChange={(e) => {
+                    setPw(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="비밀번호를 입력해 주세요"
+                  style={{
+                    width: "100%",
+                    height: 44,
+                    padding: "0 40px 0 14px",
+                    border: `1px solid ${error ? T.red : T.border}`,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    outline: "none",
+                    background: T.bg,
+                    color: T.text,
+                    fontFamily: ff,
+                    boxSizing: "border-box",
+                    transition: "border-color 0.15s",
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = T.red;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = error ? T.red : T.border;
+                  }}
+                />
+                <EyeButton visible={show} onToggle={() => setShow((v) => !v)} />
+              </div>
+            </>
+          )}
           {error && (
             <div style={{ fontSize: 12, color: T.red, marginTop: 4 }}>{error}</div>
           )}
