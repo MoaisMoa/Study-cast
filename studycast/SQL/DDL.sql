@@ -70,7 +70,6 @@ CREATE TABLE IF NOT EXISTS user_auths (
 
     connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login_at TIMESTAMP,
-
     -- 구글 refresh token (AES-GCM 암호화) - 회원 탈퇴 시 연동 해제(revoke)에 사용. 카카오는 Admin Key 방식이라 불필요
     refresh_token_encrypted TEXT,
 
