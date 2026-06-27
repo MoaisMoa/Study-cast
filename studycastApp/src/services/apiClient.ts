@@ -39,7 +39,8 @@ export async function mockRequest<T>(
   return data;
 }
 
-export const API_BASE_URL = "http://localhost:8080";
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 // axios (Spring API 공통 클라이언트)
 // withCredentials: true → httpOnly Cookie를 모든 요청에 자동 포함
@@ -119,7 +120,7 @@ apiClient.interceptors.response.use(
     // refresh가 이미 진행 중이면 기존 Promise 대기, 아니면 새로 시작
     if (!refreshPromise) {
       refreshPromise = axios
-        .post("http://localhost:8080/api/auth/refresh", null, { withCredentials: true })
+        .post(`${API_BASE_URL}/api/auth/refresh`, null, { withCredentials: true })
         .then(() => {})
         .catch((refreshError) => {
           redirectToLoginOnce();

@@ -1,5 +1,5 @@
 import type { ChatMessage, RoomMember } from "@/types/studyRoom";
-import { apiClient } from "./apiClient";
+import { API_BASE_URL, apiClient } from "./apiClient";
 
 /** 방 입장 시 한 번에 받아오는 초기 스냅샷 */
 export interface RoomSnapshot {
@@ -172,7 +172,7 @@ let subscriptionCount = 0;
 function getClient(): Client {
   if (!stompClient) {
     stompClient = new Client({
-      webSocketFactory: () => new SockJS("http://localhost:8080/ws"),
+      webSocketFactory: () => new SockJS(`${API_BASE_URL}/ws`),
       reconnectDelay: 5000,
       onConnect: () => {
         [...pendingOnConnect].forEach((fn) => fn());
