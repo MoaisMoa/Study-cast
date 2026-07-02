@@ -340,7 +340,10 @@ export function LearningPlannerModal({ open, onClose, onScheduleChanged }: Learn
               </div>
               <div style={{ flex: 1 }} />
               <div style={{ paddingTop: isNarrow ? 16 : 10, borderTop: `1px solid ${T.border}`, marginTop: isNarrow ? 16 : 0 }}>
-                <div style={{ fontSize: isNarrow ? 13 : 10, fontWeight: 700, color: T.text3, letterSpacing: ".06em", marginBottom: isNarrow ? 10 : 6 }}>이달 출석</div>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: isNarrow ? 10 : 6 }}>
+                  <div style={{ fontSize: isNarrow ? 13 : 10, fontWeight: 700, color: T.text3, letterSpacing: ".06em" }}>이달 출석</div>
+                  <div style={{ fontSize: isNarrow ? 10 : 8, color: T.text3, fontWeight: 400 }}>2시간 이상 공부 시 인정</div>
+                </div>
                 {[["출석일", `${attendDays}일`], ["총 공부", totalStudyH], ["일평균", avgStudyMin]].map(([l, v]) => (
                   <div key={l} style={{ display: "flex", justifyContent: "space-between", marginBottom: isNarrow ? 8 : 4 }}>
                     <span style={{ fontSize: isNarrow ? 14 : 11, color: T.text2 }}>{l}</span>

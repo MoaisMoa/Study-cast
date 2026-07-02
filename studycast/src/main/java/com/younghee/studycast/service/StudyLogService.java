@@ -41,7 +41,7 @@ public class StudyLogService {
         int totalSeconds = 0;
         Map<Integer, Integer> dailySeconds = new HashMap<>();
         for (StudyLogDTO log : logs) {
-            if (log.getTotalSeconds() <= 0) continue;
+            if (log.getTotalSeconds() < 7200) continue;
             attendDays++;
             totalSeconds += log.getTotalSeconds();
             dailySeconds.put(log.getStudyDate().getDayOfMonth(), log.getTotalSeconds());
