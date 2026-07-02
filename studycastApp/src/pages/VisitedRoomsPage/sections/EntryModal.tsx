@@ -117,7 +117,7 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
                 비공개 스터디방입니다. 참여 코드가 필요합니다.
               </div>
               <input
-                type="text"
+                type="password"
                 value={codeVal}
                 onChange={(e) => { setCodeVal(e.target.value.replace(/\D/g, "").slice(0, 6)); setCodeError(""); }}
                 onKeyDown={(e) => { if (e.key === "Enter") handleCodeSubmit(); }}
