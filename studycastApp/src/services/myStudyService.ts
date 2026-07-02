@@ -1,7 +1,7 @@
 import type { MyStudyRoom } from "@/types/myStudy";
 import type { MainRoomResponse, RoomCategory } from "@/types";
 import { apiClient } from "./apiClient";
-import { getDefaultRoomImage } from "@/utils/roomImage";
+import { resolveRoomThumbnail } from "@/utils/roomImage";
 
 /** 내가 생성한 스터디 목록 조회 — GET /api/main/my-created-rooms */
 export async function listMyRooms(): Promise<MyStudyRoom[]> {
@@ -55,7 +55,7 @@ function toMyStudyRoom(r: MainRoomResponse): MyStudyRoom {
     createdAt: toDateStr(r.createdAt),
     periodStart: toDateStr(r.createdAt),
     periodEnd: toDateStr(r.expiredAt),
-    img: r.roomThumbnail ?? getDefaultRoomImage(r.roomTitle),
+    img: resolveRoomThumbnail(r.roomThumbnail, r.roomTitle),
     avgStudyTime: fmtSec(r.averageStudySeconds),
   };
 }

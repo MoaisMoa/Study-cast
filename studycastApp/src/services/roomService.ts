@@ -9,7 +9,7 @@
 
 import { CreateRoomPayload, CreateRoomResponse, JoinCodeCheckResponse, MainRoomPageResponse, MainRoomResponse, MainRoomSearchParams, MainSummaryResponse, Room, MyRoom } from "@/types";
 import { apiClient } from "./apiClient";
-import { getDefaultRoomImage } from "@/utils/roomImage";
+import { resolveRoomThumbnail } from "@/utils/roomImage";
 
 /** 공개 스터디 목록 API 응답 원본 조회 */
 export async function listRooms(
@@ -168,7 +168,7 @@ function toRoom(response: MainRoomResponse): Room {
     time: formatStudyTime(response.averageStudySeconds),
     members: response.currentUsers,
     max: response.maxUsers,
-    img: response.roomThumbnail || getDefaultRoomImage(response.roomTitle),
+    img: resolveRoomThumbnail(response.roomThumbnail, response.roomTitle),
     live: response.live,
     type: response.premium ? "PREMIUM" : "FREE",
     recent: response.newRoom,
@@ -192,7 +192,7 @@ function toMyRoom(response: MainRoomResponse): MyRoom {
     type: response.premium ? "PREMIUM" : "FREE",
     members: response.currentUsers,
     max: response.maxUsers,
-    img: response.roomThumbnail || getDefaultRoomImage(response.roomTitle),
+    img: resolveRoomThumbnail(response.roomThumbnail, response.roomTitle),
     live: response.live,
     isPrivate: response.roomPrivate,
     time: formatStudyTime(response.averageStudySeconds),
@@ -231,7 +231,7 @@ export async function getRoomSummary(roomId: number | string): Promise<Room> {
     time: "-",
     members: data.currentUsers,
     max: data.maxUsers,
-    img: data.roomThumbnail || getDefaultRoomImage(data.roomTitle),
+    img: resolveRoomThumbnail(data.roomThumbnail, data.roomTitle),
     live: data.currentUsers > 0,
     type: "FREE",
     isPrivate: data.roomPrivate,

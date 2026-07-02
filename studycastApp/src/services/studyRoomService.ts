@@ -1,5 +1,6 @@
 import type { ChatMessage, RoomMember } from "@/types/studyRoom";
 import { API_BASE_URL, apiClient } from "./apiClient";
+import { prefixRoomImageUrl } from "@/utils/roomImage";
 
 /** 방 입장 시 한 번에 받아오는 초기 스냅샷 */
 export interface RoomSnapshot {
@@ -111,7 +112,7 @@ export async function fetchRoom(roomId: string, myUuid: string, joinCode?: strin
     joinCode: detail.roomPassword ?? null,
     camOn: detail.cameraStatus ?? true,
     micOn: detail.micStatus ?? false,
-    thumbnail: detail.roomThumbnail ?? null,
+    thumbnail: prefixRoomImageUrl(detail.roomThumbnail),
     categoryNo: detail.categoryNo,
     expiredAt: detail.expiredAt,
   };
@@ -141,7 +142,7 @@ export async function updateRoom(
     formData,
     { timeout: 30000 } // 이미지 업로드는 일반 요청보다 오래 걸릴 수 있어 타임아웃을 길게 지정
   );
-  return { thumbnail: res.data.roomThumbnail ?? null };
+  return { thumbnail: prefixRoomImageUrl(res.data.roomThumbnail) };
 }
 
 /** 멤버 추방 */
