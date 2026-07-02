@@ -31,7 +31,8 @@ public class AuthCookieUtil {
             .path("/")
             .maxAge(maxAgeSeconds)
             // 다른 사이트에서 자동으로 쿠키 보내는 것 제한(CSRF 방어 도움)
-            .sameSite("Strict")
+            // 수정) Strict는 다른 사이트에서 API 요청할 때 쿠키를 보내지 않음 (백엔드와 프론트 주소 다름)
+            .sameSite(cookieSecure ? "None" : "Lax")
             .build();
     }
 
@@ -43,7 +44,7 @@ public class AuthCookieUtil {
             .path("/")
             // 0으로 응답하면 브라우저가 해당 쿠키를 즉시 삭제
             .maxAge(0)
-            .sameSite("Strict")
+            .sameSite(cookieSecure ? "None" : "Lax")
             .build();
     }
 
