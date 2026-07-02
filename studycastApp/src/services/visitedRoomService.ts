@@ -63,7 +63,7 @@ function toVisitedRoom(r: MainRoomResponse): VisitedRoom {
     title: r.roomTitle,
     cat: r.categoryName,
     time: formatStudyTime(r.averageStudySeconds),
-    img: r.roomThumbnail ?? getDefaultRoomImage(r.roomNo),
+    img: r.roomThumbnail ?? getDefaultRoomImage(r.roomTitle),
     members: r.currentUsers,
     max: r.maxUsers,
     visibility: r.roomPrivate ? "private" : "public",

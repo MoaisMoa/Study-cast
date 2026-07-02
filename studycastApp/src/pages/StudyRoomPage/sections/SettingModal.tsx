@@ -71,7 +71,7 @@ export function SettingModal(props: SettingModalProps) {
   const [endDate2, setEndDate2] = useState(initDate);
   const [maxM, setMaxM] = useState(maxMembers);
   const [selCats, setSelCats] = useState<RoomCategory[]>(initCat ? [initCat] : []);
-  const defaultImg = getDefaultRoomImage(Number(roomId) || 0);
+  const defaultImg = getDefaultRoomImage(roomTitle);
   const [imgSrc, setImgSrc] = useState<string>(roomThumbnail ?? defaultImg);
   const [imgFile, setImgFile] = useState<File | null>(null);
   const [imgName, setImgName] = useState("");

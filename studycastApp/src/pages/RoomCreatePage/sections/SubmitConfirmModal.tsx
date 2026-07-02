@@ -66,7 +66,7 @@ export function SubmitConfirmModal(props: SubmitConfirmModalProps) {
           aspectRatio: "4/3",
         }}>
           <img
-            src={thumbnail ?? getDefaultRoomImage(0)}
+            src={thumbnail ?? getDefaultRoomImage(name)}
             alt="대표 이미지"
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />

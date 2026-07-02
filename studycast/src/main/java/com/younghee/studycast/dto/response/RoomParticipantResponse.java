@@ -1,6 +1,6 @@
 package com.younghee.studycast.dto.response;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -22,6 +22,6 @@ public class RoomParticipantResponse {
     private Boolean owner;
     private Boolean cameraStatus;
     private Boolean micStatus;
-    private LocalDateTime joinedAt;
+    private Instant joinedAt;
     private Integer todayStudySeconds;
 }

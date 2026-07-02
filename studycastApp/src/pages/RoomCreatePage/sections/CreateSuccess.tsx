@@ -41,7 +41,7 @@ export function CreateSuccess({
         margin: "0 auto 24px",
       }}>
         <img
-          src={thumbnail ?? getDefaultRoomImage(roomId)}
+          src={thumbnail ?? getDefaultRoomImage(name)}
           alt="thumbnail"
           style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover" }}
         />

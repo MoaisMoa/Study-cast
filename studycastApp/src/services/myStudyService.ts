@@ -55,7 +55,7 @@ function toMyStudyRoom(r: MainRoomResponse): MyStudyRoom {
     createdAt: toDateStr(r.createdAt),
     periodStart: toDateStr(r.createdAt),
     periodEnd: toDateStr(r.expiredAt),
-    img: r.roomThumbnail ?? getDefaultRoomImage(r.roomNo),
+    img: r.roomThumbnail ?? getDefaultRoomImage(r.roomTitle),
     avgStudyTime: fmtSec(r.averageStudySeconds),
   };
 }

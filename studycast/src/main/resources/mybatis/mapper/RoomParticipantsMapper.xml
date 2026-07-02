@@ -135,13 +135,10 @@
             rp.camera_status AS cameraStatus,
             rp.mic_status AS micStatus,
             rp.joined_at AS joinedAt,
-            COALESCE(sl.total_seconds, 0) AS todayStudySeconds
+            COALESCE(rp.study_seconds, 0) AS todayStudySeconds
         FROM room_participants rp
         INNER JOIN users u ON rp.user_uuid = u.user_uuid
         INNER JOIN rooms r ON rp.room_no = r.room_no
-        LEFT JOIN study_logs sl
-            ON sl.user_uuid = u.user_uuid
-           AND sl.study_date = CURRENT_DATE
         WHERE rp.room_no = #{roomNo}
           AND rp.active = TRUE
         ORDER BY
