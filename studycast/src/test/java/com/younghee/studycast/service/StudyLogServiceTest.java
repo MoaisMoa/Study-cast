@@ -68,9 +68,9 @@ class StudyLogServiceTest {
     @Test
     @DisplayName("여러 날 공부 기록: 출석일 수·총 시간·일별 맵이 정확하게 집계됨")
     void getMonthlyStats_multipleLogs_correctAggregation() {
-        // given: 1일 1시간, 5일 2시간 기록
-        StudyLogDTO day1 = makeLog(LocalDate.of(2025, 6, 1), 3600);
-        StudyLogDTO day5 = makeLog(LocalDate.of(2025, 6, 5), 7200);
+        // given: 1일 2시간, 5일 3시간 기록 (둘 다 출석 인정 기준 7200초 이상)
+        StudyLogDTO day1 = makeLog(LocalDate.of(2025, 6, 1), 7200);
+        StudyLogDTO day5 = makeLog(LocalDate.of(2025, 6, 5), 10800);
         given(studyLogMapper.findMonthlyStudyLogs(USER_UUID, 2025, 6))
                 .willReturn(List.of(day1, day5));
 
@@ -79,43 +79,45 @@ class StudyLogServiceTest {
 
         // then
         assertThat(resp.getAttendDays()).isEqualTo(2);
-        assertThat(resp.getTotalSeconds()).isEqualTo(10800);
+        assertThat(resp.getTotalSeconds()).isEqualTo(18000);
         assertThat(resp.getDailySeconds())
-                .containsEntry(1, 3600)
-                .containsEntry(5, 7200);
+                .containsEntry(1, 7200)
+                .containsEntry(5, 10800);
     }
 
     @Test
-    @DisplayName("totalSeconds <= 0 인 날은 출석일에 포함하지 않고 dailySeconds 맵에도 넣지 않음")
-    void getMonthlyStats_zeroOrNegativeSeconds_excludedFromAttendance() {
-        // given: 0초(기록 있지만 공부 안 함), -1초(이상 데이터), 1800초(정상)
-        StudyLogDTO zeroDay    = makeLog(LocalDate.of(2025, 6, 10), 0);
-        StudyLogDTO negativeDay = makeLog(LocalDate.of(2025, 6, 11), -1);
-        StudyLogDTO normalDay  = makeLog(LocalDate.of(2025, 6, 12), 1800);
+    @DisplayName("2시간 미만(7200초)인 날은 출석일에 포함하지 않고 dailySeconds 맵에도 넣지 않음")
+    void getMonthlyStats_belowThresholdSeconds_excludedFromAttendance() {
+        // given: 0초, -1초(이상 데이터), 1800초(30분) — 모두 7200초 미만, 출석 인정 불가
+        //        7200초(2시간) — 출석 인정 기준 충족
+        StudyLogDTO zeroDay         = makeLog(LocalDate.of(2025, 6, 10), 0);
+        StudyLogDTO negativeDay     = makeLog(LocalDate.of(2025, 6, 11), -1);
+        StudyLogDTO belowDay        = makeLog(LocalDate.of(2025, 6, 12), 1800);
+        StudyLogDTO attendDay       = makeLog(LocalDate.of(2025, 6, 13), 7200);
         given(studyLogMapper.findMonthlyStudyLogs(USER_UUID, 2025, 6))
-                .willReturn(List.of(zeroDay, negativeDay, normalDay));
+                .willReturn(List.of(zeroDay, negativeDay, belowDay, attendDay));
 
         // when
         MonthlyStudyResponse resp = studyLogService.getMonthlyStats(USER_UUID, 2025, 6);
 
-        // then: 0초·음수인 날은 출석일 및 일별 맵에서 제외
+        // then: 7200초 미만인 날은 출석일 및 일별 맵에서 제외
         assertThat(resp.getAttendDays()).isEqualTo(1);
-        assertThat(resp.getTotalSeconds()).isEqualTo(1800);
-        assertThat(resp.getDailySeconds()).containsOnlyKeys(12);
+        assertThat(resp.getTotalSeconds()).isEqualTo(7200);
+        assertThat(resp.getDailySeconds()).containsOnlyKeys(13);
     }
 
     @Test
     @DisplayName("단 하루만 공부한 달: 출석일=1, 총 시간=그날 시간, 일별 맵 엔트리 1개")
     void getMonthlyStats_singleLog_correctValues() {
-        StudyLogDTO single = makeLog(LocalDate.of(2025, 7, 15), 5400); // 1시간 30분
+        StudyLogDTO single = makeLog(LocalDate.of(2025, 7, 15), 7200); // 2시간(출석 인정 최소 기준)
         given(studyLogMapper.findMonthlyStudyLogs(USER_UUID, 2025, 7))
                 .willReturn(List.of(single));
 
         MonthlyStudyResponse resp = studyLogService.getMonthlyStats(USER_UUID, 2025, 7);
 
         assertThat(resp.getAttendDays()).isEqualTo(1);
-        assertThat(resp.getTotalSeconds()).isEqualTo(5400);
-        assertThat(resp.getDailySeconds()).hasSize(1).containsEntry(15, 5400);
+        assertThat(resp.getTotalSeconds()).isEqualTo(7200);
+        assertThat(resp.getDailySeconds()).hasSize(1).containsEntry(15, 7200);
     }
 
     // ────────────────────────────────────────────────────────────────────────
