@@ -6,8 +6,14 @@ import { joinRoom } from "@/services/visitedRoomService";
 import { openStudyRoom } from "@/utils/openStudyRoom";
 import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
 import { Icon } from "@/components/ui/Icon";
+import { calcDays } from "@/utils/date";
 
 const CODE_RE = /^[0-9]{4,6}$/;
+
+function toDateOnlyStr(iso: string | null | undefined): string {
+  if (!iso) return "";
+  return iso.slice(0, 10);
+}
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -46,10 +52,7 @@ export function CardModal() {
   const full = !room.overCapacity && room.members >= room.max;
   const isPrivate = room.isPrivate ?? false;
 
-  const createdMs = room.createdAt ? new Date(room.createdAt).getTime() : null;
-  const expiredMs = room.expiredAt ? new Date(room.expiredAt).getTime() : null;
-  const totalDays =
-    createdMs && expiredMs ? Math.ceil((expiredMs - createdMs) / 86_400_000) : null;
+  const totalDays = calcDays(toDateOnlyStr(room.createdAt), toDateOnlyStr(room.expiredAt));
 
   const handleClose = () => {
     setCodeStep(false);

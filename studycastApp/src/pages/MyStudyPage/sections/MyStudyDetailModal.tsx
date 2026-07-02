@@ -3,6 +3,7 @@ import type { MyStudyRoom } from "@/types/myStudy";
 import { useT } from "@/theme";
 import { Icon } from "@/components/ui/Icon";
 import { calcRoomStatus } from "@/utils/myStudyDate";
+import { calcDays } from "@/utils/date";
 import { joinRoom } from "@/services/visitedRoomService";
 import { openStudyRoom } from "@/utils/openStudyRoom";
 import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
@@ -35,9 +36,7 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   const isPrivate = room.visibility === "private";
   const full = !isEnded && room.members >= room.maxMembers;
 
-  const createdMs = room.periodStart ? new Date(room.periodStart).getTime() : null;
-  const expiredMs = room.periodEnd ? new Date(room.periodEnd).getTime() : null;
-  const totalDays = createdMs && expiredMs ? Math.ceil((expiredMs - createdMs) / 86_400_000) : null;
+  const totalDays = calcDays(room.periodStart ?? "", room.periodEnd ?? "");
 
   const handleClose = () => {
     setCodeStep(false);
