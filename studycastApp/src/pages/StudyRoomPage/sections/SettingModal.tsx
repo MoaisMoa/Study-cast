@@ -6,6 +6,7 @@ import { CATS_FILTER } from "@/data/categories";
 import { XIc, PlusIc } from "../components/RoomIcons";
 import { getDefaultRoomImage } from "@/utils/roomImage";
 import { updateRoom } from "@/services/studyRoomService";
+import { calcDays } from "@/utils/date";
 import { broadcastRoomJoined } from "@/utils/roomSession";
 
 const NO_TO_CAT = Object.fromEntries(
@@ -80,12 +81,7 @@ export function SettingModal(props: SettingModalProps) {
   const [saveStatus, setSaveStatus] = useState<null | "success" | "error">(null);
   const [errMsg, setErrMsg] = useState("");
 
-  const dday = (() => {
-    const [ey, em, ed] = endDate2.split("-").map(Number);
-    const end = new Date(ey, em - 1, ed);
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    return Math.max(0, Math.min(90, Math.ceil((end.getTime() - now.getTime()) / 86400000)));
-  })();
+  const dday = Math.max(0, Math.min(90, calcDays(today, endDate2) ?? 0));
 
   const greenBg = T.dark ? "rgba(76,175,80,.16)" : "#E8F5E9";
 
