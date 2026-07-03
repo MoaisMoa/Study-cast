@@ -53,8 +53,9 @@ export async function canEnterRoom(targetRoomId?: string | number): Promise<bool
     try {
       const { apiClient } = await import("@/services/apiClient");
       await apiClient.get(`/api/rooms/${targetRoomId}/join-check`);
-    } catch {
-      return false; // 409: 다른 방에 접속 중
+    } catch (err) {
+      // 409(다른 방 입장 중)만 차단, 그 외(네트워크·5xx 등)는 실제 입장 시도에 맡김
+      if ((err as { response?: { status?: number } })?.response?.status === 409) return false;
     }
   }
 

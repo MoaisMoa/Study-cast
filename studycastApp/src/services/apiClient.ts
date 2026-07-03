@@ -95,7 +95,7 @@ apiClient.interceptors.response.use(
     if (
       url.includes("/api/auth/change-password") ||
       url.includes("/api/auth/withdraw") ||
-      url.includes("/join")
+      url.endsWith("/join")
     ) {
       return Promise.reject(error);
     }

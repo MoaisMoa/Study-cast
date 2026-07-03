@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useT } from "@/theme";
 import { useModal, useModalRoom } from "@/contexts/ModalContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +34,7 @@ export function CardModal() {
   const [entering, setEntering] = useState(false);
   const [entryBlocked, setEntryBlocked] = useState(false);
   const [loginCountdown, setLoginCountdown] = useState<number | null>(null);
+  const cancelledRef = useRef(false);
 
   // 비로그인 안내 후 3초 카운트다운 → 로그인 페이지를 새 탭으로 열기 (메인페이지는 유지, 로그인 후 그 탭이 방으로 이어짐)
   useEffect(() => {
@@ -55,6 +56,7 @@ export function CardModal() {
   const totalDays = calcDays(toDateOnlyStr(room.createdAt), toDateOnlyStr(room.expiredAt));
 
   const handleClose = () => {
+    cancelledRef.current = true;
     setCodeStep(false);
     setCodeVal("");
     setCodeError("");
@@ -64,11 +66,13 @@ export function CardModal() {
   };
 
   const handleEnterClick = async () => {
+    cancelledRef.current = false;
     if (!isLoggedIn) { setLoginCountdown(3); return; }
     if (isPrivate) { setCodeStep(true); return; }
     setEntering(true);
     const allowed = await canEnterRoom(room.id);
     setEntering(false);
+    if (cancelledRef.current) return;
     if (!allowed) { setEntryBlocked(true); return; }
     setPendingEntry(String(room.id));
     openStudyRoom(room.id);
@@ -76,11 +80,14 @@ export function CardModal() {
   };
 
   const handleCodeSubmit = async () => {
+    cancelledRef.current = false;
     if (!CODE_RE.test(codeVal.trim())) { setCodeError("4~6자리 숫자를 입력해주세요."); return; }
     setVerifying(true);
     const allowed = await canEnterRoom(room.id);
+    if (cancelledRef.current) return;
     if (!allowed) { setVerifying(false); setEntryBlocked(true); setCodeStep(false); return; }
     const result = await joinRoom(room.id, codeVal.trim());
+    if (cancelledRef.current) return;
     setVerifying(false);
     if (result.ok) { setPendingEntry(String(room.id)); openStudyRoom(room.id); handleClose(); return; }
     setCodeError(result.message ?? "참여 코드가 올바르지 않습니다.");

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { MyStudyRoom } from "@/types/myStudy";
 import { useT } from "@/theme";
 import { Icon } from "@/components/ui/Icon";
@@ -29,6 +29,7 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   const [verifying, setVerifying] = useState(false);
   const [entering, setEntering] = useState(false);
   const [entryBlocked, setEntryBlocked] = useState(false);
+  const cancelledRef = useRef(false);
 
   if (!room) return null;
 
@@ -39,6 +40,7 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   const totalDays = calcDays(room.periodStart ?? "", room.periodEnd ?? "");
 
   const handleClose = () => {
+    cancelledRef.current = true;
     setCodeStep(false);
     setCodeVal("");
     setCodeError("");
@@ -47,10 +49,12 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   };
 
   const handleEnterClick = async () => {
+    cancelledRef.current = false;
     if (isPrivate) { setCodeStep(true); return; }
     setEntering(true);
     const allowed = await canEnterRoom(room.id);
     setEntering(false);
+    if (cancelledRef.current) return;
     if (!allowed) { setEntryBlocked(true); return; }
     setPendingEntry(String(room.id));
     openStudyRoom(room.id);
@@ -58,11 +62,14 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   };
 
   const handleCodeSubmit = async () => {
+    cancelledRef.current = false;
     if (!CODE_RE.test(codeVal.trim())) { setCodeError("4~6자리 숫자를 입력해주세요."); return; }
     setVerifying(true);
     const allowed = await canEnterRoom(room.id);
+    if (cancelledRef.current) return;
     if (!allowed) { setVerifying(false); setEntryBlocked(true); setCodeStep(false); return; }
     const result = await joinRoom(Number(room.id), codeVal.trim());
+    if (cancelledRef.current) return;
     setVerifying(false);
     if (result.ok) { setPendingEntry(String(room.id)); openStudyRoom(room.id); handleClose(); return; }
     setCodeError(result.message ?? "참여 코드가 올바르지 않습니다.");
