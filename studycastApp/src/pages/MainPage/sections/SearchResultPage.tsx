@@ -54,8 +54,7 @@ export function SearchResultPage() {
         </div>
       ) : (
         <>
-          <style>{`.srch-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px 16px;}@media(max-width:1100px){.srch-grid{grid-template-columns:repeat(4,1fr);}}@media(max-width:820px){.srch-grid{grid-template-columns:repeat(3,1fr);}}`}</style>
-          <div className="srch-grid">
+          <div className="live-grid">
             {rooms.map((r) => {
               const full = !r.overCapacity && r.members >= r.max;
               const isNew = r.createdDaysAgo != null && r.createdDaysAgo <= 10;
