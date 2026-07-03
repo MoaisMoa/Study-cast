@@ -6,7 +6,7 @@ const DEFAULT_ROOM_IMAGES = [
   "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&q=75",
 ];
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8080";
+const API_BASE = "";
 
 function hashName(name: string): number {
   let h = 0;

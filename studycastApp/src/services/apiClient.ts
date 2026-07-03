@@ -45,7 +45,7 @@ export const API_BASE_URL =
 // axios (Spring API 공통 클라이언트)
 // withCredentials: true → httpOnly Cookie를 모든 요청에 자동 포함
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: "",
   withCredentials: true,
   // 서버가 응답을 영원히 안 주는 경우(좀비 커넥션 등) 무한 로딩에 빠지지 않도록 기본 타임아웃 설정
   // 파일 업로드처럼 오래 걸리는 요청은 호출하는 쪽에서 timeout을 더 길게 개별 지정
@@ -120,7 +120,7 @@ apiClient.interceptors.response.use(
     // refresh가 이미 진행 중이면 기존 Promise 대기, 아니면 새로 시작
     if (!refreshPromise) {
       refreshPromise = axios
-        .post(`${API_BASE_URL}/api/auth/refresh`, null, { withCredentials: true })
+        .post(`/api/auth/refresh`, null, { withCredentials: true })
         .then(() => {})
         .catch((refreshError) => {
           redirectToLoginOnce();
