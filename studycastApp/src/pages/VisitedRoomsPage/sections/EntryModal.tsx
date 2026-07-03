@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { VisitedRoom } from "@/types/visitedRoom";
 import { useT } from "@/theme";
 import { joinRoom } from "@/services/visitedRoomService";
@@ -21,20 +21,24 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
   const [verifying, setVerifying] = useState(false);
   const [entering, setEntering] = useState(false);
   const [entryBlocked, setEntryBlocked] = useState(false);
+  const cancelledRef = useRef(false);
 
   if (!room) return null;
   const full = room.members === room.max;
   const isPrivate = room.visibility === "private";
 
   const handleClose = () => {
+    cancelledRef.current = true;
     setCodeStep(false); setCodeVal(""); setCodeError(""); setEntryBlocked(false); onClose();
   };
 
   const handleEnterClick = async () => {
+    cancelledRef.current = false;
     if (isPrivate) { setCodeStep(true); return; }
     setEntering(true);
-    const allowed = await canEnterRoom();
+    const allowed = await canEnterRoom(room.id);
     setEntering(false);
+    if (cancelledRef.current) return;
     if (!allowed) { setEntryBlocked(true); return; }
     setPendingEntry(String(room.id));
     openStudyRoom(room.id);
@@ -42,11 +46,14 @@ export function EntryModal({ room, onClose }: EntryModalProps) {
   };
 
   const handleCodeSubmit = async () => {
+    cancelledRef.current = false;
     if (!CODE_RE.test(codeVal.trim())) { setCodeError("4~6자리 숫자를 입력해주세요."); return; }
     setVerifying(true);
-    const allowed = await canEnterRoom();
+    const allowed = await canEnterRoom(room.id);
+    if (cancelledRef.current) return;
     if (!allowed) { setVerifying(false); setEntryBlocked(true); setCodeStep(false); return; }
     const result = await joinRoom(room.id, codeVal.trim());
+    if (cancelledRef.current) return;
     setVerifying(false);
     if (result.ok) { setPendingEntry(String(room.id)); openStudyRoom(room.id); handleClose(); return; }
     setCodeError(result.message ?? "참여 코드가 올바르지 않습니다.");

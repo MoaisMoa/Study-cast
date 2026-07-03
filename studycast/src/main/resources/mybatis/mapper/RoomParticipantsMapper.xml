@@ -59,6 +59,16 @@
               AND active = TRUE
         )
     </select>
+    <!-- 다른 방에 active 상태인지 확인 (멀티 디바이스 중복 입장 방지) -->
+    <select id="existsActiveInOtherRoom" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM room_participants
+            WHERE user_uuid = #{userUuid}
+              AND room_no != #{roomNo}
+              AND active = TRUE
+        )
+    </select>
     <!-- 신규 참여자 등록 (동시 요청 경합 방지: ON CONFLICT → rejoin 처리) -->
     <insert id="insertParticipant" parameterType="RoomParticipantDTO">
         INSERT INTO room_participants (

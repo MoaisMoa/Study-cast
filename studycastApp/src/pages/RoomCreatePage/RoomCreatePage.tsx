@@ -204,7 +204,7 @@ export default function RoomCreatePage() {
 
   const enterCreatedRoom = async () => {
     if (createdRoomId != null) {
-      const allowed = await canEnterRoom();
+      const allowed = await canEnterRoom(createdRoomId);
       if (!allowed) {
         setCreateError("이미 입장 중인 방이 있습니다.");
         return;

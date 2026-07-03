@@ -89,6 +89,17 @@ public class RoomController {
     }
 
     // 스터디방 입장 처리
+    // 다른 방 접속 여부 사전 확인 (부작용 없음 — 모달에서 입장 전 호출)
+    @GetMapping("/{roomNo}/join-check")
+    public ResponseEntity<Void> joinCheck(
+        @PathVariable("roomNo") Long roomNo,
+        Authentication authentication
+    ) {
+        UUID userUuid = getUserUuid(authentication);
+        roomService.checkCanJoin(roomNo, userUuid);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/{roomNo}/join")
     public ResponseEntity<RoomJoinResponse> joinRoom(
         @PathVariable("roomNo") Long roomNo,

@@ -25,8 +25,13 @@ public interface RoomParticipantsMapper {
     );
     // 현재 active 상태인지 확인
     boolean existsActiveParticipant(
-        @Param("roomNo") Long roomNo, 
+        @Param("roomNo") Long roomNo,
         @Param("userUuid") UUID userUuid
+    );
+    // 다른 방에 active 상태인지 확인 (멀티 디바이스 중복 입장 방지)
+    boolean existsActiveInOtherRoom(
+        @Param("userUuid") UUID userUuid,
+        @Param("roomNo") Long roomNo
     );
     // 신규 참여자 등록
     int insertParticipant(RoomParticipantDTO participant);

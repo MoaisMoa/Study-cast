@@ -28,6 +28,8 @@ public interface RoomService {
     RoomDetailResponse getRoomDetail(Long roomNo, UUID userUuid);
     // 스터디방 입장 처리
     RoomJoinResponse joinRoom(Long roomNo, UUID userUuid, RoomJoinRequest request);
+    // 다른 방 접속 여부 사전 확인 (모달에서 호출 — 부작용 없음)
+    void checkCanJoin(Long roomNo, UUID userUuid);
     // 스터디방 active 참여자 목록 조회
     List<RoomParticipantResponse> getActiveParticipants(Long roomNo);
     // 스터디방 퇴장 처리 + 공부시간 저장

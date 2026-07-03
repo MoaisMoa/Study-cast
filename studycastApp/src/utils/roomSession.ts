@@ -43,10 +43,23 @@ export async function getActiveRoomId(): Promise<string | null> {
   });
 }
 
-/** 입장 시도 전 호출 — 이미 열린 방이 있으면 false 반환 */
-export async function canEnterRoom(): Promise<boolean> {
+/** 입장 시도 전 호출 — 같은 브라우저 탭 또는 다른 기기에서 이미 방에 있으면 false 반환 */
+export async function canEnterRoom(targetRoomId?: string | number): Promise<boolean> {
   if (localStorage.getItem(PENDING_KEY)) return false;
-  return (await getActiveRoomId()) === null;
+  if ((await getActiveRoomId()) !== null) return false;
+
+  // 다른 기기(멀티 디바이스) 중복 입장 방지 — 백엔드에서 DB 기준으로 확인
+  if (targetRoomId != null) {
+    try {
+      const { apiClient } = await import("@/services/apiClient");
+      await apiClient.get(`/api/rooms/${targetRoomId}/join-check`);
+    } catch (err) {
+      // 409(다른 방 입장 중)만 차단, 그 외(네트워크·5xx 등)는 실제 입장 시도에 맡김
+      if ((err as { response?: { status?: number } })?.response?.status === 409) return false;
+    }
+  }
+
+  return true;
 }
 
 /** window.open 직전 호출 — 탭 로딩 중 중복 입장 방지 */

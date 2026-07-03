@@ -152,7 +152,15 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    public void checkCanJoin(Long roomNo, UUID userUuid) {
+        if (roomParticipantsMapper.existsActiveInOtherRoom(userUuid, roomNo)) {
+            throw new IllegalStateException("이미 다른 방에 입장 중입니다. 기존 방에서 나간 후 입장해 주세요.");
+        }
+    }
+
+    @Override
     @Transactional
+
     public RoomJoinResponse joinRoom(Long roomNo, UUID userUuid, RoomJoinRequest request) {
         // 1. roomNo 검증
         if (roomNo == null || roomNo <= 0) {
@@ -171,7 +179,11 @@ public class RoomServiceImpl implements RoomService {
         if (room.getExpiredAt() != null && room.getExpiredAt().isBefore(LocalDateTime.now())) {
             throw new IllegalStateException("만료된 스터디방입니다.");
         }
-        // 5. 이미 active 상태면 코드 검증 없이 중복 입장 처리
+        // 5. 다른 방에 이미 접속 중인지 확인 (PC·모바일 동시 로그인 포함)
+        if (roomParticipantsMapper.existsActiveInOtherRoom(userUuid, roomNo)) {
+            throw new IllegalStateException("이미 다른 방에 입장 중입니다. 기존 방에서 나간 후 입장해 주세요.");
+        }
+        // 6. 이 방에 이미 active 상태면 코드 검증 없이 중복 입장 처리 (새로고침·재연결)
         boolean alreadyActive = roomParticipantsMapper.existsActiveParticipant(roomNo, userUuid);
 
         if (alreadyActive) {
