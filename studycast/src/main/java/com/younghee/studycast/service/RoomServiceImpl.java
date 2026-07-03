@@ -152,7 +152,15 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    public void checkCanJoin(Long roomNo, UUID userUuid) {
+        if (roomParticipantsMapper.existsActiveInOtherRoom(userUuid, roomNo)) {
+            throw new IllegalStateException("이미 다른 방에 입장 중입니다. 기존 방에서 나간 후 입장해 주세요.");
+        }
+    }
+
+    @Override
     @Transactional
+
     public RoomJoinResponse joinRoom(Long roomNo, UUID userUuid, RoomJoinRequest request) {
         // 1. roomNo 검증
         if (roomNo == null || roomNo <= 0) {

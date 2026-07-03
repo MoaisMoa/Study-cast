@@ -49,7 +49,7 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   const handleEnterClick = async () => {
     if (isPrivate) { setCodeStep(true); return; }
     setEntering(true);
-    const allowed = await canEnterRoom();
+    const allowed = await canEnterRoom(room.id);
     setEntering(false);
     if (!allowed) { setEntryBlocked(true); return; }
     setPendingEntry(String(room.id));
@@ -60,7 +60,7 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   const handleCodeSubmit = async () => {
     if (!CODE_RE.test(codeVal.trim())) { setCodeError("4~6자리 숫자를 입력해주세요."); return; }
     setVerifying(true);
-    const allowed = await canEnterRoom();
+    const allowed = await canEnterRoom(room.id);
     if (!allowed) { setVerifying(false); setEntryBlocked(true); setCodeStep(false); return; }
     const result = await joinRoom(Number(room.id), codeVal.trim());
     setVerifying(false);
