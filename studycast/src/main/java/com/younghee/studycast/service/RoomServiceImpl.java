@@ -175,11 +175,13 @@ public class RoomServiceImpl implements RoomService {
         boolean alreadyActive = roomParticipantsMapper.existsActiveParticipant(roomNo, userUuid);
 
         if (alreadyActive) {
-            // 5-1. 현재 active 참여자 수 기준으로 rooms.now_users 동기화
+            // 5-1. joined_at·study_seconds 초기화 (탭 닫고 재입장 시 이전 세션의 joined_at이 남아 참석 시간이 크게 보이는 버그 방지)
+            roomParticipantsMapper.rejoinParticipant(roomNo, userUuid);
+            // 5-2. 현재 active 참여자 수 기준으로 rooms.now_users 동기화
             roomsMapper.syncNowUsersByActiveParticipants(roomNo);
-            // 5-2. 동기화된 현재 인원 조회
+            // 5-3. 동기화된 현재 인원 조회
             Integer currentUsers = roomsMapper.findNowUsersByRoomNo(roomNo);
-            // 5-3. 이미 입장 중인 상태로 성공 응답 반환
+            // 5-4. 이미 입장 중인 상태로 성공 응답 반환
             return new RoomJoinResponse(
                 roomNo,
                 true,
