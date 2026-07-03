@@ -6,7 +6,6 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { fmtT, nowDate, nowT } from "@/data/studyRoom";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchRoom, leaveRoom, getTodayStudySeconds, accumulateStudySeconds, subscribeMembers, subscribeChat, sendMessage, MEMBER_COLORS, saveNotice, kickMember as svcKickMember, reportTimerTick, subscribeTimerUpdates, type MemberEvent } from "@/services/studyRoomService";
-import { API_BASE_URL } from "@/services/apiClient";
 import { registerSession, unregisterSession, broadcastRoomJoined } from "@/utils/roomSession";
 import { useLiveKit } from "@/hooks/useLiveKit";
 import { LearningPlannerModal } from "@/pages/MainPage/sections/planner/LearningPlannerModal";
@@ -368,7 +367,7 @@ export default function StudyRoomPage() {
   const handlePageHide = useCallback(() => {
     if (exitedRef.current || !roomId) return;
     const remaining = Math.max(0, totalSecRef.current - lastSavedTotalRef.current);
-    fetch(`${API_BASE_URL}/api/rooms/${roomId}/leave`, {
+    fetch(`/api/rooms/${roomId}/leave`, {
       method: "DELETE",
       credentials: "include",
       keepalive: true,
