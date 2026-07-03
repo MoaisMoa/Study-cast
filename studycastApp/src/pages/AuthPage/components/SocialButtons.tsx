@@ -1,8 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { useAT } from "@/theme";
 import { SocialButton } from "@/components/ui/SocialButton";
-import { API_BASE_URL } from "@/services/apiClient";
-
 export interface SocialButtonsProps {
   label?: string;
 }
@@ -16,7 +14,7 @@ export function SocialButtons({ label = "계속하기" }: SocialButtonsProps) {
   function buildOAuthUrl(provider: "kakao" | "google"): string {
     const redirect = new URLSearchParams(location.search).get("redirect");
     const query = redirect && redirect.startsWith("/") ? `?redirect=${encodeURIComponent(redirect)}` : "";
-    return `${API_BASE_URL}/oauth2/authorization/${provider}${query}`;
+    return `/oauth2/authorization/${provider}${query}`;
   }
 
   function handleKakao() {
