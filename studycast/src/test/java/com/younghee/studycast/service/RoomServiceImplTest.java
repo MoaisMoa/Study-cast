@@ -454,6 +454,43 @@ class RoomServiceImplTest {
                 .hasMessageContaining("정원이 가득");
     }
 
+    @Test
+    @DisplayName("joinRoom — 실패: 다른 방에 이미 접속 중이면 IllegalStateException (멀티 디바이스 중복 차단)")
+    void joinRoom_activeInOtherRoom_throwsIllegalState() {
+        // given: 사용자가 room 2에 이미 접속 중인 상태에서 room 1 입장 시도
+        Long targetRoomNo = 1L;
+        UUID userUuid = UUID.randomUUID();
+        RoomsDTO room = makePublicRoom(targetRoomNo, UUID.randomUUID(), 4);
+
+        given(roomsMapper.findRoomByRoomNo(targetRoomNo)).willReturn(room);
+        // 다른 방(room 2)에 active 상태
+        given(roomParticipantsMapper.existsActiveInOtherRoom(userUuid, targetRoomNo)).willReturn(true);
+
+        assertThatThrownBy(() -> roomService.joinRoom(targetRoomNo, userUuid, null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("이미 다른 방에 입장 중");
+    }
+
+    @Test
+    @DisplayName("joinRoom — 정상(재연결): 같은 방에 이미 active여도 다른 방 체크는 통과")
+    void joinRoom_alreadyActiveInSameRoom_otherRoomCheckPasses() {
+        // given: 같은 방에 active 상태 (새로고침·재연결 시나리오)
+        Long roomNo = 1L;
+        UUID userUuid = UUID.randomUUID();
+        RoomsDTO room = makePublicRoom(roomNo, UUID.randomUUID(), 4);
+
+        given(roomsMapper.findRoomByRoomNo(roomNo)).willReturn(room);
+        // 다른 방에는 없음
+        given(roomParticipantsMapper.existsActiveInOtherRoom(userUuid, roomNo)).willReturn(false);
+        // 이 방에는 active
+        given(roomParticipantsMapper.existsActiveParticipant(roomNo, userUuid)).willReturn(true);
+        given(roomsMapper.findNowUsersByRoomNo(roomNo)).willReturn(2);
+
+        RoomJoinResponse response = roomService.joinRoom(roomNo, userUuid, null);
+
+        assertThat(response.getMessage()).contains("이미 입장 중");
+    }
+
     // ────────────────────────────────────────────────────────────────────────
     // 5. leaveRoom() — 방 퇴장
     // ────────────────────────────────────────────────────────────────────────
