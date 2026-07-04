@@ -1,0 +1,17 @@
+services:
+  studycast-backend:
+    image: 505853672168.dkr.ecr.ap-northeast-2.amazonaws.com/studycast-backend:latest
+    container_name: studycast-backend
+    restart: always
+
+    # EC2 host의 PostgreSQL localhost:5432를 그대로 쓰기 위해 host network 사용
+    network_mode: "host"
+
+    env_file:
+      - /home/ubuntu/studycast/studycast/.env
+
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+    volumes:
+      - /home/ubuntu/studycast/studycast/uploads:/home/ubuntu/studycast/studycast/uploads
