@@ -1,6 +1,14 @@
 name: Backend Docker Deploy to EC2
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'studycast/**'
+      - 'docker-compose.aws-ec2.yml'
+      - 'deploy-update.sh'
+      - '.github/workflows/backend-docker-deploy.yml'
   workflow_dispatch:
 
 permissions:
