@@ -1,0 +1,8 @@
+.gradle
+src/test
+uploads
+SQL
+*.log
+.env
+application-secret.properties
+application-local.properties
