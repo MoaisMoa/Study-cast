@@ -1,12 +1,7 @@
 name: Backend Deploy to EC2
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'studycast/**'
-      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:
 
 permissions:
   id-token: write
