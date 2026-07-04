@@ -1,0 +1,122 @@
+name: Backend Docker Deploy to EC2
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-northeast-2
+  S3_BUCKET: studycast-backend-deploy-artifacts
+  EC2_INSTANCE_ID: i-0ab162fff3b1514ab
+  ECR_REPOSITORY: studycast-backend
+  IMAGE_TAG: latest
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 23
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '23'
+
+      - name: Build backend WAR
+        working-directory: studycast
+        run: ./gradlew clean build
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        working-directory: studycast
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} .
+          docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+
+      - name: Upload Docker deploy files to S3
+        run: |
+          aws s3 cp docker-compose.aws-ec2.yml s3://${S3_BUCKET}/docker/docker-compose.aws-ec2.yml
+          aws s3 cp deploy-update.sh s3://${S3_BUCKET}/docker/deploy-update.sh
+
+      - name: Run Docker deploy on EC2 via SSM
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --region "${AWS_REGION}" \
+            --instance-ids "${EC2_INSTANCE_ID}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy StudyCast backend Docker from GitHub Actions" \
+            --parameters 'commands=[
+              "set -e",
+              "echo Download Docker deploy files",
+              "/usr/local/bin/aws s3 cp s3://studycast-backend-deploy-artifacts/docker/docker-compose.aws-ec2.yml /home/ubuntu/studycast/docker-compose.aws-ec2.yml --region ap-northeast-2",
+              "/usr/local/bin/aws s3 cp s3://studycast-backend-deploy-artifacts/docker/deploy-update.sh /home/ubuntu/studycast/deploy-update.sh --region ap-northeast-2",
+              "chmod +x /home/ubuntu/studycast/deploy-update.sh",
+              "bash /home/ubuntu/studycast/deploy-update.sh"
+            ]' \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "Command ID: ${COMMAND_ID}"
+
+          for i in {1..40}; do
+            STATUS=$(aws ssm get-command-invocation \
+              --region "${AWS_REGION}" \
+              --command-id "${COMMAND_ID}" \
+              --instance-id "${EC2_INSTANCE_ID}" \
+              --query "Status" \
+              --output text || true)
+
+            echo "SSM status: ${STATUS}"
+
+            if [ "${STATUS}" = "Success" ]; then
+              aws ssm get-command-invocation \
+                --region "${AWS_REGION}" \
+                --command-id "${COMMAND_ID}" \
+                --instance-id "${EC2_INSTANCE_ID}" \
+                --query "StandardOutputContent" \
+                --output text
+              exit 0
+            fi
+
+            if [ "${STATUS}" = "Failed" ] || [ "${STATUS}" = "Cancelled" ] || [ "${STATUS}" = "TimedOut" ]; then
+              echo "=== STDOUT ==="
+              aws ssm get-command-invocation \
+                --region "${AWS_REGION}" \
+                --command-id "${COMMAND_ID}" \
+                --instance-id "${EC2_INSTANCE_ID}" \
+                --query "StandardOutputContent" \
+                --output text || true
+
+              echo "=== STDERR ==="
+              aws ssm get-command-invocation \
+                --region "${AWS_REGION}" \
+                --command-id "${COMMAND_ID}" \
+                --instance-id "${EC2_INSTANCE_ID}" \
+                --query "StandardErrorContent" \
+                --output text || true
+
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "SSM command did not finish in time"
+          exit 1
