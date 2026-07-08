@@ -1,5 +1,6 @@
 package com.younghee.studycast.controller;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,7 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
@@ -34,10 +36,17 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private static final String ORIGIN_HEADER = "Origin";
+    private static final String REFERER_HEADER = "Referer";
+
     private final UserService userService;
     private final AuthService authService;
     private final JwtProvider jwtProvider;
     private final AuthCookieUtil authCookieUtil;
+
+    // SecurityConfig의 CORS 허용 오리진과 동일한 목록 — /api/auth/refresh의 Origin/Referer 검증에 사용
+    @Value("${app.allowed-origins}")
+    private List<String> allowedOrigins;
 
     // 회원가입
     @PostMapping("/api/auth/signup")
@@ -106,12 +115,20 @@ public class AuthController {
         headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.buildTokenCookie(AuthCookieUtil.REFRESH_TOKEN_COOKIE_NAME, auth.getRefreshToken(), refreshMaxAge).toString());
 
         return ResponseEntity.ok().headers(headers)
-            .body(Map.of("success", true, "message", "로그인되었습니다."));
+            .body(Map.of("success", true, "message", "로그인되었습니다.", "accessToken", auth.getAccessToken()));
     }
 
     // Access Token 재발급 — 쿠키의 Refresh Token 사용, 새 Access Token 쿠키 발급
     @PostMapping("/api/auth/refresh")
     public ResponseEntity<Map<String, Object>> refresh(HttpServletRequest request) {
+
+        // Access Token은 더 이상 쿠키로 자동 전송되지 않아 CSRF 표면이 아니지만,
+        // 이 엔드포인트는 Refresh Token 쿠키만으로 동작하므로 Origin/Referer로 요청 출처를 확인
+        if (!isAllowedOrigin(request)) {
+            log.warn("Refresh Token 재발급 거부: 허용되지 않은 Origin/Referer");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("success", false, "message", "허용되지 않은 요청입니다."));
+        }
 
         String refreshToken = authCookieUtil.extractCookieValue(request, AuthCookieUtil.REFRESH_TOKEN_COOKIE_NAME);
 
@@ -124,7 +141,7 @@ public class AuthController {
             headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.buildTokenCookie(AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME, auth.getAccessToken(), accessMaxAge).toString());
 
             return ResponseEntity.ok().headers(headers)
-                .body(Map.of("success", true));
+                .body(Map.of("success", true, "accessToken", auth.getAccessToken()));
 
         } catch (IllegalArgumentException | IllegalStateException |
                  NoSuchElementException | SecurityException e) {
@@ -266,5 +283,17 @@ public class AuthController {
         } catch (SecurityException e) {
             return Map.of("success", false, "message", e.getMessage(), "errorCode", "wrong_password");
         }
+    }
+
+    // Origin(없으면 Referer)이 허용된 프론트 주소로 시작하는지 확인 — 브라우저는 이 헤더들을 JS로 위조할 수 없음
+    private boolean isAllowedOrigin(HttpServletRequest request) {
+        String origin = request.getHeader(ORIGIN_HEADER);
+        String source = (origin != null) ? origin : request.getHeader(REFERER_HEADER);
+
+        if (source == null) {
+            return false;
+        }
+
+        return allowedOrigins.stream().anyMatch(source::startsWith);
     }
 }

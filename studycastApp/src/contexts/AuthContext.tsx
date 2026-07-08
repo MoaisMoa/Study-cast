@@ -1,7 +1,8 @@
 import { createContext, useContext, useMemo, useState, useEffect, useCallback } from "react";
 import type { ReactNode } from "react";
 import type { AuthUser } from "@/types";
-import { getCurrentUser, logout as logoutService, fetchCurrentUser, clearAuthSession } from "@/services/authService";
+import { getCurrentUser, logout as logoutService, fetchCurrentUser, clearAuthSession, refreshAccessToken } from "@/services/authService";
+import { getAccessToken } from "@/services/apiClient";
 import { broadcastAuthChange, subscribeAuthChange } from "@/utils/authBroadcast";
 import axios from "axios";
 
@@ -34,9 +35,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Access Token은 인메모리에만 있어 새로고침 직후엔 비어 있음 — /api/auth/me 호출 전에 Refresh Token 쿠키로 먼저 채움
+    // (/api/auth/me는 401 인터셉터의 자동 refresh-재시도 대상에서 제외되어 있어 여기서 명시적으로 호출)
+    if (!getAccessToken()) {
+      await refreshAccessToken();
+    }
+
     try {
-      // httpOnly Cookie 기반: sessionStorage 토큰 체크 없이 바로 서버 검증
-      // 401 발생 시 401 인터셉터가 /refresh → 재시도까지 자동 처리
       const verifiedUser = await fetchCurrentUser();
 
       if (verifiedUser) {
