@@ -24,21 +24,33 @@ docker compose -f "${COMPOSE_FILE}" pull
 echo "4. Start backend container"
 docker compose -f "${COMPOSE_FILE}" up -d
 
-echo "5. Wait for backend"
-sleep 10
+echo "5. Wait for backend health check"
 
-echo "6. Health check"
-if curl -fsS http://localhost:8080/api/main/rooms > /tmp/studycast-health-check.json; then
+HEALTH_CHECK_SUCCESS=false
+
+for i in {1..30}; do
+  echo "Health check attempt ${i}/30"
+
+  if curl -fsS http://localhost:8080/api/main/rooms > /tmp/studycast-health-check.json; then
+    HEALTH_CHECK_SUCCESS=true
+    break
+  fi
+
+  sleep 3
+done
+
+echo "6. Health check result"
+
+if [ "${HEALTH_CHECK_SUCCESS}" = "true" ]; then
   echo "Health check success"
   cat /tmp/studycast-health-check.json
 else
-  echo "Health check failed. Rolling back to legacy systemd service."
+  echo "Health check failed after retries"
+  echo "=== Docker container status ==="
+  docker compose -f "${COMPOSE_FILE}" ps || true
 
-  docker compose -f "${COMPOSE_FILE}" down || true
-
-  if systemctl list-unit-files | grep -q "^${LEGACY_SERVICE}.service"; then
-    systemctl start "${LEGACY_SERVICE}" || true
-  fi
+  echo "=== Docker logs ==="
+  docker logs --tail=120 studycast-backend || true
 
   exit 1
 fi
