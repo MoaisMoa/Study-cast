@@ -25,6 +25,6 @@ export const calcDays = (start: string, end: string): number | null => {
   const milliseconds = endDate.getTime() - startDate.getTime();
 
   return milliseconds >= 0
-    ? Math.round(milliseconds / 86400000) + 1
+    ? Math.round(milliseconds / 86400000)
     : null;
 };
