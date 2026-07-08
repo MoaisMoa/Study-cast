@@ -9,14 +9,15 @@ import type {
   VerifyCodePayload,
 } from "@/types";
 
-import { apiClient } from "./apiClient";
+import { apiClient, setAccessToken } from "./apiClient";
 
 const SAVED_EMAIL_KEY = "sc_saved_email";
 const USER_KEY = "sc_user";
 
-/** 세션 저장소 초기화 — 토큰은 쿠키로 관리되므로 사용자 정보만 삭제 */
+/** 세션 저장소 초기화 — Refresh Token은 쿠키로 관리되므로 사용자 정보 + 인메모리 Access Token만 삭제 */
 export function clearAuthSession(): void {
   sessionStorage.removeItem(USER_KEY);
+  setAccessToken(null);
 }
 
 interface BackendUser {
@@ -36,16 +37,17 @@ function toAuthUser(data: BackendUser): AuthUser {
   };
 }
 
-/** 로그인 — 토큰은 백엔드가 httpOnly 쿠키로 설정 */
+/** 로그인 — Access Token은 응답 바디로 받아 인메모리 저장, Refresh Token은 백엔드가 httpOnly 쿠키로 설정 */
 export async function login(
   payload: LoginPayload,
   remember: boolean
 ): Promise<AuthResult & { user?: AuthUser }> {
   try {
-    await apiClient.post("/api/auth/login", {
+    const loginResponse = await apiClient.post<{ accessToken: string }>("/api/auth/login", {
       userEmail: payload.email,
       userPassword: payload.password,
     });
+    setAccessToken(loginResponse.data.accessToken);
 
     if (remember) {
       localStorage.setItem(SAVED_EMAIL_KEY, payload.email);
@@ -152,6 +154,20 @@ export async function isEmailTaken(email: string): Promise<boolean> {
       params: { email },
     });
     return res.data.taken;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 인메모리 Access Token을 채움 — 새로고침 등으로 메모리가 비어 있을 때 /api/auth/me 호출 전에 사용.
+ * /api/auth/me는 401 인터셉터의 자동 refresh-재시도 대상에서 제외되어 있어 여기서 명시적으로 먼저 호출해야 함
+ */
+export async function refreshAccessToken(): Promise<boolean> {
+  try {
+    const res = await apiClient.post<{ accessToken: string }>("/api/auth/refresh");
+    setAccessToken(res.data.accessToken);
+    return true;
   } catch {
     return false;
   }

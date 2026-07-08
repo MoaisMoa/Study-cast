@@ -12,7 +12,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.younghee.studycast.dao.UserMapper;
 import com.younghee.studycast.dto.UserDTO;
-import com.younghee.studycast.util.AuthCookieUtil;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -26,9 +25,11 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BEARER_PREFIX = "Bearer ";
+
     private final JwtProvider jwtProvider;
     private final UserMapper userMapper;
-    private final AuthCookieUtil authCookieUtil;
 
     @Override
     protected void doFilterInternal(
@@ -39,7 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String uri = request.getRequestURI();
 
-        String token = authCookieUtil.extractCookieValue(request, AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME);
+        String token = extractBearerToken(request);
 
         if (token == null) {
             filterChain.doFilter(request, response);
@@ -78,6 +79,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         log.debug("JWT 인증 성공: userUuid={}, uri={}", userUuid, uri);
 
         filterChain.doFilter(request, response);
+    }
+
+    private String extractBearerToken(HttpServletRequest request) {
+        String header = request.getHeader(AUTHORIZATION_HEADER);
+        if (header != null && header.startsWith(BEARER_PREFIX)) {
+            return header.substring(BEARER_PREFIX.length());
+        }
+        return null;
     }
 
     private void sendUnauthorized(HttpServletResponse response, String message) throws IOException {

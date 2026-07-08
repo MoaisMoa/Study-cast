@@ -1,6 +1,6 @@
 /**
  * Spring Boot 백엔드 요청을 위한 Axios 공통 클라이언트
- * 인증은 httpOnly Cookie로 자동 처리 (withCredentials: true)
+ * Access Token은 Authorization 헤더로 전송(인메모리 보관), Refresh Token은 httpOnly Cookie로 자동 처리(withCredentials: true)
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
@@ -52,10 +52,31 @@ export const apiClient = axios.create({
   timeout: 10000,
 });
 
-/** 세션 저장소 초기화 — 토큰은 쿠키로 관리되므로 사용자 정보만 삭제 */
+// 인메모리 Access Token — Authorization 헤더로 매 요청에 실어 보냄.
+// 페이지를 새로고침하면 비워지므로(브라우저에 영속 저장하지 않음) refresh 응답으로 다시 채워야 함
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token;
+}
+
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
+/** 세션 저장소 초기화 — Refresh Token은 쿠키로 관리되므로 사용자 정보 + 인메모리 Access Token만 삭제 */
 export function clearAuthSession(): void {
   sessionStorage.removeItem("sc_user");
+  setAccessToken(null);
 }
+
+// 요청 인터셉터 — 인메모리 Access Token을 Authorization 헤더로 첨부
+apiClient.interceptors.request.use((config) => {
+  if (accessToken) {
+    config.headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+  return config;
+});
 
 // Axios 응답 인터셉터 — 401 시 /refresh 호출 후 원래 요청 재시도
 type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
@@ -121,7 +142,9 @@ apiClient.interceptors.response.use(
     if (!refreshPromise) {
       refreshPromise = axios
         .post(`/api/auth/refresh`, null, { withCredentials: true })
-        .then(() => {})
+        .then((res) => {
+          setAccessToken(res.data?.accessToken ?? null);
+        })
         .catch((refreshError) => {
           redirectToLoginOnce();
           return Promise.reject(refreshError);
@@ -133,7 +156,7 @@ apiClient.interceptors.response.use(
 
     try {
       await refreshPromise;
-      // 새 Access Token 쿠키가 세팅된 후 원래 요청 재시도
+      // 새 Access Token이 메모리에 반영된 후 원래 요청 재시도(요청 인터셉터가 새 헤더를 붙여줌)
       return apiClient(originalRequest);
     } catch {
       return Promise.reject(error);
