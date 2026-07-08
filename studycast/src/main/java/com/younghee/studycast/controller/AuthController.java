@@ -38,6 +38,7 @@ public class AuthController {
 
     private static final String ORIGIN_HEADER = "Origin";
     private static final String REFERER_HEADER = "Referer";
+    private static final String CSRF_TOKEN_HEADER = "X-CSRF-Token";
 
     private final UserService userService;
     private final AuthService authService;
@@ -109,10 +110,13 @@ public class AuthController {
 
         int accessMaxAge  = (int) (jwtProvider.getAccessTokenValidityMs()  / 1000);
         int refreshMaxAge = (int) (jwtProvider.getRefreshTokenValidityMs() / 1000);
+        // 더블 서브밋 쿠키 방식 CSRF 토큰 — Refresh Token과 생명주기를 맞춰 함께 발급
+        String csrfToken = UUID.randomUUID().toString();
 
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.buildTokenCookie(AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME,  auth.getAccessToken(),  accessMaxAge).toString());
         headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.buildTokenCookie(AuthCookieUtil.REFRESH_TOKEN_COOKIE_NAME, auth.getRefreshToken(), refreshMaxAge).toString());
+        headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.buildCsrfCookie(csrfToken, refreshMaxAge).toString());
 
         return ResponseEntity.ok().headers(headers)
             .body(Map.of("success", true, "message", "로그인되었습니다.", "accessToken", auth.getAccessToken()));
@@ -126,6 +130,13 @@ public class AuthController {
         // 이 엔드포인트는 Refresh Token 쿠키만으로 동작하므로 Origin/Referer로 요청 출처를 확인
         if (!isAllowedOrigin(request)) {
             log.warn("Refresh Token 재발급 거부: 허용되지 않은 Origin/Referer");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("success", false, "message", "허용되지 않은 요청입니다."));
+        }
+
+        // 더블 서브밋 쿠키 검증 — 공격자 사이트는 이 쿠키를 자동으로 실어보낼 순 있어도 값을 읽어 헤더에 넣을 순 없음
+        if (!isValidCsrfToken(request)) {
+            log.warn("Refresh Token 재발급 거부: CSRF 토큰 불일치");
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("success", false, "message", "허용되지 않은 요청입니다."));
         }
@@ -178,6 +189,7 @@ public class AuthController {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.clearTokenCookie(AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME).toString());
         headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.clearTokenCookie(AuthCookieUtil.REFRESH_TOKEN_COOKIE_NAME).toString());
+        headers.add(HttpHeaders.SET_COOKIE, authCookieUtil.clearCsrfCookie().toString());
 
         return ResponseEntity.ok().headers(headers)
             .body(Map.of("success", true, "message", "로그아웃되었습니다."));
@@ -295,5 +307,13 @@ public class AuthController {
         }
 
         return allowedOrigins.stream().anyMatch(source::startsWith);
+    }
+
+    // 더블 서브밋 쿠키 검증 — 쿠키 값과 헤더 값이 둘 다 있고 서로 일치해야 통과
+    private boolean isValidCsrfToken(HttpServletRequest request) {
+        String cookieValue = authCookieUtil.extractCookieValue(request, AuthCookieUtil.CSRF_TOKEN_COOKIE_NAME);
+        String headerValue = request.getHeader(CSRF_TOKEN_HEADER);
+
+        return cookieValue != null && cookieValue.equals(headerValue);
     }
 }

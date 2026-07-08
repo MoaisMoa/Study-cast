@@ -68,7 +68,7 @@ export function PeriodPicker({
             type="date"
             value={endDate}
             min={offsetDate(1)}
-            max={offsetDate(89)}
+            max={offsetDate(90)}
             onChange={(e) => {
               const val = e.target.value;
               onEndDateChange(val);
@@ -81,7 +81,7 @@ export function PeriodPicker({
                   Math.round(
                     (new Date(val).getTime() - new Date(startDate).getTime()) /
                       86400000
-                  ) + 1;
+                  );
 
                 if (totalDays > 90) {
                   setError("스터디 기간은 최대 90일까지 설정할 수 있습니다.");

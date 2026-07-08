@@ -167,7 +167,52 @@ class AuthCookieUtilTest {
         }
     }
 
-    // ── 4. extractCookieValue — 요청에서 쿠키 값 추출 ─────────────────────────
+    // ── 4. buildCsrfCookie / clearCsrfCookie — 더블 서브밋 쿠키 방식 CSRF 토큰 ──
+
+    @Nested
+    @DisplayName("buildCsrfCookie — CSRF 토큰 쿠키 생성")
+    class BuildCsrfCookie {
+
+        private final AuthCookieUtil util = new AuthCookieUtil(false);
+
+        @Test
+        @DisplayName("HttpOnly=false — 프론트 JS가 값을 읽어 헤더로 되돌려보낼 수 있어야 함")
+        void buildCsrfCookie_isNotHttpOnly() {
+            ResponseCookie cookie = util.buildCsrfCookie("csrf-value", 3600);
+
+            assertThat(cookie.isHttpOnly()).isFalse();
+        }
+
+        @Test
+        @DisplayName("쿠키 이름은 sc_csrf_token, 값과 maxAge가 그대로 설정됨")
+        void buildCsrfCookie_hasCorrectNameValueAndMaxAge() {
+            ResponseCookie cookie = util.buildCsrfCookie("csrf-value", 3600);
+
+            assertThat(cookie.getName()).isEqualTo(AuthCookieUtil.CSRF_TOKEN_COOKIE_NAME);
+            assertThat(cookie.getValue()).isEqualTo("csrf-value");
+            assertThat(cookie.getMaxAge().getSeconds()).isEqualTo(3600);
+        }
+    }
+
+    @Nested
+    @DisplayName("clearCsrfCookie — 로그아웃 시 CSRF 토큰 쿠키 삭제")
+    class ClearCsrfCookie {
+
+        private final AuthCookieUtil util = new AuthCookieUtil(false);
+
+        @Test
+        @DisplayName("HttpOnly=false, maxAge=0, 값이 빈 문자열")
+        void clearCsrfCookie_hasCorrectAttributes() {
+            ResponseCookie cookie = util.clearCsrfCookie();
+
+            assertThat(cookie.isHttpOnly()).isFalse();
+            assertThat(cookie.getMaxAge().getSeconds()).isEqualTo(0);
+            assertThat(cookie.getValue()).isEmpty();
+            assertThat(cookie.getName()).isEqualTo(AuthCookieUtil.CSRF_TOKEN_COOKIE_NAME);
+        }
+    }
+
+    // ── 5. extractCookieValue — 요청에서 쿠키 값 추출 ─────────────────────────
 
     @Nested
     @DisplayName("extractCookieValue — HTTP 요청에서 쿠키 값 추출")

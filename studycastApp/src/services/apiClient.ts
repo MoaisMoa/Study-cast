@@ -70,10 +70,26 @@ export function clearAuthSession(): void {
   setAccessToken(null);
 }
 
-// 요청 인터셉터 — 인메모리 Access Token을 Authorization 헤더로 첨부
+const CSRF_COOKIE_NAME = "sc_csrf_token";
+const CSRF_HEADER_NAME = "X-CSRF-Token";
+
+/** document.cookie에서 이름으로 값 하나를 읽음 (없으면 null) */
+function readCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+// 요청 인터셉터 — 인메모리 Access Token을 Authorization 헤더로 첨부,
+// /api/auth/refresh는 더블 서브밋 쿠키 방식 CSRF 토큰도 헤더로 첨부
 apiClient.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+  if (config.url?.includes("/api/auth/refresh")) {
+    const csrfToken = readCookie(CSRF_COOKIE_NAME);
+    if (csrfToken) {
+      config.headers.set(CSRF_HEADER_NAME, csrfToken);
+    }
   }
   return config;
 });
@@ -140,8 +156,12 @@ apiClient.interceptors.response.use(
 
     // refresh가 이미 진행 중이면 기존 Promise 대기, 아니면 새로 시작
     if (!refreshPromise) {
+      const csrfToken = readCookie(CSRF_COOKIE_NAME);
       refreshPromise = axios
-        .post(`/api/auth/refresh`, null, { withCredentials: true })
+        .post(`/api/auth/refresh`, null, {
+          withCredentials: true,
+          headers: csrfToken ? { [CSRF_HEADER_NAME]: csrfToken } : {},
+        })
         .then((res) => {
           setAccessToken(res.data?.accessToken ?? null);
         })

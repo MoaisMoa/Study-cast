@@ -52,7 +52,7 @@ export default function RoomCreatePage() {
   const [codeCheck, setCodeCheck] = useState<CodeCheckState>("idle");
   const [count, setCount] = useState<number | "">(2);
   const [startDate] = useState<string>(todayStr());
-  const [endDate, setEndDate] = useState<string>(offsetDate(89));
+  const [endDate, setEndDate] = useState<string>(offsetDate(90));
   const [camOn, setCamOn] = useState(true);
   const [micOn, setMicOn] = useState(false);
   const [notice, setNotice] = useState("");
@@ -98,7 +98,7 @@ export default function RoomCreatePage() {
     else {
       const diffDays = Math.round(
         (new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000
-      ) + 1;
+      );
       if (diffDays > 90) e.date = "종료일은 시작일로부터 최대 90일 이내로 설정해주세요.";
     }
     /** 관심 카테고리 검증 */
@@ -191,8 +191,7 @@ export default function RoomCreatePage() {
     setCodeCheck("idle");
     setVisibility("public");
     setCount(2);
-    /** 오늘 + 90일 (시작일 포함) */
-    setEndDate(offsetDate(89));
+    setEndDate(offsetDate(90));
     setCamOn(true);
     setMicOn(false);
     setNotice("");

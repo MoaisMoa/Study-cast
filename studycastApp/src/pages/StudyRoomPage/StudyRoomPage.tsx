@@ -5,6 +5,7 @@ import { useT, useThemeCtx } from "@/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { fmtT, nowDate, nowT } from "@/data/studyRoom";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAccessToken } from "@/services/apiClient";
 import { fetchRoom, leaveRoom, getTodayStudySeconds, accumulateStudySeconds, subscribeMembers, subscribeChat, sendMessage, MEMBER_COLORS, saveNotice, kickMember as svcKickMember, reportTimerTick, subscribeTimerUpdates, type MemberEvent } from "@/services/studyRoomService";
 import { registerSession, unregisterSession, broadcastRoomJoined } from "@/utils/roomSession";
 import { useLiveKit } from "@/hooks/useLiveKit";
@@ -367,11 +368,15 @@ export default function StudyRoomPage() {
   const handlePageHide = useCallback(() => {
     if (exitedRef.current || !roomId) return;
     const remaining = Math.max(0, totalSecRef.current - lastSavedTotalRef.current);
+    const accessToken = getAccessToken();
     fetch(`/api/rooms/${roomId}/leave`, {
       method: "DELETE",
       credentials: "include",
       keepalive: true,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
       body: JSON.stringify({ studiedSeconds: remaining }),
     });
     unregisterSession();

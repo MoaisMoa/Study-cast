@@ -6,7 +6,7 @@ import { CATS_FILTER } from "@/data/categories";
 import { XIc, PlusIc } from "../components/RoomIcons";
 import { getDefaultRoomImage } from "@/utils/roomImage";
 import { updateRoom } from "@/services/studyRoomService";
-import { calcDays } from "@/utils/date";
+import { calcDays, todayStr, offsetDate } from "@/utils/date";
 import { broadcastRoomJoined } from "@/utils/roomSession";
 
 const NO_TO_CAT = Object.fromEntries(
@@ -62,8 +62,8 @@ export function SettingModal(props: SettingModalProps) {
   } = props;
 
   const T = useT();
-  const today = new Date().toISOString().slice(0, 10);
-  const maxDate = (() => { const d = new Date(); d.setDate(d.getDate() + 90); return d.toISOString().slice(0, 10); })();
+  const today = todayStr();
+  const maxDate = offsetDate(90);
 
   const initCat = categoryNo ? NO_TO_CAT[categoryNo] : undefined;
   const initDate = expiredAt ? expiredAt.slice(0, 10) : "2026-08-01";

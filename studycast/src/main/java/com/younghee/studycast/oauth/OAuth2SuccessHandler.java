@@ -78,16 +78,22 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler{
         ResponseCookie accessCookie = authCookieUtil.buildTokenCookie(
           AuthCookieUtil.ACCESS_TOKEN_COOKIE_NAME,
           accessToken,
-          accessMaxAge  
+          accessMaxAge
         );
         ResponseCookie refreshCookie = authCookieUtil.buildTokenCookie(
           AuthCookieUtil.REFRESH_TOKEN_COOKIE_NAME,
           refreshToken,
-          refreshMaxAge  
+          refreshMaxAge
+        );
+        // 더블 서브밋 쿠키 방식 CSRF 토큰 — 일반 로그인과 동일하게 Refresh Token과 생명주기를 맞춰 함께 발급
+        ResponseCookie csrfCookie = authCookieUtil.buildCsrfCookie(
+          UUID.randomUUID().toString(),
+          refreshMaxAge
         );
         // 8. 응답 헤더에 Set-Cookie 추가
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, csrfCookie.toString());
 
         log.info("OAuth 로그인 성공 JWT 쿠키 발급 완료: userUuid={}", userUuid);
 
