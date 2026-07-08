@@ -13,6 +13,7 @@ public class AuthCookieUtil {
     
     public static final String ACCESS_TOKEN_COOKIE_NAME = "sc_access_token";
     public static final String REFRESH_TOKEN_COOKIE_NAME = "sc_refresh_token";
+    public static final String CSRF_TOKEN_COOKIE_NAME = "sc_csrf_token";
 
     private final boolean cookieSecure;
 
@@ -43,6 +44,28 @@ public class AuthCookieUtil {
             .secure(cookieSecure)
             .path("/")
             // 0으로 응답하면 브라우저가 해당 쿠키를 즉시 삭제
+            .maxAge(0)
+            .sameSite(cookieSecure ? "None" : "Lax")
+            .build();
+    }
+
+    // CSRF 토큰 담는 Cookie 생성 — 더블 서브밋 패턴이라 프론트 JS가 값을 읽어 헤더로 되돌려보내야 하므로 httpOnly(false)
+    public ResponseCookie buildCsrfCookie(String value, int maxAgeSeconds) {
+        return ResponseCookie.from(CSRF_TOKEN_COOKIE_NAME, value)
+            .httpOnly(false)
+            .secure(cookieSecure)
+            .path("/")
+            .maxAge(maxAgeSeconds)
+            .sameSite(cookieSecure ? "None" : "Lax")
+            .build();
+    }
+
+    // CSRF 토큰 쿠키 삭제용 Cookie 생성
+    public ResponseCookie clearCsrfCookie() {
+        return ResponseCookie.from(CSRF_TOKEN_COOKIE_NAME, "")
+            .httpOnly(false)
+            .secure(cookieSecure)
+            .path("/")
             .maxAge(0)
             .sameSite(cookieSecure ? "None" : "Lax")
             .build();
