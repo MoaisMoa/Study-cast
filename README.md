@@ -1,5 +1,6 @@
 # Study-cast
 
+<img src="https://github.com/user-attachments/assets/c83efd8b-cfb3-4fcd-8e3f-4d4a5960143c" />
 실시간 화상·채팅으로 함께 공부하는 온라인 스터디룸 서비스입니다.
 
 ## 목차
