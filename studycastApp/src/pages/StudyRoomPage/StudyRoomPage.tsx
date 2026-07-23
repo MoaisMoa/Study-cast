@@ -215,8 +215,11 @@ export default function StudyRoomPage() {
   }, [roomId, joined]);
 
   // 멤버 입퇴장 실시간 구독
+  // (join REST 요청이 완료되어 room_participants에 활성 참여자로 반영된 뒤에만 구독해야
+  //  WebSocketAuthChannelInterceptor의 참여자 검증을 통과함 — joined 이전에 구독하면 SUBSCRIBE가
+  //  조용히 거부되어 새로고침 전까지 실시간 갱신을 못 받는 문제가 있었음)
   useEffect(() => {
-    if (!roomId || authLoading || !isLoggedIn) return;
+    if (!roomId || authLoading || !isLoggedIn || !joined) return;
     const unsub = subscribeMembers(roomId, (event: MemberEvent) => {
       if (event.type === "JOINED") {
         if (event.userUuid === myUuidRef.current) return; // 자신 입장 이벤트 무시
@@ -280,18 +283,18 @@ export default function StudyRoomPage() {
       }
     });
     return unsub;
-  }, [roomId, authLoading, isLoggedIn]);
+  }, [roomId, authLoading, isLoggedIn, joined]);
 
-  // 실시간 채팅 구독
+  // 실시간 채팅 구독 (joined 이전 구독 시 SUBSCRIBE가 조용히 거부되는 문제 방지 — 위 멤버 구독과 동일한 이유)
   useEffect(() => {
-    if (!roomId || authLoading || !isLoggedIn) return;
+    if (!roomId || authLoading || !isLoggedIn || !joined) return;
     const unsub = subscribeChat(
       roomId,
       () => myUuidRef.current,
       (msg) => setMsgs((prev) => [...prev, msg])
     );
     return unsub;
-  }, [roomId, authLoading, isLoggedIn]);
+  }, [roomId, authLoading, isLoggedIn, joined]);
 
   // 카메라 OFF 시 자동 일시정지
   useEffect(() => {
