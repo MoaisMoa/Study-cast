@@ -238,6 +238,7 @@ export default function StudyRoomPage() {
             joinedAtMs: Date.now(),
             mic: event.micStatus ?? false,
             cam: event.cameraStatus ?? true,
+            profileImage: event.profileImage ?? undefined,
           };
           const next = [...prev, newMember];
           membersRef.current = next;
