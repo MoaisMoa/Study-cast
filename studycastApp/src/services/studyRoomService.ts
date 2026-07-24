@@ -1,5 +1,5 @@
 import type { ChatMessage, RoomMember } from "@/types/studyRoom";
-import { API_BASE_URL, apiClient } from "./apiClient";
+import { API_BASE_URL, apiClient, getAccessToken } from "./apiClient";
 import { prefixRoomImageUrl } from "@/utils/roomImage";
 
 /** 방 입장 시 한 번에 받아오는 초기 스냅샷 */
@@ -175,6 +175,12 @@ function getClient(): Client {
     stompClient = new Client({
       webSocketFactory: () => new SockJS(`${API_BASE_URL}/ws`),
       reconnectDelay: 5000,
+      // 매 연결(최초 연결 + 재연결) 시도 직전에 매번 최신 Access Token으로 갱신
+      // (연결 시점에 토큰이 없거나, 그 사이 재발급됐을 수 있어 고정 헤더로 두면 안 됨)
+      beforeConnect: () => {
+        const token = getAccessToken();
+        stompClient!.connectHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+      },
       onConnect: () => {
         [...pendingOnConnect].forEach((fn) => fn());
         pendingOnConnect.length = 0;
