@@ -9,6 +9,7 @@
         <id   property="ddayNo"     column="dday_no"/>
         <result property="userUuid"   column="user_uuid"/>
         <result property="ddayTitle"  column="dday_title"/>
+        <result property="ddayType"   column="dday_type"/>
         <result property="targetDate" column="target_date"/>
         <result property="main"       column="is_main"/>
         <result property="createdAt"  column="created_at"/>
@@ -16,7 +17,7 @@
     </resultMap>
 
     <select id="findAllByUser" resultMap="DdayResultMap">
-        SELECT dday_no, user_uuid, dday_title,
+        SELECT dday_no, user_uuid, dday_title, dday_type,
                target_date, is_main, created_at, updated_at
         FROM ddays
         WHERE user_uuid = #{userUuid}
@@ -25,8 +26,8 @@
 
     <!-- 디데이 등록 -->
     <insert id="insert">
-        INSERT INTO ddays (user_uuid, dday_title, target_date)
-        VALUES (#{userUuid}, #{ddayTitle}, #{targetDate})
+        INSERT INTO ddays (user_uuid, dday_title, dday_type, target_date)
+        VALUES (#{userUuid}, #{ddayTitle}, #{ddayType}, #{targetDate})
     </insert>
 
     <!-- 디데이 삭제 (본인 소유 확인) -->

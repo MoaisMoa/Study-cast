@@ -19,6 +19,7 @@ export interface MonthlyStudyStats {
 export interface DdayResponse {
   ddayNo: number;
   title: string;
+  type: string;
   targetDate: string; // "yyyy-MM-dd"
   remainingDays: number;
 }
@@ -26,6 +27,7 @@ export interface DdayResponse {
 /** 등록 요청 형태 */
 export interface DdayCreatePayload {
   title: string;
+  type: string;
   targetDate: string; // "yyyy-MM-dd"
 }
 
