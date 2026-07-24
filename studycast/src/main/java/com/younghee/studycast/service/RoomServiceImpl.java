@@ -274,6 +274,8 @@ public class RoomServiceImpl implements RoomService {
         roomsMapper.syncNowUsersByActiveParticipants(roomNo);
         // 14. 재계산된 현재 인원 조회
         Integer currentUsers = roomsMapper.findNowUsersByRoomNo(roomNo);
+        // 14-1. 메인페이지 방 목록(LIVE/인원수 뱃지) 실시간 갱신용 브로드캐스트
+        broadcastRoomStatus(roomNo, currentUsers, room.getMaxUsers());
         // 15. 최근 방문 기록 저장
         roomVisitHistoriesService.recordVisit(roomNo, userUuid);
         // 16. 입장 성공 응답 반환
@@ -341,6 +343,8 @@ public class RoomServiceImpl implements RoomService {
         );
         // 7. active 참여자 수 기준으로 rooms.now_users 재계산
         roomsMapper.syncNowUsersByActiveParticipants(roomNo);
+        // 7-1. 메인페이지 방 목록(LIVE/인원수 뱃지) 실시간 갱신용 브로드캐스트
+        broadcastRoomStatus(roomNo, roomsMapper.findNowUsersByRoomNo(roomNo), room.getMaxUsers());
         // 8. 프론트 타이머 기준 오늘 공부 시간 누적 저장 (오늘 총 누적 + 이 방에서의 누적, 둘 다)
         if (studiedSeconds > 0) {
             try {
@@ -598,6 +602,17 @@ public class RoomServiceImpl implements RoomService {
             return roomPassword.trim();
         }
         return null;
+    }
+
+    // 메인페이지 방 목록 카드(LIVE/인원수 뱃지)를 실시간으로 갱신하기 위한 브로드캐스트
+    // (방 참여자 전용 채널인 /sub/room/{roomNo}/... 와 달리, 특정 방 소속 검증 없이 누구나 구독 가능한 전역 채널)
+    private void broadcastRoomStatus(Long roomNo, Integer currentUsers, Integer maxUsers) {
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("roomNo", roomNo);
+        payload.put("currentUsers", currentUsers);
+        payload.put("maxUsers", maxUsers);
+        payload.put("live", currentUsers != null && currentUsers > 0);
+        messagingTemplate.convertAndSend("/sub/main/rooms", payload);
     }
 
     private String trimToNull(String value) {

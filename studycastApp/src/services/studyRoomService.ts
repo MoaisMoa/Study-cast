@@ -347,6 +347,39 @@ export function subscribeTimerUpdates(
   };
 }
 
+export interface MainRoomStatusEvent {
+  roomNo: number;
+  currentUsers: number;
+  maxUsers: number;
+  live: boolean;
+}
+
+/** 메인페이지 방 목록(LIVE/인원수 뱃지) 실시간 구독 (WebSocket) — 방 참여 여부와 무관하게 누구나(비로그인 포함) 구독 가능 */
+export function subscribeMainRoomUpdates(
+  onEvent: (event: MainRoomStatusEvent) => void
+): () => void {
+  let sub: ReturnType<Client["subscribe"]> | null = null;
+  let active = true;
+  subscriptionCount++;
+
+  whenConnected(() => {
+    if (!active) return;
+    sub = getClient().subscribe("/sub/main/rooms", (frame) => {
+      try {
+        onEvent(JSON.parse(frame.body));
+      } catch { /* ignore malformed */ }
+    });
+  });
+
+  return () => {
+    active = false;
+    sub?.unsubscribe();
+    sub = null;
+    subscriptionCount--;
+    disconnectIfIdle();
+  };
+}
+
 /** 방 나가기 */
 export async function leaveRoom(roomId: string, studiedSeconds = 0): Promise<{ ok: boolean }> {
   await apiClient.delete(`/api/rooms/${roomId}/leave`, {

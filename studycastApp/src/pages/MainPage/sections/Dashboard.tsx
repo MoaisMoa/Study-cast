@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { fmtTimer } from "@/utils/time";
 import { getMainSummary, listMyRooms } from "@/services/roomService";
 import { subscribeRoomJoined } from "@/utils/roomSession";
+import { subscribeMainRoomUpdates } from "@/services/studyRoomService";
 import { LearningPlannerModal } from "./planner/LearningPlannerModal";
 
 /** 내 스터디 + 스탯 (각오 / 디데이 / 타이머) */
@@ -69,6 +70,13 @@ export function Dashboard() {
     if (!isLoggedIn) return;
     return subscribeRoomJoined(loadDashboard);
   }, [isLoggedIn]);
+
+  // 다른 사용자의 입장/퇴장으로 인한 인원수·LIVE 상태를 실시간 반영 (전체 재조회 없이 해당 방만 patch)
+  useEffect(() => {
+    return subscribeMainRoomUpdates(({ roomNo, currentUsers, live }) => {
+      setRooms((prev) => prev.map((r) => (r.id === roomNo ? { ...r, members: currentUsers, live } : r)));
+    });
+  }, []);
 
   const { h, m, s } = fmtTimer(todayStudySeconds);
   const pct = Math.min((todayStudySeconds / (10 * 3600)) * 100, 100);

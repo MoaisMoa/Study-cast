@@ -12,6 +12,7 @@ import type { VisibilityOpt } from "@/data/categories";
 // import type { TypeOpt } from "@/data/categories";
 import { listRoomCards } from "@/services/roomService";
 import { subscribeRoomJoined } from "@/utils/roomSession";
+import { subscribeMainRoomUpdates } from "@/services/studyRoomService";
 import { Icon } from "@/components/ui/Icon";
 
 const TABS_M = ["전체", "신규"] as const;
@@ -116,6 +117,13 @@ export function MobileBrowse() {
     return subscribeRoomJoined(() => {
       if (isLoadingRef.current) pendingRefreshRef.current = true;
       else fetchRoomsRef.current(0, false);
+    });
+  }, []);
+
+  // 다른 사용자의 입장/퇴장으로 인한 인원수·LIVE 상태를 실시간 반영 (전체 재조회 없이 해당 방만 patch)
+  useEffect(() => {
+    return subscribeMainRoomUpdates(({ roomNo, currentUsers, live }) => {
+      setRooms((prev) => prev.map((r) => (r.id === roomNo ? { ...r, members: currentUsers, live, overCapacity: currentUsers > r.max } : r)));
     });
   }, []);
 

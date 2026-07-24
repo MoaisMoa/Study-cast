@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { joinRoom } from "@/services/visitedRoomService";
 import { openStudyRoom } from "@/utils/openStudyRoom";
 import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
+import { subscribeMainRoomUpdates } from "@/services/studyRoomService";
 import { Icon } from "@/components/ui/Icon";
 import { calcDays } from "@/utils/date";
 
@@ -47,6 +48,20 @@ export function CardModal() {
     const t = window.setTimeout(() => setLoginCountdown((v) => (v ?? 1) - 1), 1000);
     return () => window.clearTimeout(t);
   }, [loginCountdown, room?.id]);
+
+  // WebSocket 이벤트 핸들러가 항상 최신 room을 읽을 수 있도록 ref로 추적 (매번 재구독하지 않기 위함)
+  const roomRef = useRef(room);
+  useEffect(() => { roomRef.current = room; }, [room]);
+
+  // 모달이 열려 있는 방의 인원수·LIVE 상태를 실시간 반영 (전체 재조회 없이 현재 열린 방만 patch)
+  useEffect(() => {
+    return subscribeMainRoomUpdates(({ roomNo, currentUsers, live }) => {
+      const current = roomRef.current;
+      if (current && current.id === roomNo) {
+        setModalRoom({ ...current, members: currentUsers, live, overCapacity: currentUsers > current.max });
+      }
+    });
+  }, []);
 
   if (!room) return null;
 

@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Room } from "@/types";
 import { listRecommended } from "@/services/roomService";
 import { subscribeRoomJoined } from "@/utils/roomSession";
+import { subscribeMainRoomUpdates } from "@/services/studyRoomService";
 import { StudyCard } from "@/components/study/StudyCard";
 
 export function MobileRecommended() {
@@ -26,6 +27,13 @@ export function MobileRecommended() {
       listRecommended({ guest: !isLoggedIn }).then(setRooms);
     });
   }, [isLoggedIn]);
+
+  // 다른 사용자의 입장/퇴장으로 인한 인원수·LIVE 상태를 실시간 반영 (전체 재조회 없이 해당 방만 patch)
+  useEffect(() => {
+    return subscribeMainRoomUpdates(({ roomNo, currentUsers, live }) => {
+      setRooms((prev) => prev.map((r) => (r.id === roomNo ? { ...r, members: currentUsers, live, overCapacity: currentUsers > r.max } : r)));
+    });
+  }, []);
 
   const total = rooms.length;
   const maxIdx = Math.max(0, total - VISIBLE);
