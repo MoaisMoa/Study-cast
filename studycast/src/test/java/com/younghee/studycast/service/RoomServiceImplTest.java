@@ -29,9 +29,12 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+
 import com.younghee.studycast.config.StudyRoomPolicyProperties;
 import com.younghee.studycast.dao.RoomParticipantsMapper;
 import com.younghee.studycast.dao.RoomsMapper;
+import com.younghee.studycast.dao.UserMapper;
 import com.younghee.studycast.dto.RoomParticipantDTO;
 import com.younghee.studycast.dto.RoomsDTO;
 import com.younghee.studycast.dto.request.RoomCreateRequest;
@@ -79,6 +82,9 @@ class RoomServiceImplTest {
     @Mock private StudyLogService          studyLogService;
     @Mock private RoomVisitHistoriesService roomVisitHistoriesService;
     @Mock private EmailService             emailService;
+    // 추가) 멤버 입퇴장 실시간 브로드캐스트 의존성
+    @Mock private SimpMessagingTemplate    messagingTemplate;
+    @Mock private UserMapper               userMapper;
 
     @InjectMocks
     private RoomServiceImpl roomService;

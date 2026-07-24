@@ -260,9 +260,13 @@ CREATE TABLE IF NOT EXISTS ddays (
 
     CONSTRAINT fk_ddays_user FOREIGN KEY(user_uuid) REFERENCES users(user_uuid) ON DELETE CASCADE
 );
+-- 11-1. 일정 유형(시험/과제/모임/기타) — 화면 선택 UI는 있었으나 저장 경로가 비어 있던 컬럼 추가
+ALTER TABLE ddays ADD COLUMN IF NOT EXISTS dday_type VARCHAR(10) NOT NULL DEFAULT '기타';
+
 COMMENT ON COLUMN ddays.dday_no IS '디데이 고유 번호';
 COMMENT ON COLUMN ddays.user_uuid IS '회원 고유 번호';
 COMMENT ON COLUMN ddays.dday_title IS '목표 제목';
+COMMENT ON COLUMN ddays.dday_type IS '일정 유형(시험/과제/모임/기타)';
 COMMENT ON COLUMN ddays.target_date IS '목표 날짜';
 COMMENT ON COLUMN ddays.is_main IS '디데이 화면 노출 여부';
 COMMENT ON COLUMN ddays.created_at IS '디데이 생성 시간';

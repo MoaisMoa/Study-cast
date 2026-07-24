@@ -147,3 +147,7 @@ vite.config.ts.timestamp-*
 
 ### secret ###
 application-secret.properties
+
+### docs (내부 분석·작업 자료 — GitHub 비공개, docs/portfolio/만 공개) ###
+docs/analysis/
+docs/deliverables/

@@ -103,7 +103,7 @@ export function LearningPlannerModal({ open, onClose, onScheduleChanged }: Learn
 
   const addSchedule = async (s: SchedulePayload) => {
     try {
-      await createDday({ title: s.title, targetDate: s.dateRaw });
+      await createDday({ title: s.title, type: s.type, targetDate: s.dateRaw });
       await loadSchedules();
       onScheduleChanged?.();
     } catch {
@@ -325,13 +325,19 @@ export function LearningPlannerModal({ open, onClose, onScheduleChanged }: Learn
                     <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, padding: isNarrow ? 18 : 10, textAlign: "center", marginBottom: isNarrow ? 14 : 8 }}>
                       <div style={{ fontSize: isNarrow ? 16 : 12, fontWeight: 600, color: T.text2, marginBottom: isNarrow ? 8 : 4 }}>{upcomingDdays[0].title}</div>
                       <div style={{ fontWeight: 700, fontSize: isNarrow ? 38 : 22, color: T.red, lineHeight: 1 }}>{ddayLabel(upcomingDdays[0].remainingDays)}</div>
-                      <div style={{ fontSize: isNarrow ? 13 : 10, color: T.text2, marginTop: isNarrow ? 8 : 3 }}>{fmtDate(upcomingDdays[0].targetDate)}</div>
+                      <div style={{ fontSize: isNarrow ? 13 : 10, color: T.text2, marginTop: isNarrow ? 8 : 3 }}>
+                        {fmtDate(upcomingDdays[0].targetDate)}
+                        {upcomingDdays[0].type && <span style={{ marginLeft: 5, padding: "1px 5px", borderRadius: 4, background: T.surface2, fontSize: isNarrow ? 11 : 9, color: T.text3 }}>{upcomingDdays[0].type}</span>}
+                      </div>
                     </div>
                     {upcomingDdays.slice(1).map((s, i, arr) => (
                       <div key={s.ddayNo} style={{ padding: isNarrow ? "12px 0" : "6px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" }}>
                         <div style={{ fontSize: isNarrow ? 15 : 12, fontWeight: 500, color: T.text, marginBottom: isNarrow ? 4 : 2 }}>{s.title}</div>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <span style={{ fontSize: isNarrow ? 13 : 10, color: T.text3 }}>{fmtDate(s.targetDate)}</span>
+                          <span style={{ fontSize: isNarrow ? 13 : 10, color: T.text3 }}>
+                            {fmtDate(s.targetDate)}
+                            {s.type && <span style={{ marginLeft: 4, padding: "1px 5px", borderRadius: 4, background: T.surface2, fontSize: isNarrow ? 11 : 9, color: T.text3 }}>{s.type}</span>}
+                          </span>
                           <span style={{ fontSize: isNarrow ? 13 : 10, color: T.red, fontWeight: 600 }}>{ddayLabel(s.remainingDays)}</span>
                         </div>
                       </div>
@@ -367,7 +373,10 @@ export function LearningPlannerModal({ open, onClose, onScheduleChanged }: Learn
                         <div style={{ width: 4, height: 4, borderRadius: "50%", background: T.red, flexShrink: 0 }} />
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{s.title}</div>
-                          <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>{fmtDate(s.targetDate)} · <span style={{ color: T.red, fontWeight: 600 }}>{ddayLabel(s.remainingDays)}</span></div>
+                          <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>
+                            {fmtDate(s.targetDate)} · <span style={{ color: T.red, fontWeight: 600 }}>{ddayLabel(s.remainingDays)}</span>
+                            {s.type && <span style={{ marginLeft: 4, padding: "1px 6px", borderRadius: 4, background: T.surface2, fontSize: 10, color: T.text3 }}>{s.type}</span>}
+                          </div>
                         </div>
                       </div>
                       <button onClick={() => deleteSchedule(s.ddayNo)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", flexShrink: 0 }}><Icon name="x" size={14} color={T.text3} /></button>
@@ -446,7 +455,10 @@ export function LearningPlannerModal({ open, onClose, onScheduleChanged }: Learn
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <div style={{ width: 4, height: 4, borderRadius: "50%", background: T.red, flexShrink: 0 }} />
                       <span style={{ fontSize: 12, fontWeight: 500, color: T.text }}>{s.title}</span>
-                      <span style={{ fontSize: 11, color: T.text2 }}>{fmtDate(s.targetDate)} · {ddayLabel(s.remainingDays)}</span>
+                      <span style={{ fontSize: 11, color: T.text2 }}>
+                        {fmtDate(s.targetDate)} · {ddayLabel(s.remainingDays)}
+                        {s.type && <span style={{ marginLeft: 4, padding: "1px 5px", borderRadius: 4, background: T.surface2, fontSize: 10, color: T.text3 }}>{s.type}</span>}
+                      </span>
                     </div>
                     <button onClick={() => deleteSchedule(s.ddayNo)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}><Icon name="x" size={13} color={T.text3} /></button>
                   </div>

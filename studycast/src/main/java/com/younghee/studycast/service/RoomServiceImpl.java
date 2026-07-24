@@ -4,9 +4,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,10 +16,12 @@ import org.springframework.web.multipart.MultipartFile;
 import com.younghee.studycast.config.StudyRoomPolicyProperties;
 import com.younghee.studycast.dao.RoomParticipantsMapper;
 import com.younghee.studycast.dao.RoomsMapper;
+import com.younghee.studycast.dao.UserMapper;
 import com.younghee.studycast.domain.RoomCategory;
 import com.younghee.studycast.exception.ForbiddenException;
 import com.younghee.studycast.dto.RoomParticipantDTO;
 import com.younghee.studycast.dto.RoomsDTO;
+import com.younghee.studycast.dto.UserDTO;
 import com.younghee.studycast.dto.request.RoomCreateRequest;
 import com.younghee.studycast.dto.request.RoomJoinRequest;
 import com.younghee.studycast.dto.request.RoomUpdateRequest;
@@ -50,6 +54,9 @@ public class RoomServiceImpl implements RoomService {
     private final StudyLogService studyLogService;
     private final RoomVisitHistoriesService roomVisitHistoriesService;
     private final EmailService emailService;
+    // 추가) 멤버 입퇴장 실시간 브로드캐스트(/sub/room/{roomNo}/members)
+    private final SimpMessagingTemplate messagingTemplate;
+    private final UserMapper userMapper;
 
     @org.springframework.beans.factory.annotation.Value("${app.frontend-url}")
     private String frontendUrl;
@@ -250,6 +257,20 @@ public class RoomServiceImpl implements RoomService {
             // 12. 재입장 처리
             roomParticipantsMapper.rejoinParticipant(roomNo, userUuid);
         }
+        // 12-1. 이미 입장해 있던 다른 참여자들에게 신규 입장을 실시간 브로드캐스트
+        // (같은 유저의 새로고침·재연결은 위쪽 "alreadyActive" 분기에서 여기까지 오지 않으므로 중복 발행되지 않음)
+        UserDTO joinedUser = userMapper.findByUuid(userUuid);
+        messagingTemplate.convertAndSend(
+            "/sub/room/" + roomNo + "/members",
+            Map.of(
+                "type", "JOINED",
+                "userUuid", userUuid.toString(),
+                "userName", joinedUser != null ? joinedUser.getUserName() : "Unknown",
+                "owner", owner,
+                "micStatus", Boolean.TRUE.equals(room.getMicStatus()),
+                "cameraStatus", Boolean.TRUE.equals(room.getCameraStatus())
+            )
+        );
         // 13. active 참여자 수 기준으로 rooms.now_users 재계산
         roomsMapper.syncNowUsersByActiveParticipants(roomNo);
         // 14. 재계산된 현재 인원 조회
@@ -314,6 +335,11 @@ public class RoomServiceImpl implements RoomService {
         if (updated != 1) {
             throw new IllegalStateException("스터디방 퇴장 처리에 실패했습니다.");
         }
+        // 6-1. 남아 있는 참여자들에게 퇴장을 실시간 브로드캐스트
+        messagingTemplate.convertAndSend(
+            "/sub/room/" + roomNo + "/members",
+            Map.of("type", "LEFT", "userUuid", userUuid.toString())
+        );
         // 7. active 참여자 수 기준으로 rooms.now_users 재계산
         roomsMapper.syncNowUsersByActiveParticipants(roomNo);
         // 8. 프론트 타이머 기준 오늘 공부 시간 누적 저장 (오늘 총 누적 + 이 방에서의 누적, 둘 다)
