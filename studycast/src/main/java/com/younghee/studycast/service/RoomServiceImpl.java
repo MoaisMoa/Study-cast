@@ -260,17 +260,16 @@ public class RoomServiceImpl implements RoomService {
         // 12-1. 이미 입장해 있던 다른 참여자들에게 신규 입장을 실시간 브로드캐스트
         // (같은 유저의 새로고침·재연결은 위쪽 "alreadyActive" 분기에서 여기까지 오지 않으므로 중복 발행되지 않음)
         UserDTO joinedUser = userMapper.findByUuid(userUuid);
-        messagingTemplate.convertAndSend(
-            "/sub/room/" + roomNo + "/members",
-            Map.of(
-                "type", "JOINED",
-                "userUuid", userUuid.toString(),
-                "userName", joinedUser != null ? joinedUser.getUserName() : "Unknown",
-                "owner", owner,
-                "micStatus", Boolean.TRUE.equals(room.getMicStatus()),
-                "cameraStatus", Boolean.TRUE.equals(room.getCameraStatus())
-            )
-        );
+        // 프로필 사진이 없는 유저는 값이 null일 수 있어 null을 허용하지 않는 Map.of() 대신 HashMap 사용
+        Map<String, Object> joinedPayload = new java.util.HashMap<>();
+        joinedPayload.put("type", "JOINED");
+        joinedPayload.put("userUuid", userUuid.toString());
+        joinedPayload.put("userName", joinedUser != null ? joinedUser.getUserName() : "Unknown");
+        joinedPayload.put("profileImage", joinedUser != null ? joinedUser.getUserProfileImage() : null);
+        joinedPayload.put("owner", owner);
+        joinedPayload.put("micStatus", Boolean.TRUE.equals(room.getMicStatus()));
+        joinedPayload.put("cameraStatus", Boolean.TRUE.equals(room.getCameraStatus()));
+        messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", joinedPayload);
         // 13. active 참여자 수 기준으로 rooms.now_users 재계산
         roomsMapper.syncNowUsersByActiveParticipants(roomNo);
         // 14. 재계산된 현재 인원 조회
