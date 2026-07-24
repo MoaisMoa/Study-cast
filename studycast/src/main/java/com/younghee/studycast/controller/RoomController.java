@@ -201,6 +201,20 @@ public class RoomController {
         return ResponseEntity.ok(java.util.Map.of("notice", saved != null ? saved : ""));
     }
 
+    // 세션 중 카메라/마이크 on-off 토글 반영 (참여자 본인)
+    @PatchMapping("/{roomNo}/device")
+    public ResponseEntity<Void> updateDeviceStatus(
+        @PathVariable("roomNo") Long roomNo,
+        @RequestBody java.util.Map<String, Boolean> body,
+        Authentication authentication
+    ) {
+        UUID userUuid = getUserUuid(authentication);
+        boolean cameraStatus = Boolean.TRUE.equals(body.get("cameraStatus"));
+        boolean micStatus = Boolean.TRUE.equals(body.get("micStatus"));
+        roomService.updateDeviceStatus(roomNo, userUuid, cameraStatus, micStatus);
+        return ResponseEntity.ok().build();
+    }
+
     // 멤버 이메일 초대 (방장 전용)
     @PostMapping("/{roomNo}/invite")
     public ResponseEntity<Void> inviteMember(

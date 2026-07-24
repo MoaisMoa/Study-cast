@@ -55,7 +55,7 @@ export function MobileCamGrid(props: MobileCamGridProps) {
         // LiveKit identity == userUuid이므로 분기 없이 동일하게 조회 가능
         const videoTrack = videoTracks.get(m.userUuid);
         const showVideo = !!videoTrack && camOn;
-        const isLive = (isSelf && timerState === "running" && camOn) || (!isSelf && camOn);
+        const isLive = (isSelf && timerState === "running" && camOn) || (!isSelf && m.studying && camOn);
         const secVal = isSelf ? totalSec : (elapsed[m.id] || m.sec);
         const isFocused = focused === m.id;
         const isShrunk = focused !== null && !isFocused;

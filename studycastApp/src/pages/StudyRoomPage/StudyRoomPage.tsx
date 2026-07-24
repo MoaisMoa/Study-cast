@@ -6,7 +6,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { fmtT, nowDate, nowT } from "@/data/studyRoom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAccessToken } from "@/services/apiClient";
-import { fetchRoom, leaveRoom, getTodayStudySeconds, accumulateStudySeconds, subscribeMembers, subscribeChat, sendMessage, MEMBER_COLORS, saveNotice, kickMember as svcKickMember, reportTimerTick, subscribeTimerUpdates, type MemberEvent } from "@/services/studyRoomService";
+import { fetchRoom, leaveRoom, getTodayStudySeconds, accumulateStudySeconds, subscribeMembers, subscribeChat, sendMessage, MEMBER_COLORS, saveNotice, kickMember as svcKickMember, reportTimerTick, subscribeTimerUpdates, updateDeviceStatus, type MemberEvent } from "@/services/studyRoomService";
 import { registerSession, unregisterSession, broadcastRoomJoined } from "@/utils/roomSession";
 import { useLiveKit } from "@/hooks/useLiveKit";
 import { LearningPlannerModal } from "@/pages/MainPage/sections/planner/LearningPlannerModal";
@@ -197,19 +197,25 @@ export default function StudyRoomPage() {
   }, [roomId, joined]);
 
   // 이 방에서의 누적 타이머 1초 틱 브로드캐스트 (다른 멤버 화면에 실시간 반영, 방 단위 — 유저 총 공부시간인 totalSec과는 별개)
-  useEffect(() => {
-    if (!roomId || !joined || timerState !== "running") return;
-    reportTimerTick(roomId, myUuidRef.current, roomSec);
-  }, [roomId, joined, timerState, roomSec]);
-
-  // 다른 멤버의 누적 공부 타이머 실시간 구독
+  // timerState 자체가 바뀔 때도(시작/일시정지/초기화) 즉시 한 번 more 보내야, 다른 사람 화면의 LIVE 뱃지가 지연 없이 꺼짐
   useEffect(() => {
     if (!roomId || !joined) return;
-    const unsub = subscribeTimerUpdates(roomId, ({ userUuid, totalSeconds }) => {
+    reportTimerTick(roomId, myUuidRef.current, roomSec, timerState === "running");
+  }, [roomId, joined, timerState, roomSec]);
+
+  // 다른 멤버의 누적 공부 타이머 + 실행 여부(LIVE 뱃지) 실시간 구독
+  useEffect(() => {
+    if (!roomId || !joined) return;
+    const unsub = subscribeTimerUpdates(roomId, ({ userUuid, totalSeconds, running }) => {
       if (userUuid === myUuidRef.current) return;
       const member = membersRef.current.find((m) => m.userUuid === userUuid);
       if (!member) return;
       setElapsed((prev) => ({ ...prev, [member.id]: totalSeconds }));
+      setMembers((prev) => {
+        const next = prev.map((m) => (m.userUuid === userUuid ? { ...m, studying: running } : m));
+        membersRef.current = next;
+        return next;
+      });
     });
     return unsub;
   }, [roomId, joined]);
@@ -281,6 +287,17 @@ export default function StudyRoomPage() {
         }
       } else if (event.type === "NOTICE") {
         setNoticeMsg(event.notice ?? null);
+      } else if (event.type === "DEVICE") {
+        if (event.userUuid === myUuidRef.current) return; // 자신의 토글은 이미 로컬 state로 반영돼 있음
+        setMembers((prev) => {
+          const next = prev.map((m) =>
+            m.userUuid === event.userUuid
+              ? { ...m, cam: event.cameraStatus ?? m.cam, mic: event.micStatus ?? m.mic }
+              : m
+          );
+          membersRef.current = next;
+          return next;
+        });
       }
     });
     return unsub;
@@ -301,6 +318,14 @@ export default function StudyRoomPage() {
   useEffect(() => {
     if (!cam && timerState === "running") setTimerState("paused");
   }, [cam, timerState]);
+
+  // 카메라/마이크 토글 시 다른 참여자에게 실시간 반영 (입장 시 초기값 세팅은 제외 — joined 이후 변경분만 전송)
+  const deviceMountedRef = useRef(false);
+  useEffect(() => {
+    if (!joined || !roomId) return;
+    if (!deviceMountedRef.current) { deviceMountedRef.current = true; return; }
+    updateDeviceStatus(roomId, cam, mic).catch(() => {});
+  }, [cam, mic, joined, roomId]);
 
   // LiveKit 연결 — 카메라/마이크 실제 연결 및 비디오 트랙 관리 (비로그인 상태에서는 연결 시도 안 함)
   const { videoTracks } = useLiveKit(

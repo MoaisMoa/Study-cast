@@ -414,6 +414,28 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     @Transactional
+    public void updateDeviceStatus(Long roomNo, UUID userUuid, boolean cameraStatus, boolean micStatus) {
+        if (roomNo == null || roomNo <= 0) {
+            throw new IllegalArgumentException("유효하지 않은 스터디방 번호입니다.");
+        }
+        if (userUuid == null) {
+            throw new SecurityException("로그인이 필요합니다.");
+        }
+        if (!roomParticipantsMapper.existsActiveParticipant(roomNo, userUuid)) {
+            throw new IllegalStateException("현재 입장 중인 스터디방이 아닙니다.");
+        }
+        roomParticipantsMapper.updateDeviceStatus(roomNo, userUuid, cameraStatus, micStatus);
+        // 다른 참여자들에게 카메라/마이크 상태 변경을 실시간 브로드캐스트
+        Map<String, Object> devicePayload = new java.util.HashMap<>();
+        devicePayload.put("type", "DEVICE");
+        devicePayload.put("userUuid", userUuid.toString());
+        devicePayload.put("cameraStatus", cameraStatus);
+        devicePayload.put("micStatus", micStatus);
+        messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", devicePayload);
+    }
+
+    @Override
+    @Transactional
     public void kickMember(Long roomNo, UUID hostUuid, UUID targetUuid) {
         RoomsDTO room = roomsMapper.findRoomByRoomNo(roomNo);
         if (room == null) {
