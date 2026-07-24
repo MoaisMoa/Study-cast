@@ -4,6 +4,7 @@ import { useT } from "@/theme";
 import { useModal } from "@/contexts/ModalContext";
 import { useSearch } from "@/contexts/SearchContext";
 import { listRoomCards } from "@/services/roomService";
+import { subscribeMainRoomUpdates } from "@/services/studyRoomService";
 import { Icon } from "@/components/ui/Icon";
 
 export function SearchResultPage() {
@@ -24,6 +25,13 @@ export function SearchResultPage() {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [query]);
+
+  // 다른 사용자의 입장/퇴장으로 인한 인원수·LIVE 상태를 실시간 반영 (전체 재조회 없이 해당 방만 patch)
+  useEffect(() => {
+    return subscribeMainRoomUpdates(({ roomNo, currentUsers, live }) => {
+      setRooms((prev) => prev.map((r) => (r.id === roomNo ? { ...r, members: currentUsers, live, overCapacity: currentUsers > r.max } : r)));
+    });
+  }, []);
 
   return (
     <section style={{ paddingBottom: 48 }}>

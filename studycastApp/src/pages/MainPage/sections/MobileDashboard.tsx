@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { MyRoom } from "@/types";
 import { listMyRooms, getMainSummary } from "@/services/roomService";
 import { subscribeRoomJoined } from "@/utils/roomSession";
+import { subscribeMainRoomUpdates } from "@/services/studyRoomService";
 import { fmtTimer } from "@/utils/time";
 import { useModal } from "@/contexts/ModalContext";
 import { Icon } from "@/components/ui/Icon";
@@ -61,6 +62,13 @@ export function MobileDashboard() {
     if (!isLoggedIn) return;
     return subscribeRoomJoined(loadDashboard);
   }, [isLoggedIn]);
+
+  // 다른 사용자의 입장/퇴장으로 인한 인원수·LIVE 상태를 실시간 반영 (전체 재조회 없이 해당 방만 patch)
+  useEffect(() => {
+    return subscribeMainRoomUpdates(({ roomNo, currentUsers, live }) => {
+      setRooms((prev) => prev.map((r) => (r.id === roomNo ? { ...r, members: currentUsers, live } : r)));
+    });
+  }, []);
 
   const hasRooms = rooms.length > 0;
   const curRoom = hasRooms && myIdx < rooms.length ? rooms[myIdx] : null;

@@ -161,11 +161,12 @@
           AND u.deleted_at IS NULL
     </select>
 
-    <!-- 3. 추천 스터디 조회 
+    <!-- 3. 추천 스터디 조회
         - 최근 활동 기준
             room_visit_histories의 방별 MAX(last_visited_at)
-        - 보류
-            live: WebSocket 연결 전까지 false -->
+        - live: now_users > 0을 조회 시점에 즉시 계산(WebSocket 접속 여부와 무관).
+            now_users는 입장/퇴장 시 syncNowUsersByActiveParticipants()가 동기적으로 갱신하므로 값 자체는 정확하나,
+            이 목록을 보고 있는 다른 사용자 화면까지 실시간으로 갱신해주는 푸시 경로는 없음(재조회해야 최신값 반영) -->
     <select id="findRecommendedRooms" resultMap="MainRoomResultMap">
         SELECT
             <!-- 스터디방 기본 정보 -->
@@ -371,8 +372,9 @@
     <!-- 5. 비로그인 사용자용 추천 스터디 조회
         최근 활동 기준:
         - room_visit_histories의 방별 MAX(last_visited_at)
-        보류:
-        - live: WebSocket 연결 전까지 false
+        - live: now_users > 0을 조회 시점에 즉시 계산(WebSocket 접속 여부와 무관).
+            now_users는 입장/퇴장 시 syncNowUsersByActiveParticipants()가 동기적으로 갱신하므로 값 자체는 정확하나,
+            이 목록을 보고 있는 다른 사용자 화면까지 실시간으로 갱신해주는 푸시 경로는 없음(재조회해야 최신값 반영)
      -->
     <select id="findGuestRecommendedRooms" resultMap="MainRoomResultMap">
         SELECT
