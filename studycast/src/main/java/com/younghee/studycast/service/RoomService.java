@@ -38,6 +38,8 @@ public interface RoomService {
     RoomUpdateResponse updateRoomSettings(Long roomNo, UUID userUuid, RoomUpdateRequest request, MultipartFile image);
     // 공지사항 저장/삭제 (방장 전용)
     String saveNotice(Long roomNo, UUID userUuid, String notice);
+    // 세션 중 카메라/마이크 on-off 토글 반영 + 실시간 브로드캐스트
+    void updateDeviceStatus(Long roomNo, UUID userUuid, boolean cameraStatus, boolean micStatus);
     // 멤버 추방 (방장 전용)
     void kickMember(Long roomNo, UUID hostUuid, UUID targetUuid);
     // 이메일 초대 (방장 전용)

@@ -47,4 +47,11 @@ public interface RoomParticipantsMapper {
         @Param("userUuid") UUID userUuid,
         @Param("seconds") int seconds
     );
+    // 세션 중 카메라/마이크 on-off 토글 반영
+    int updateDeviceStatus(
+        @Param("roomNo") Long roomNo,
+        @Param("userUuid") UUID userUuid,
+        @Param("cameraStatus") boolean cameraStatus,
+        @Param("micStatus") boolean micStatus
+    );
 }

@@ -22,7 +22,8 @@ public class TimerController {
             "/sub/room/" + request.getRoomNo() + "/timer",
             Map.of(
                 "userUuid", request.getUserUuid(),
-                "totalSeconds", request.getTotalSeconds()
+                "totalSeconds", request.getTotalSeconds(),
+                "running", request.isRunning()
             )
         );
     }
@@ -32,5 +33,7 @@ public class TimerController {
         private Long roomNo;
         private String userUuid;
         private int totalSeconds;
+        // 지금 이 순간 타이머 실행 중인지(시작 버튼 눌렀는지) — 다른 참여자 화면의 LIVE 뱃지 판정용
+        private boolean running;
     }
 }

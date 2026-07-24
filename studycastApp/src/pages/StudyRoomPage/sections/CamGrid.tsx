@@ -84,7 +84,7 @@ function CamCell({
         </div>
       )}
 
-      {((isSelf && timerState === "running" && camOn) || (!isSelf && camOn)) && (
+      {((isSelf && timerState === "running" && camOn) || (!isSelf && m.studying && camOn)) && (
         <div style={{ position: "absolute", top: 8, left: 8, display: "flex", alignItems: "center", gap: 3, background: "#E53935", color: "#fff", fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 5, zIndex: 2 }}>
           <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff", animation: "blink 1.2s ease-in-out infinite" }} />LIVE
         </div>

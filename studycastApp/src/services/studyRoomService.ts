@@ -162,6 +162,11 @@ export async function saveNotice(roomId: string, notice: string | null): Promise
   return { ok: true, notice: res.data.notice };
 }
 
+/** 세션 중 카메라/마이크 on-off 토글 반영 (다른 참여자에게 실시간 브로드캐스트됨) */
+export async function updateDeviceStatus(roomId: string, cameraStatus: boolean, micStatus: boolean): Promise<void> {
+  await apiClient.patch(`/api/rooms/${roomId}/device`, { cameraStatus, micStatus });
+}
+
 // ── STOMP / WebSocket ──────────────────────────────────────────────────────
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
@@ -215,7 +220,7 @@ function formatSentAt(sentAt: string): string {
 }
 
 export interface MemberEvent {
-  type: "JOINED" | "LEFT" | "KICKED" | "NOTICE";
+  type: "JOINED" | "LEFT" | "KICKED" | "NOTICE" | "DEVICE";
   userUuid?: string;
   userName?: string;
   profileImage?: string | null;
@@ -302,13 +307,13 @@ export function subscribeMembers(
   };
 }
 
-/** 누적 공부 타이머 1초 틱 — 같은 방 멤버 전체에게 실시간 브로드캐스트 (서버 저장 없음) */
-export async function reportTimerTick(roomId: string, userUuid: string, totalSeconds: number): Promise<void> {
+/** 누적 공부 타이머 1초 틱 — 같은 방 멤버 전체에게 실시간 브로드캐스트 (서버 저장 없음). running: 지금 실행 중인지(다른 참여자 LIVE 뱃지 판정용) */
+export async function reportTimerTick(roomId: string, userUuid: string, totalSeconds: number, running: boolean): Promise<void> {
   await new Promise<void>((resolve) => {
     whenConnected(() => {
       getClient().publish({
         destination: "/pub/timer/update",
-        body: JSON.stringify({ roomNo: parseInt(roomId), userUuid, totalSeconds }),
+        body: JSON.stringify({ roomNo: parseInt(roomId), userUuid, totalSeconds, running }),
       });
       resolve();
     });
@@ -318,6 +323,7 @@ export async function reportTimerTick(roomId: string, userUuid: string, totalSec
 export interface TimerUpdateEvent {
   userUuid: string;
   totalSeconds: number;
+  running: boolean;
 }
 
 /** 멤버별 누적 공부 타이머 실시간 구독 (WebSocket) */
