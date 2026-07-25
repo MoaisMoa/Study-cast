@@ -11,6 +11,7 @@ export interface CamGridProps {
   timerSec: number;
   timerState: TimerState;
   cam: boolean;
+  mic: boolean;
   camError?: boolean;
   focusedId: number | null;
   setFocusedId: (id: number | null) => void;
@@ -47,6 +48,7 @@ interface CamCellProps {
   isFocused?: boolean;
   isSelf: boolean;
   camOn: boolean;
+  micOn: boolean;
   camError: boolean;
   videoTrack: LiveKitVideoTrack | undefined;
   timerSec: number;
@@ -61,7 +63,7 @@ interface CamCellProps {
 
 function CamCell({
   m, avSize = 56, showTimer = false, isFocused = false,
-  isSelf, camOn, camError, videoTrack,
+  isSelf, camOn, micOn, camError, videoTrack,
   timerSec, timerState, totalSec, elapsed,
   onTimerStart, onTimerPause, onTimerResume, onTimerReset,
 }: CamCellProps) {
@@ -84,30 +86,36 @@ function CamCell({
         </div>
       )}
 
-      {((isSelf && timerState === "running" && camOn) || (!isSelf && m.studying && camOn)) && (
-        <div style={{ position: "absolute", top: 8, left: 8, display: "flex", alignItems: "center", gap: 3, background: "#E53935", color: "#fff", fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 5, zIndex: 2 }}>
-          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff", animation: "blink 1.2s ease-in-out infinite" }} />LIVE
-        </div>
-      )}
-      {!camOn && (
-        <div style={{ position: "absolute", top: 8, right: showTimer ? undefined : 8, left: showTimer ? 8 : undefined, background: "rgba(0,0,0,.6)", borderRadius: 5, padding: "3px 7px", display: "flex", alignItems: "center", gap: 3, zIndex: 2 }}>
-          <CamOff s={11} c="#fff" /><span style={{ fontSize: 10, color: "#fff", fontWeight: 600 }}>OFF</span>
-        </div>
-      )}
+      {/* 좌상단: LIVE 뱃지 + (본인이면) 타이머/시작 버튼 그룹을 한 줄로 배치 */}
+      <div style={{ position: "absolute", top: 8, left: 8, display: "flex", alignItems: "center", gap: 8, zIndex: 2 }}>
+        {((isSelf && timerState === "running" && camOn) || (!isSelf && m.studying && camOn)) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 3, background: "#E53935", color: "#fff", fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 5 }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff", animation: "blink 1.2s ease-in-out infinite" }} />LIVE
+          </div>
+        )}
+        {isSelf && showTimer && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 14, fontWeight: 600, color: "#1A1A1A", background: "rgba(255,255,255,.92)", padding: "4px 10px", borderRadius: 6 }}>{fmtT(timerSec)}</span>
+            {timerState === "idle" && <button onClick={(e) => { e.stopPropagation(); onTimerStart(); }} style={{ display: "flex", alignItems: "center", gap: 4, background: camOn ? "#2e7d32" : "#9e9e9e", color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: camOn ? "pointer" : "not-allowed", fontSize: 12, fontWeight: 600 }}><PlayIc s={12} />시작</button>}
+            {timerState === "running" && <button onClick={(e) => { e.stopPropagation(); onTimerPause(); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "#E53935", color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}><PauseIc s={12} />중단</button>}
+            {timerState === "paused" && <>
+              <button onClick={(e) => { e.stopPropagation(); onTimerResume(); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "#2e7d32", color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}><PlayIc s={12} />재개</button>
+              <button onClick={(e) => { e.stopPropagation(); onTimerReset(); }} style={{ background: "rgba(255,255,255,.92)", color: "#555", border: "1px solid #ddd", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>초기화</button>
+            </>}
+          </div>
+        )}
+      </div>
 
-      {isSelf && showTimer && (
-        <div style={{ position: "absolute", top: 8, right: 8, display: "flex", alignItems: "center", gap: 6, zIndex: 2 }}>
-          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 14, fontWeight: 600, color: "#1A1A1A", background: "rgba(255,255,255,.92)", padding: "4px 10px", borderRadius: 6 }}>{fmtT(timerSec)}</span>
-          {timerState === "idle" && <button onClick={(e) => { e.stopPropagation(); onTimerStart(); }} style={{ display: "flex", alignItems: "center", gap: 4, background: camOn ? "#2e7d32" : "#9e9e9e", color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: camOn ? "pointer" : "not-allowed", fontSize: 12, fontWeight: 600 }}><PlayIc s={12} />시작</button>}
-          {timerState === "running" && <button onClick={(e) => { e.stopPropagation(); onTimerPause(); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "#E53935", color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}><PauseIc s={12} />중단</button>}
-          {timerState === "paused" && <>
-            <button onClick={(e) => { e.stopPropagation(); onTimerResume(); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "#2e7d32", color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}><PlayIc s={12} />재개</button>
-            <button onClick={(e) => { e.stopPropagation(); onTimerReset(); }} style={{ background: "rgba(255,255,255,.92)", color: "#555", border: "1px solid #ddd", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>초기화</button>
-          </>}
+      {/* 우상단: 카메라/마이크 OFF 아이콘 — 본인/타인 공통, 한 줄로 배치 */}
+      {(!camOn || !micOn) && (
+        <div style={{ position: "absolute", top: 8, right: 8, display: "flex", alignItems: "center", gap: 4, zIndex: 2 }}>
+          {!camOn && (
+            <div style={{ background: "rgba(0,0,0,.5)", borderRadius: 3, padding: "3px 4px", display: "flex" }}><CamOff s={11} c="#fff" /></div>
+          )}
+          {!micOn && (
+            <div style={{ background: "rgba(0,0,0,.5)", borderRadius: 3, padding: "3px 4px", display: "flex" }}><MicOff s={11} c="#fff" /></div>
+          )}
         </div>
-      )}
-      {!isSelf && !m.mic && (
-        <div style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,.5)", borderRadius: 3, padding: "3px 4px", display: "flex", zIndex: 2 }}><MicOff s={11} c="#fff" /></div>
       )}
 
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "32px 12px 10px", background: "linear-gradient(to top,rgba(0,0,0,.6),transparent)", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 2 }}>
@@ -124,7 +132,7 @@ function CamCell({
 
 export function CamGrid(props: CamGridProps) {
   const {
-    members, elapsed, totalSec, timerSec, timerState, cam, camError = false,
+    members, elapsed, totalSec, timerSec, timerState, cam, mic, camError = false,
     focusedId, setFocusedId, onTimerStart, onTimerPause, onTimerResume, onTimerReset,
     videoTracks, myUuid,
   } = props;
@@ -137,6 +145,7 @@ export function CamGrid(props: CamGridProps) {
     return {
       isSelf,
       camOn: isSelf ? cam : m.cam,
+      micOn: isSelf ? mic : m.mic,
       camError,
       // LiveKit identity == userUuid이므로 분기 없이 동일하게 조회 가능
       videoTrack: videoTracks.get(m.userUuid),
