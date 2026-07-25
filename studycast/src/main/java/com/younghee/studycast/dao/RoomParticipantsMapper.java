@@ -35,8 +35,13 @@ public interface RoomParticipantsMapper {
     );
     // 신규 참여자 등록
     int insertParticipant(RoomParticipantDTO participant);
-    // 기존 참여자의 재입장 처리
-    int rejoinParticipant(@Param("roomNo") Long roomNo, @Param("userUuid") UUID userUuid);
+    // 기존 참여자의 재입장 처리 (camera_status/mic_status도 방의 현재 기본값으로 리셋)
+    int rejoinParticipant(
+        @Param("roomNo") Long roomNo,
+        @Param("userUuid") UUID userUuid,
+        @Param("cameraStatus") boolean cameraStatus,
+        @Param("micStatus") boolean micStatus
+    );
     // 퇴장 처리
     int leaveParticipant(@Param("roomNo") Long roomNo, @Param("userUuid") UUID userUuid);
     // 참여자 목록 조회

@@ -93,12 +93,14 @@
             NOW()
         )
         ON CONFLICT (user_uuid, room_no) DO UPDATE SET
-            active     = TRUE,
-            joined_at  = NOW(),
-            left_at    = NULL,
-            updated_at = NOW()
+            active         = TRUE,
+            joined_at      = NOW(),
+            left_at        = NULL,
+            camera_status  = COALESCE(#{cameraStatus}, FALSE),
+            mic_status     = COALESCE(#{micStatus}, FALSE),
+            updated_at     = NOW()
     </insert>
-    <!-- 재입장 update -->
+    <!-- 재입장 update: camera_status/mic_status도 방의 현재 기본값으로 리셋 (신규 입장과 동일 규칙 — 지난 세션의 stale 값이 남지 않도록) -->
     <update id="rejoinParticipant">
         UPDATE room_participants
         SET
@@ -106,6 +108,8 @@
             joined_at = NOW(),
             left_at = NULL,
             study_seconds = 0,
+            camera_status = #{cameraStatus},
+            mic_status = #{micStatus},
             updated_at = NOW()
         WHERE room_no = #{roomNo}
           AND user_uuid = #{userUuid}
