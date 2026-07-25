@@ -124,7 +124,7 @@
                 SELECT sl.total_seconds::BIGINT
                 FROM study_logs sl
                 WHERE sl.user_uuid = #{userUuid}
-                  AND sl.study_date = CURRENT_DATE
+                  AND sl.study_date = #{today}
                 LIMIT 1
             ), 0::BIGINT) AS today_study_seconds,
 
@@ -135,7 +135,7 @@
             <!-- 남은 일수 계산 -->
             CASE
                 WHEN d.target_date IS NULL THEN NULL
-                ELSE (d.target_date - CURRENT_DATE)::BIGINT
+                ELSE (d.target_date - #{today})::BIGINT
             END AS remaining_days,
 
             <!-- 내 각오 -->
@@ -150,7 +150,7 @@
                 target_date
             FROM ddays
             WHERE user_uuid = #{userUuid}
-              AND target_date &gt;= CURRENT_DATE
+              AND target_date &gt;= #{today}
             ORDER BY
                 target_date ASC,
                 created_at ASC

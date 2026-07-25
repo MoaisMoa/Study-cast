@@ -1,4 +1,11 @@
 import type { MyStudyRoom, RunStatus } from "@/types/myStudy";
+import { kstNow } from "@/utils/date";
+
+/** 한국(KST) 기준 오늘 자정 — 사용자 기기 시간대와 무관 */
+function kstToday(): Date {
+  const { year, month, day } = kstNow();
+  return new Date(year, month - 1, day);
+}
 
 /** ISO("yyyy-MM-dd") → Date (브라우저 파싱 안전) */
 export function parseDate(iso: string): Date {
@@ -24,16 +31,14 @@ export function fmtDateFull(iso: string): string {
 /** createdAt 기준 NEW 여부 (10일 이내) */
 export function isNewRoom(createdAt: string): boolean {
   if (!createdAt) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = kstToday();
   const diff = (today.getTime() - parseDate(createdAt).getTime()) / (1000 * 60 * 60 * 24);
   return diff <= 10;
 }
 
 /** 방 운영 상태 계산: 기간 종료 > 인원 마감 > 운영 중 */
 export function calcRoomStatus(room: Pick<MyStudyRoom, "periodEnd" | "members" | "maxMembers">): RunStatus {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = kstToday();
   if (parseDate(room.periodEnd) < today) return "종료";
   if (room.members >= room.maxMembers) return "마감";
   return "운영 중";

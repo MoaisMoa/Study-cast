@@ -4,15 +4,16 @@ import type {
   ProfileReadOnly,
 } from "@/types/profile";
 import { CATS_FILTER } from "@/data/categories";
+import { kstNow } from "@/utils/date";
 
 export const GENDERS: Gender[] = ["남자", "여자", "설정 안 함"];
 
 /** 관심 카테고리 — 메인 필터(CATS_FILTER)와 동일한 6개 RoomCategory를 그대로 사용 */
 export const PROFILE_CATEGORIES = CATS_FILTER;
 
-/** 최근 80년치 연도 (내림차순) */
+/** 최근 80년치 연도 (내림차순, 한국 기준 올해부터) */
 export const YEARS: string[] = Array.from({ length: 80 }, (_, i) =>
-  String(new Date().getFullYear() - i)
+  String(kstNow().year - i)
 );
 
 /** 1~12월 (zero-padded) */

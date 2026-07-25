@@ -9,6 +9,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -243,7 +244,7 @@ class MainServiceImplTest {
     @DisplayName("getMainSummary — 정상: 매퍼 결과를 그대로 반환")
     void getMainSummary_success_returnsMapperResult() {
         MainSummaryResponse expected = mock(MainSummaryResponse.class);
-        given(mainMapper.findMainSummary(USER_UUID)).willReturn(expected);
+        given(mainMapper.findMainSummary(eq(USER_UUID), any(LocalDate.class))).willReturn(expected);
 
         MainSummaryResponse result = mainService.getMainSummary(USER_UUID);
 

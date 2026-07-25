@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Theme } from "@/types";
 import { PLANNER_CAT_COLOR, PLANNER_PASTEL_COLORS } from "@/data/planner";
 import { Icon } from "@/components/ui/Icon";
+import { todayStr, kstNow } from "@/utils/date";
 
 const W_DAYS_LABEL = ["월", "화", "수", "목", "금", "토", "일"];
 const START_HOURS = Array.from({ length: 18 }, (_, i) => String(i + 6).padStart(2, "0") + ":00"); // 06~23
@@ -32,13 +33,16 @@ export function PlannerAddModal({ onClose, onAdd, T, mode = "schedule", overlapM
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [type, setType] = useState("시험");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
   const dday = date ? Math.ceil((new Date(date).getTime() - new Date(today).getTime()) / 86400000) : null;
 
   // 플래너 모드
   const [pTitle, setPTitle] = useState("");
-  // 요일 기본값: 오늘 (W_DAYS_LABEL은 월요일이 0번 인덱스라 Date.getDay()의 일요일=0 기준을 보정)
-  const [pDay, setPDay] = useState(() => (new Date().getDay() + 6) % 7);
+  // 요일 기본값: 오늘(한국 기준) (W_DAYS_LABEL은 월요일이 0번 인덱스라 Date.getDay()의 일요일=0 기준을 보정)
+  const [pDay, setPDay] = useState(() => {
+    const { year, month, day } = kstNow();
+    return (new Date(year, month - 1, day).getDay() + 6) % 7;
+  });
   const [pColor, setPColor] = useState("#E57373");
   const [pStart, setPStart] = useState("09:00");
   const [pEnd, setPEnd] = useState("10:00");

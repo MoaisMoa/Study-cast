@@ -2,6 +2,7 @@ package com.younghee.studycast.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +46,8 @@ public class RoomServiceImpl implements RoomService {
     private static final int MAX_TITLE_LENGTH = 10;
     private static final int MAX_NOTICE_LENGTH = 500;
     private static final int MAX_PERIOD_DAYS = 90;
+    // 서버 타임존과 무관하게 "오늘"을 항상 한국 기준으로 판정 (운영 서버가 UTC로 동작 중임)
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final RoomsMapper roomsMapper;
     private final StudyRoomPolicyProperties studyRoomPolicyProperties;
@@ -526,7 +529,7 @@ public class RoomServiceImpl implements RoomService {
         validateRoomPrivate(request.getRoomPrivate());
         validateRoomPassword(request.getRoomPrivate(), request.getRoomPassword());
         validateMaxUsers(request.getMaxUsers());
-        validateExpiredAt(request.getExpiredAt());
+        validateExpiredAtForCreate(request.getExpiredAt());
         validateDeviceStatus(request.getCameraStatus(), request.getMicStatus());
         validateCategory(request.getCategoryNo());
         validateRoomNotice(request.getRoomNotice());
@@ -582,12 +585,32 @@ public class RoomServiceImpl implements RoomService {
         }
     }
 
+    // 방 생성 시 종료일 검증 — 시작일(오늘) 포함 총 90일 이내 ("총 기간 N일" 표시와 동일한 포함/inclusive 기준)
+    private void validateExpiredAtForCreate(LocalDate expiredAt) {
+        if (expiredAt == null) {
+            throw new IllegalArgumentException("종료일은 필수입니다.");
+        }
+
+        LocalDate today = LocalDate.now(KST);
+
+        if (expiredAt.isBefore(today)) {
+            throw new IllegalArgumentException("종료일은 오늘 이후 날짜로 설정해야 합니다.");
+        }
+
+        long totalDays = ChronoUnit.DAYS.between(today, expiredAt) + 1;
+
+        if (totalDays > MAX_PERIOD_DAYS) {
+            throw new IllegalArgumentException("스터디 기간은 최대 90일까지 설정할 수 있습니다.");
+        }
+    }
+
+    // 방 설정(수정) 시 종료일 검증 — 오늘로부터 D-90 이내로 연장 가능 (설정 화면의 "D-day 남은 일수" 표시와 동일한 배제/exclusive 기준)
     private void validateExpiredAt(LocalDate expiredAt) {
         if (expiredAt == null) {
             throw new IllegalArgumentException("종료일은 필수입니다.");
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(KST);
 
         if (expiredAt.isBefore(today)) {
             throw new IllegalArgumentException("종료일은 오늘 이후 날짜로 설정해야 합니다.");

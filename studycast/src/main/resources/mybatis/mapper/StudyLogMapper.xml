@@ -13,7 +13,7 @@
             updated_at
         ) VALUES (
             #{userUuid},
-            CURRENT_DATE,
+            #{studyDate},
             #{studySeconds},
             NOW()
         )
@@ -29,7 +29,7 @@
             (SELECT total_seconds
              FROM study_logs
              WHERE user_uuid = #{userUuid}
-               AND study_date = CURRENT_DATE),
+               AND study_date = #{studyDate}),
             0
         )
     </select>

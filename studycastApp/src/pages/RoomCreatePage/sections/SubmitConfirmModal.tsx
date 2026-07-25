@@ -1,6 +1,6 @@
 import { useRT } from "@/theme";
 import { Dialog } from "@/components/ui/Modal";
-import { calcDays } from "@/utils/date";
+import { calcTotalDays } from "@/utils/date";
 import { getDefaultRoomImage } from "@/utils/roomImage";
 
 export interface SubmitConfirmModalProps {
@@ -29,7 +29,7 @@ export function SubmitConfirmModal(props: SubmitConfirmModalProps) {
     categories,
   } = props;
 
-  const days = calcDays(startDate, endDate);
+  const days = calcTotalDays(startDate, endDate);
   const rows: Array<[string, string]> = [
     ["이름", name],
     ["공개 여부", visibility === "public" ? "공개" : "비공개"],

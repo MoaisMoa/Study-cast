@@ -1,6 +1,8 @@
 package com.younghee.studycast.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -131,14 +133,14 @@ class StudyLogServiceTest {
         studyLogService.saveTodayStudySeconds(USER_UUID, 1800);
 
         // then
-        verify(studyLogMapper).upsertTodayStudySeconds(USER_UUID, 1800);
+        verify(studyLogMapper).upsertTodayStudySeconds(eq(USER_UUID), eq(1800), any(LocalDate.class));
     }
 
     @Test
     @DisplayName("getTodayStudySeconds: 매퍼 반환값을 그대로 리턴해야 함")
     void getTodayStudySeconds_returnsMapperValue() {
         // given
-        given(studyLogMapper.findTodayStudySeconds(USER_UUID)).willReturn(5400);
+        given(studyLogMapper.findTodayStudySeconds(eq(USER_UUID), any(LocalDate.class))).willReturn(5400);
 
         // when & then
         assertThat(studyLogService.getTodayStudySeconds(USER_UUID)).isEqualTo(5400);
