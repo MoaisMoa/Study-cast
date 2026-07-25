@@ -97,14 +97,13 @@ export function MobileCamGrid(props: MobileCamGridProps) {
                     <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>LIVE</span>
                   </div>
                 )}
-                {!camOn && !isShrunk && (
-                  <div style={{ background: "rgba(0,0,0,.5)", borderRadius: 3, padding: "1px 5px", display: "flex", alignItems: "center", gap: 2 }}>
-                    <CamOff s={9} c="rgba(255,255,255,.5)" />
-                    <span style={{ color: "rgba(255,255,255,.4)", fontSize: 8 }}>OFF</span>
-                  </div>
-                )}
               </div>
-              {!isShrunk && (micOn ? <MicOn s={11} c="rgba(255,255,255,.7)" /> : <MicOff s={11} c="rgba(255,255,255,.25)" />)}
+              {!isShrunk && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {!camOn && <CamOff s={11} c="rgba(255,255,255,.25)" />}
+                  {micOn ? <MicOn s={11} c="rgba(255,255,255,.7)" /> : <MicOff s={11} c="rgba(255,255,255,.25)" />}
+                </div>
+              )}
             </div>
 
             {/* 하단 */}

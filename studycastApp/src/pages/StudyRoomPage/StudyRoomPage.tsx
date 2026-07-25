@@ -455,7 +455,7 @@ export default function StudyRoomPage() {
 
   const camGridEl = (
     <CamGrid members={members} elapsed={elapsed} totalSec={roomSec} timerSec={timerSec} timerState={timerState}
-      cam={cam} camError={!!camError} focusedId={focusedId} setFocusedId={setFocusedId}
+      cam={cam} mic={mic} camError={!!camError} focusedId={focusedId} setFocusedId={setFocusedId}
       onTimerStart={handleTimerStart} onTimerPause={handleTimerPause} onTimerResume={handleTimerResume} onTimerReset={handleTimerReset}
       videoTracks={videoTracks} myUuid={myUuid} />
   );
