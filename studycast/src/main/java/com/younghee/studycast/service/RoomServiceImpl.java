@@ -195,7 +195,9 @@ public class RoomServiceImpl implements RoomService {
 
         if (alreadyActive) {
             // 5-1. joined_at·study_seconds 초기화 (탭 닫고 재입장 시 이전 세션의 joined_at이 남아 참석 시간이 크게 보이는 버그 방지)
-            roomParticipantsMapper.rejoinParticipant(roomNo, userUuid);
+            // camera_status/mic_status도 방의 현재 기본값으로 리셋 — 프론트도 매 입장(새로고침 포함)마다 로컬 cam/mic을 방 기본값에서 새로 시작하므로 DB와 항상 일치시킴
+            roomParticipantsMapper.rejoinParticipant(roomNo, userUuid,
+                Boolean.TRUE.equals(room.getCameraStatus()), Boolean.TRUE.equals(room.getMicStatus()));
             // 5-2. 현재 active 참여자 수 기준으로 rooms.now_users 동기화
             roomsMapper.syncNowUsersByActiveParticipants(roomNo);
             // 5-3. 동기화된 현재 인원 조회
@@ -254,8 +256,9 @@ public class RoomServiceImpl implements RoomService {
 
             roomParticipantsMapper.insertParticipant(participant);
         } else {
-            // 12. 재입장 처리
-            roomParticipantsMapper.rejoinParticipant(roomNo, userUuid);
+            // 12. 재입장 처리 — camera_status/mic_status도 방의 현재 기본값으로 리셋 (신규 입장과 동일 규칙)
+            roomParticipantsMapper.rejoinParticipant(roomNo, userUuid,
+                Boolean.TRUE.equals(room.getCameraStatus()), Boolean.TRUE.equals(room.getMicStatus()));
         }
         // 12-1. 이미 입장해 있던 다른 참여자들에게 신규 입장을 실시간 브로드캐스트
         // (같은 유저의 새로고침·재연결은 위쪽 "alreadyActive" 분기에서 여기까지 오지 않으므로 중복 발행되지 않음)
