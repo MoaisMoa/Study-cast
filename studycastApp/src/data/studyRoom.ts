@@ -1,4 +1,5 @@
 import type { ChatMessage, RoomMember } from "@/types/studyRoom";
+import { kstNow } from "@/utils/date";
 
 /** 본인(방장) */
 export const SELF: RoomMember = {
@@ -46,14 +47,17 @@ export const secToHM = (s: number): string => {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
   return `${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m`;
 };
+/** 한국(KST) 기준 시:분:초 — 사용자 기기 시간대와 무관 */
 export const nowT = (): string => {
-  const d = new Date();
-  return [d.getHours(), d.getMinutes(), d.getSeconds()].map((v) => String(v).padStart(2, "0")).join(":");
+  const { hour, minute, second } = kstNow();
+  return [hour, minute, second].map((v) => String(v).padStart(2, "0")).join(":");
 };
+/** 한국(KST) 기준 오늘 날짜 */
 export const nowDate = (): string => {
-  const d = new Date();
+  const { year, month, day } = kstNow();
   const days = ["일", "월", "화", "수", "목", "금", "토"];
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}.${mm}.${dd} (${days[d.getDay()]})`;
+  const dayOfWeek = new Date(year, month - 1, day).getDay();
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return `${year}.${mm}.${dd} (${days[dayOfWeek]})`;
 };

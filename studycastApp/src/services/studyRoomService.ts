@@ -1,6 +1,7 @@
 import type { ChatMessage, RoomMember } from "@/types/studyRoom";
 import { API_BASE_URL, apiClient, getAccessToken } from "./apiClient";
 import { prefixRoomImageUrl } from "@/utils/roomImage";
+import { kstNow } from "@/utils/date";
 
 /** 방 입장 시 한 번에 받아오는 초기 스냅샷 */
 export interface RoomSnapshot {
@@ -53,9 +54,10 @@ interface ParticipantResponse {
 
 export const MEMBER_COLORS = ["#E53935", "#2DA58E", "#C07A3A", "#1976D2", "#7B1FA2", "#388E3C", "#D32F2F"];
 
+/** 한국(KST) 기준 시:분:초 — 사용자 기기 시간대와 무관 */
 function nowT(): string {
-  const d = new Date();
-  return [d.getHours(), d.getMinutes(), d.getSeconds()].map((v) => String(v).padStart(2, "0")).join(":");
+  const { hour, minute, second } = kstNow();
+  return [hour, minute, second].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
 function toRoomMember(p: ParticipantResponse, index: number, isMe: boolean): RoomMember {

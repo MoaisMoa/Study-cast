@@ -3,7 +3,7 @@ import type { MyStudyRoom } from "@/types/myStudy";
 import { useT } from "@/theme";
 import { Icon } from "@/components/ui/Icon";
 import { calcRoomStatus } from "@/utils/myStudyDate";
-import { calcDays } from "@/utils/date";
+import { calcTotalDays } from "@/utils/date";
 import { joinRoom } from "@/services/visitedRoomService";
 import { openStudyRoom } from "@/utils/openStudyRoom";
 import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
@@ -37,7 +37,7 @@ export function MyStudyDetailModal({ room, onClose }: MyStudyDetailModalProps) {
   const isPrivate = room.visibility === "private";
   const full = !isEnded && room.members >= room.maxMembers;
 
-  const totalDays = calcDays(room.periodStart ?? "", room.periodEnd ?? "");
+  const totalDays = calcTotalDays(room.periodStart ?? "", room.periodEnd ?? "");
 
   const handleClose = () => {
     cancelledRef.current = true;

@@ -7,7 +7,7 @@ import { openStudyRoom } from "@/utils/openStudyRoom";
 import { canEnterRoom, setPendingEntry } from "@/utils/roomSession";
 import { subscribeMainRoomUpdates } from "@/services/studyRoomService";
 import { Icon } from "@/components/ui/Icon";
-import { calcDays } from "@/utils/date";
+import { calcTotalDays } from "@/utils/date";
 
 const CODE_RE = /^[0-9]{4,6}$/;
 
@@ -68,7 +68,7 @@ export function CardModal() {
   const full = !room.overCapacity && room.members >= room.max;
   const isPrivate = room.isPrivate ?? false;
 
-  const totalDays = calcDays(toDateOnlyStr(room.createdAt), toDateOnlyStr(room.expiredAt));
+  const totalDays = calcTotalDays(toDateOnlyStr(room.createdAt), toDateOnlyStr(room.expiredAt));
 
   const handleClose = () => {
     cancelledRef.current = true;

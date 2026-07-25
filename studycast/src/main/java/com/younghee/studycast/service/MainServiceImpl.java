@@ -1,5 +1,7 @@
 package com.younghee.studycast.service;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -21,6 +23,9 @@ import lombok.RequiredArgsConstructor;
 public class MainServiceImpl implements MainService {
     
     private final MainMapper mainMapper;
+
+    // 서버 타임존과 무관하게 "오늘"을 항상 한국 기준으로 판정 (운영 서버가 UTC로 동작 중임)
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private static final Set<String> ALLOWED_TABS = Set.of("ALL", "NEW");
     // 일반/프리미엄 필터 — UI에서 잠시 주석 처리됨, 추후 프리미엄 확장 시 재사용 예정. 삭제하지 말 것
@@ -46,7 +51,7 @@ public class MainServiceImpl implements MainService {
         validateUserUuid(userUuid);
 
         // 2. 개인 학습 요약 조회
-        return mainMapper.findMainSummary(userUuid);
+        return mainMapper.findMainSummary(userUuid, LocalDate.now(KST));
     }
 
     @Override

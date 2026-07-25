@@ -1,5 +1,5 @@
 import { useRT } from "@/theme";
-import { calcDays, offsetDate } from "@/utils/date";
+import { calcTotalDays, offsetDate } from "@/utils/date";
 
 export interface PeriodPickerProps {
   startDate: string;
@@ -14,7 +14,7 @@ export function PeriodPicker({
   startDate, endDate, onEndDateChange, error, setError, isMobile,
 }: PeriodPickerProps) {
   const T = useRT();
-  const days = calcDays(startDate, endDate);
+  const days = calcTotalDays(startDate, endDate);
 
   const inputStyle = {
     width: isMobile ? "100%" : "auto",
@@ -68,7 +68,7 @@ export function PeriodPicker({
             type="date"
             value={endDate}
             min={offsetDate(1)}
-            max={offsetDate(90)}
+            max={offsetDate(89)}
             onChange={(e) => {
               const val = e.target.value;
               onEndDateChange(val);
@@ -77,13 +77,9 @@ export function PeriodPicker({
               } else if (val <= startDate) {
                 setError("종료일은 시작일 이후 날짜를 선택해주세요.");
               } else {
-                const totalDays =
-                  Math.round(
-                    (new Date(val).getTime() - new Date(startDate).getTime()) /
-                      86400000
-                  );
+                const totalDays = calcTotalDays(startDate, val);
 
-                if (totalDays > 90) {
+                if (totalDays !== null && totalDays > 90) {
                   setError("스터디 기간은 최대 90일까지 설정할 수 있습니다.");
                 } else {
                   setError("");

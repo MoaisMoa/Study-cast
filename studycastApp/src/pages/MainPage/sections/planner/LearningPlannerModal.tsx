@@ -15,6 +15,7 @@ import type { DdayResponse, MonthlyStudyStats } from "@/services/plannerService"
 import { PlanEditModal } from "./PlanEditModal";
 import { PlannerAddModal } from "./PlannerAddModal";
 import type { PlanPayload, SchedulePayload } from "./PlannerAddModal";
+import { kstNow } from "@/utils/date";
 
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -30,7 +31,9 @@ export function LearningPlannerModal({ open, onClose, onScheduleChanged }: Learn
   const T = useT();
   const IC = plannerIc(T.dark);
   const IC_TEXT = plannerIcText(T.dark);
-  const now = new Date();
+  // 한국(KST) 기준 "지금" — 사용자 기기 시간대와 무관
+  const { year: kstYear, month: kstMonth, day: kstDay } = kstNow();
+  const now = new Date(kstYear, kstMonth - 1, kstDay);
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
   const [mainTab, setMainTab] = useState<"calendar" | "planner">("calendar");
