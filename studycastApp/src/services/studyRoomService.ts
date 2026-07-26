@@ -169,6 +169,11 @@ export async function updateDeviceStatus(roomId: string, cameraStatus: boolean, 
   await apiClient.patch(`/api/rooms/${roomId}/device`, { cameraStatus, micStatus });
 }
 
+/** 생존 신호 — 10초 주기로 호출. 브라우저 강제종료 등으로 퇴장 처리가 유실돼도 유령 참여자로 남지 않도록 함 */
+export async function sendHeartbeat(roomId: string): Promise<void> {
+  await apiClient.patch(`/api/rooms/${roomId}/heartbeat`);
+}
+
 // ── STOMP / WebSocket ──────────────────────────────────────────────────────
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";

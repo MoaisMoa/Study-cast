@@ -59,4 +59,11 @@ public interface RoomParticipantsMapper {
         @Param("cameraStatus") boolean cameraStatus,
         @Param("micStatus") boolean micStatus
     );
+    // 하트비트 갱신 (10초 주기)
+    int updateHeartbeat(@Param("roomNo") Long roomNo, @Param("userUuid") UUID userUuid);
+    // 스케줄러용: active인데 하트비트가 staleSeconds 이상 안 온 참여자 조회
+    List<RoomParticipantDTO> findStaleActiveParticipants(@Param("staleSeconds") int staleSeconds);
+    // 재연결 시 마지막 하트비트가 참여자 목록 표시 TTL(30초)보다 오래됐는지 확인
+    // (다른 참여자 화면에서 이미 사라져 있었는지 판단 — JOINED 재발행 여부 결정에 사용)
+    boolean isHeartbeatStale(@Param("roomNo") Long roomNo, @Param("userUuid") UUID userUuid);
 }

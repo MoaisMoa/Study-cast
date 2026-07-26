@@ -6,7 +6,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { fmtT, nowDate, nowT } from "@/data/studyRoom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAccessToken } from "@/services/apiClient";
-import { fetchRoom, leaveRoom, getTodayStudySeconds, accumulateStudySeconds, subscribeMembers, subscribeChat, sendMessage, MEMBER_COLORS, saveNotice, kickMember as svcKickMember, reportTimerTick, subscribeTimerUpdates, updateDeviceStatus, type MemberEvent } from "@/services/studyRoomService";
+import { fetchRoom, leaveRoom, getTodayStudySeconds, accumulateStudySeconds, subscribeMembers, subscribeChat, sendMessage, MEMBER_COLORS, saveNotice, kickMember as svcKickMember, reportTimerTick, subscribeTimerUpdates, updateDeviceStatus, sendHeartbeat, type MemberEvent } from "@/services/studyRoomService";
 import { registerSession, unregisterSession, broadcastRoomJoined } from "@/utils/roomSession";
 import { useLiveKit } from "@/hooks/useLiveKit";
 import { LearningPlannerModal } from "@/pages/MainPage/sections/planner/LearningPlannerModal";
@@ -192,6 +192,16 @@ export default function StudyRoomPage() {
         // 저장 실패 시 다음 주기에 누적해서 재시도되도록 롤백
         lastSavedTotalRef.current -= delta;
       });
+    }, 10000);
+    return () => window.clearInterval(t);
+  }, [roomId, joined]);
+
+  // 방에 머무는 동안 10초마다 생존 신호 전송 (브라우저 강제종료 등으로 퇴장 API가 유실돼도
+  // 서버가 하트비트 끊김으로 감지해 유령 참여자로 남기지 않도록 함)
+  useEffect(() => {
+    if (!roomId || !joined) return;
+    const t = window.setInterval(() => {
+      sendHeartbeat(roomId).catch(() => {});
     }, 10000);
     return () => window.clearInterval(t);
   }, [roomId, joined]);

@@ -80,7 +80,8 @@
             joined_at,
             left_at,
             created_at,
-            updated_at
+            updated_at,
+            last_heartbeat_at
         ) VALUES (
             #{userUuid},
             #{roomNo},
@@ -90,15 +91,17 @@
             NOW(),
             NULL,
             NOW(),
+            NOW(),
             NOW()
         )
         ON CONFLICT (user_uuid, room_no) DO UPDATE SET
-            active         = TRUE,
-            joined_at      = NOW(),
-            left_at        = NULL,
-            camera_status  = COALESCE(#{cameraStatus}, FALSE),
-            mic_status     = COALESCE(#{micStatus}, FALSE),
-            updated_at     = NOW()
+            active             = TRUE,
+            joined_at          = NOW(),
+            left_at            = NULL,
+            camera_status      = COALESCE(#{cameraStatus}, FALSE),
+            mic_status         = COALESCE(#{micStatus}, FALSE),
+            updated_at         = NOW(),
+            last_heartbeat_at  = NOW()
     </insert>
     <!-- 재입장 update: camera_status/mic_status도 방의 현재 기본값으로 리셋 (신규 입장과 동일 규칙 — 지난 세션의 stale 값이 남지 않도록) -->
     <update id="rejoinParticipant">
@@ -110,10 +113,40 @@
             study_seconds = 0,
             camera_status = #{cameraStatus},
             mic_status = #{micStatus},
-            updated_at = NOW()
+            updated_at = NOW(),
+            last_heartbeat_at = NOW()
         WHERE room_no = #{roomNo}
           AND user_uuid = #{userUuid}
     </update>
+
+    <!-- 하트비트 갱신 (10초 주기로 클라이언트가 호출 — 브라우저 강제종료 등으로 퇴장 API가 유실돼도 유령 참여자가 남지 않도록 함) -->
+    <update id="updateHeartbeat">
+        UPDATE room_participants
+        SET last_heartbeat_at = NOW()
+        WHERE room_no = #{roomNo}
+          AND user_uuid = #{userUuid}
+          AND active = TRUE
+    </update>
+
+    <!-- 스케줄러용: active인데 하트비트가 staleSeconds 이상 안 온 참여자 조회 -->
+    <select id="findStaleActiveParticipants" resultType="RoomParticipantDTO">
+        SELECT
+            room_no AS roomNo,
+            user_uuid AS userUuid
+        FROM room_participants
+        WHERE active = TRUE
+          AND last_heartbeat_at &lt; NOW() - (#{staleSeconds} || ' seconds')::INTERVAL
+    </select>
+
+    <!-- 재연결 시 마지막 하트비트가 참여자 목록 표시 TTL(findActiveParticipantsByRoomNo와 동일한 30초)보다
+         오래됐는지 확인 — 이 경우 다른 참여자 화면에서는 이미 목록에서 사라져 있었으므로 JOINED를 재발행해야 함 -->
+    <select id="isHeartbeatStale" resultType="boolean">
+        SELECT COALESCE(last_heartbeat_at &lt;= NOW() - INTERVAL '30 seconds', TRUE)
+        FROM room_participants
+        WHERE room_no = #{roomNo}
+          AND user_uuid = #{userUuid}
+          AND active = TRUE
+    </select>
 
     <!-- 세션 중 카메라/마이크 on-off 토글 반영 (방 기본값 컬럼인 rooms.camera_status/mic_status와는 별개) -->
     <update id="updateDeviceStatus">
@@ -148,6 +181,8 @@
           AND active = TRUE
     </update>
     <!-- 참여자 목록 조회 -->
+    <!-- active=TRUE여도 하트비트가 30초 이상 안 온 경우는 제외 — 퇴장 API가 유실된 유령 참여자가 목록에
+         보이지 않도록 함(실제 active 플래그 정리는 스케줄러가 더 여유 있는 기준으로 별도 수행) -->
     <select id="findActiveParticipantsByRoomNo" resultType="RoomParticipantResponse">
         SELECT
             u.user_uuid AS userUuid,
@@ -167,6 +202,7 @@
         INNER JOIN rooms r ON rp.room_no = r.room_no
         WHERE rp.room_no = #{roomNo}
           AND rp.active = TRUE
+          AND rp.last_heartbeat_at &gt; NOW() - INTERVAL '30 seconds'
         ORDER BY
             CASE WHEN r.user_uuid = u.user_uuid THEN 0 ELSE 1 END,
             rp.joined_at ASC
