@@ -228,6 +228,17 @@ public class RoomController {
         return ResponseEntity.ok().build();
     }
 
+    // 클라이언트 생존 신호 (10초 주기 호출 — 브라우저 강제종료 등으로 퇴장 API가 유실돼도 유령 참여자가 남지 않도록 함)
+    @PatchMapping("/{roomNo}/heartbeat")
+    public ResponseEntity<Void> updateHeartbeat(
+        @PathVariable("roomNo") Long roomNo,
+        Authentication authentication
+    ) {
+        UUID userUuid = getUserUuid(authentication);
+        roomService.updateHeartbeat(roomNo, userUuid);
+        return ResponseEntity.ok().build();
+    }
+
     // 멤버 이메일 초대 (방장 전용)
     @PostMapping("/{roomNo}/invite")
     public ResponseEntity<Void> inviteMember(

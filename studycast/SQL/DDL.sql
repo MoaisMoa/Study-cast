@@ -187,18 +187,26 @@ ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 -- 7-1-1. 이 방에서의 누적 공부 시간(초) — 재입장 시 0으로 초기화됨 (메인페이지 방별 평균 공부 시간 계산용)
 ALTER TABLE room_participants
 ADD COLUMN IF NOT EXISTS study_seconds INT NOT NULL DEFAULT 0;
+-- 7-1-2. 클라이언트가 살아있음을 주기적으로 알리는 하트비트 시각 — 브라우저 강제종료 등으로 퇴장 API가
+-- 유실됐을 때도 유령 참여자가 영구히 남지 않도록 함(참여자 목록 조회 시 TTL 필터링, 스케줄러의 active 정리 기준)
+ALTER TABLE room_participants
+ADD COLUMN IF NOT EXISTS last_heartbeat_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
 -- 7-2. 참여자 목록 조회, 현재 인원 재계산, active 여부 확인 -> 자주 사용(인덱스)
 CREATE INDEX IF NOT EXISTS idx_room_participants_room_active
 ON room_participants(room_no, active);
 
 CREATE INDEX IF NOT EXISTS idx_room_participants_user_active
 ON room_participants(user_uuid, active);
+-- 7-2-1. 스케줄러가 방 전체를 스캔하며 "active인데 하트비트가 오래된" 행을 찾는 쿼리용 인덱스
+CREATE INDEX IF NOT EXISTS idx_room_participants_active_heartbeat
+ON room_participants(active, last_heartbeat_at);
 COMMENT ON COLUMN room_participants.part_no IS '참여 식별 번호';
 COMMENT ON COLUMN room_participants.user_uuid IS '참여 회원 UUID';
 COMMENT ON COLUMN room_participants.room_no IS '참여 중인 방 번호';
 COMMENT ON COLUMN room_participants.camera_status IS '카메라 켜짐 여부';
 COMMENT ON COLUMN room_participants.mic_status IS '마이크 켜짐 여부';
 COMMENT ON COLUMN room_participants.study_seconds IS '이 방에서의 누적 공부 시간(초), 재입장 시 0으로 초기화';
+COMMENT ON COLUMN room_participants.last_heartbeat_at IS '클라이언트가 마지막으로 살아있음을 알린 시각(주기적 하트비트)';
 
 -- 8. 룸 방문 기록
 CREATE TABLE IF NOT EXISTS room_visit_histories (

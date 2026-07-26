@@ -40,6 +40,10 @@ public interface RoomService {
     String saveNotice(Long roomNo, UUID userUuid, String notice);
     // 세션 중 카메라/마이크 on-off 토글 반영 + 실시간 브로드캐스트
     void updateDeviceStatus(Long roomNo, UUID userUuid, boolean cameraStatus, boolean micStatus);
+    // 클라이언트 생존 신호 갱신 (10초 주기 호출)
+    void updateHeartbeat(Long roomNo, UUID userUuid);
+    // 스케줄러 전용: 하트비트가 끊긴 유령 참여자 정리(비활성화 + LEFT 브로드캐스트 + 인원수 재동기화)
+    void cleanupStaleParticipants(int staleSeconds);
     // 멤버 추방 (방장 전용)
     void kickMember(Long roomNo, UUID hostUuid, UUID targetUuid);
     // 이메일 초대 (방장 전용)

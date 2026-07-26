@@ -197,6 +197,10 @@ public class RoomServiceImpl implements RoomService {
         boolean alreadyActive = roomParticipantsMapper.existsActiveParticipant(roomNo, userUuid);
 
         if (alreadyActive) {
+            // 5-0. 하트비트 갱신(재입장 처리) 전에 먼저 확인 — 마지막 하트비트가 표시 TTL(30초)보다 오래됐다면
+            // 다른 참여자 화면에서는 이미 목록에서 사라져 있던 상태이므로, active=TRUE라도 JOINED를 재발행해야
+            // 화면에 다시 나타난다. rejoinParticipant가 하트비트를 갱신해버리면 판단할 수 없으므로 그 전에 확인.
+            boolean wasStale = roomParticipantsMapper.isHeartbeatStale(roomNo, userUuid);
             // 5-1. joined_at·study_seconds 초기화 (탭 닫고 재입장 시 이전 세션의 joined_at이 남아 참석 시간이 크게 보이는 버그 방지)
             // camera_status/mic_status도 방의 현재 기본값으로 리셋 — 프론트도 매 입장(새로고침 포함)마다 로컬 cam/mic을 방 기본값에서 새로 시작하므로 DB와 항상 일치시킴
             roomParticipantsMapper.rejoinParticipant(roomNo, userUuid,
@@ -205,6 +209,12 @@ public class RoomServiceImpl implements RoomService {
             roomsMapper.syncNowUsersByActiveParticipants(roomNo);
             // 5-3. 동기화된 현재 인원 조회
             Integer currentUsers = roomsMapper.findNowUsersByRoomNo(roomNo);
+            // 5-3-1. 다른 참여자 화면에서 이미 사라져 있던 재연결이면 신규 입장과 동일하게 JOINED 브로드캐스트
+            if (wasStale) {
+                boolean owner = userUuid.equals(room.getUserUuid());
+                broadcastJoined(roomNo, userUuid, owner, room);
+                broadcastRoomStatus(roomNo, currentUsers, room.getMaxUsers());
+            }
             // 5-4. 이미 입장 중인 상태로 성공 응답 반환
             return new RoomJoinResponse(
                 roomNo,
@@ -264,18 +274,9 @@ public class RoomServiceImpl implements RoomService {
                 Boolean.TRUE.equals(room.getCameraStatus()), Boolean.TRUE.equals(room.getMicStatus()));
         }
         // 12-1. 이미 입장해 있던 다른 참여자들에게 신규 입장을 실시간 브로드캐스트
-        // (같은 유저의 새로고침·재연결은 위쪽 "alreadyActive" 분기에서 여기까지 오지 않으므로 중복 발행되지 않음)
-        UserDTO joinedUser = userMapper.findByUuid(userUuid);
-        // 프로필 사진이 없는 유저는 값이 null일 수 있어 null을 허용하지 않는 Map.of() 대신 HashMap 사용
-        Map<String, Object> joinedPayload = new java.util.HashMap<>();
-        joinedPayload.put("type", "JOINED");
-        joinedPayload.put("userUuid", userUuid.toString());
-        joinedPayload.put("userName", joinedUser != null ? joinedUser.getUserName() : "Unknown");
-        joinedPayload.put("profileImage", joinedUser != null ? joinedUser.getUserProfileImage() : null);
-        joinedPayload.put("owner", owner);
-        joinedPayload.put("micStatus", Boolean.TRUE.equals(room.getMicStatus()));
-        joinedPayload.put("cameraStatus", Boolean.TRUE.equals(room.getCameraStatus()));
-        messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", joinedPayload);
+        // (같은 유저의 새로고침·재연결은 위쪽 "alreadyActive" 분기에서 하트비트가 아직 살아있는 경우에만
+        // 여기까지 오지 않으므로 중복 발행되지 않음 — 하트비트가 끊겼던 재연결은 그 분기 내에서 별도 발행)
+        broadcastJoined(roomNo, userUuid, owner, room);
         // 13. active 참여자 수 기준으로 rooms.now_users 재계산
         roomsMapper.syncNowUsersByActiveParticipants(roomNo);
         // 14. 재계산된 현재 인원 조회
@@ -293,6 +294,21 @@ public class RoomServiceImpl implements RoomService {
             LocalDateTime.now(),
             "스터디방에 입장했습니다."
         );
+    }
+
+    // 방에 이미 입장해 있던 다른 참여자들에게 JOINED 실시간 브로드캐스트
+    private void broadcastJoined(Long roomNo, UUID userUuid, boolean owner, RoomsDTO room) {
+        UserDTO joinedUser = userMapper.findByUuid(userUuid);
+        // 프로필 사진이 없는 유저는 값이 null일 수 있어 null을 허용하지 않는 Map.of() 대신 HashMap 사용
+        Map<String, Object> joinedPayload = new java.util.HashMap<>();
+        joinedPayload.put("type", "JOINED");
+        joinedPayload.put("userUuid", userUuid.toString());
+        joinedPayload.put("userName", joinedUser != null ? joinedUser.getUserName() : "Unknown");
+        joinedPayload.put("profileImage", joinedUser != null ? joinedUser.getUserProfileImage() : null);
+        joinedPayload.put("owner", owner);
+        joinedPayload.put("micStatus", Boolean.TRUE.equals(room.getMicStatus()));
+        joinedPayload.put("cameraStatus", Boolean.TRUE.equals(room.getCameraStatus()));
+        messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", joinedPayload);
     }
     
     @Override
@@ -438,6 +454,44 @@ public class RoomServiceImpl implements RoomService {
         devicePayload.put("cameraStatus", cameraStatus);
         devicePayload.put("micStatus", micStatus);
         messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", devicePayload);
+    }
+
+    @Override
+    @Transactional
+    public void updateHeartbeat(Long roomNo, UUID userUuid) {
+        if (roomNo == null || roomNo <= 0) {
+            throw new IllegalArgumentException("유효하지 않은 스터디방 번호입니다.");
+        }
+        if (userUuid == null) {
+            throw new SecurityException("로그인이 필요합니다.");
+        }
+        roomParticipantsMapper.updateHeartbeat(roomNo, userUuid);
+    }
+
+    @Override
+    @Transactional
+    public void cleanupStaleParticipants(int staleSeconds) {
+        List<RoomParticipantDTO> stale = roomParticipantsMapper.findStaleActiveParticipants(staleSeconds);
+        if (stale.isEmpty()) {
+            return;
+        }
+        java.util.Set<Long> affectedRooms = new java.util.LinkedHashSet<>();
+        for (RoomParticipantDTO p : stale) {
+            roomParticipantsMapper.leaveParticipant(p.getRoomNo(), p.getUserUuid());
+            Map<String, Object> leftPayload = new java.util.HashMap<>();
+            leftPayload.put("type", "LEFT");
+            leftPayload.put("userUuid", p.getUserUuid().toString());
+            messagingTemplate.convertAndSend("/sub/room/" + p.getRoomNo() + "/members", leftPayload);
+            affectedRooms.add(p.getRoomNo());
+        }
+        for (Long roomNo : affectedRooms) {
+            roomsMapper.syncNowUsersByActiveParticipants(roomNo);
+            RoomsDTO room = roomsMapper.findRoomByRoomNo(roomNo);
+            if (room != null) {
+                Integer currentUsers = roomsMapper.findNowUsersByRoomNo(roomNo);
+                broadcastRoomStatus(roomNo, currentUsers, room.getMaxUsers());
+            }
+        }
     }
 
     @Override
