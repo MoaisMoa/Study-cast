@@ -123,6 +123,19 @@ public class RoomController {
         return ResponseEntity.ok(response);
     }
 
+    // 멤버 강퇴 (방장 전용)
+    @DeleteMapping("/{roomNo}/participants/{targetUuid}")
+    public ResponseEntity<Void> kickMember(
+        @PathVariable("roomNo") Long roomNo,
+        @PathVariable("targetUuid") UUID targetUuid,
+        Authentication authentication
+    ) {
+        UUID hostUuid = getUserUuid(authentication);
+        roomService.kickMember(roomNo, hostUuid, targetUuid);
+
+        return ResponseEntity.noContent().build();
+    }
+
     // LiveKit 접속 토큰 발급
     @GetMapping("/{roomNo}/token")
     public ResponseEntity<LiveKitTokenResponse> getLiveKitToken(
