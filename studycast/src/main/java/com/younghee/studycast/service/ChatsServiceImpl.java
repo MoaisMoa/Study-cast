@@ -22,6 +22,7 @@ public class ChatsServiceImpl implements ChatsService {
 
     private final ChatsMapper chatsMapper;
     private final UserMapper userMapper;
+    private final RoomAccessGuard roomAccessGuard;
 
     @Override
     @Transactional
@@ -35,6 +36,14 @@ public class ChatsServiceImpl implements ChatsService {
         if (message == null || message.isBlank()) {
             throw new IllegalArgumentException("메시지 내용이 없습니다.");
         }
+        // 프론트(RightPanel.tsx)는 50자를 넘으면 입력 자체를 막지만, 그건 클라이언트단 제약일 뿐이라
+        // STOMP 프레임을 직접 조작하면 우회 가능 — 서버에서도 동일 기준으로 재검증
+        if (message.length() > 50) {
+            throw new IllegalArgumentException("메시지는 최대 50자까지 입력할 수 있습니다.");
+        }
+        // 로그인만 되어 있으면 임의의 roomNo로 메시지를 주입할 수 있던 취약점 방지 —
+        // 실제로 이 방의 active 참여자인지 검증
+        roomAccessGuard.requireActiveParticipant(roomNo, userUuid);
 
         ChatsDTO chat = new ChatsDTO();
         chat.setRoomNo(roomNo);
