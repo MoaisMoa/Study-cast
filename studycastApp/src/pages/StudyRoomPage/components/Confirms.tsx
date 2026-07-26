@@ -13,7 +13,7 @@ export function KickConfirm({ member, onConfirm, onCancel }: { member: RoomMembe
         </div>
         <div style={{ fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 12 }}>멤버 추방</div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, background: T.surface2, borderRadius: 10, padding: "10px 14px", width: "100%", marginBottom: 14 }}>
-          <div style={{ flexShrink: 0 }}><Av name={member.short} color={member.color} size={38} /></div>
+          <div style={{ flexShrink: 0 }}><Av name={member.short} color={member.color} size={38} profileImage={member.profileImage} /></div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 2 }}>{member.name}</div>
             <div style={{ fontSize: 12, color: T.text3 }}>{member.email}</div>

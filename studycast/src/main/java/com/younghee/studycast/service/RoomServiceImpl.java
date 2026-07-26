@@ -455,6 +455,12 @@ public class RoomServiceImpl implements RoomService {
         }
         roomParticipantsMapper.leaveParticipant(roomNo, targetUuid);
         roomsMapper.syncNowUsersByActiveParticipants(roomNo);
+
+        // 추방 사실을 방 전체에 실시간 브로드캐스트 — 당한 본인은 창 닫힘, 다른 참여자는 목록에서 즉시 제거됨
+        Map<String, Object> kickedPayload = new java.util.HashMap<>();
+        kickedPayload.put("type", "KICKED");
+        kickedPayload.put("userUuid", targetUuid.toString());
+        messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", kickedPayload);
     }
 
     @Override
