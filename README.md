@@ -1,7 +1,5 @@
 # 📚 StudyCast
 
-실시간 캠 스터디 서비스 '구루미'를 참고하여 제작한 온라인 캠 스터디 플랫폼입니다. LiveKit 기반 다자간 화상 연결과 WebSocket 기반 실시간 채팅을 제공합니다.
-
 🔗 **[배포된 서비스 바로가기](https://study-cast-ten.vercel.app/)** ・ 📖 **[Notion 상세 포트폴리오 바로가기](https://hello0a.notion.site/StudyCast-AWS-39bbff13bc7980058317c0b65b1883b8)**
 
 ---
@@ -17,6 +15,7 @@
   - [API 정의서](#api-정의서)
   - [ERD](#erd)
   - [사용자 플로우](#사용자-플로우)
+  - [화면 설계](#화면-설계)
   - [백엔드 CI/CD 및 AWS 배포 구조](#백엔드-cicd-및-aws-배포-구조)
   - [프로젝트 디렉터리 구조](#프로젝트-디렉터리-구조)
 - [Notion 상세 포트폴리오](#-notion-상세-포트폴리오)
@@ -31,19 +30,17 @@
 
 ## 프로젝트 기본 정보
 
-| 항목 | 내용 |
-|---|---|
-| 개발 기간 | 2026.05.26 ~ 2026.07.01 |
-| 개발 인원 | 2명 |
-| GitHub | [github.com/hello0a/Study-cast](https://github.com/hello0a/Study-cast) |
-| 배포 주소 | [study-cast-ten.vercel.app](https://study-cast-ten.vercel.app/) |
+- 개발 인원: 2명
+- 개발 기간: 2026/05/26 → 2026/07/01
+- GitHub: https://github.com/hello0a/Study-cast
+- 배포: https://study-cast-ten.vercel.app/
 
 ## 역할 분담
 
-| 담당자 | 기획·설계 역할 | 담당 기능 및 배포 |
+| 담당자 | 기획∙설계 역할 | 담당 기능 및 배포 |
 |---|---|---|
-| **안영아** | 기능 정의 구체화<br>화면 설계 | 1. JWT 기반 인증·인가 및 소셜 로그인 통합<br>2. 회원가입·로그인 페이지<br>3. 메인 페이지<br>4. LiveKit 기반 실시간 캠 스터디<br>5. 스터디방 생성 페이지<br>6. 방문한 방 페이지<br>7. GitHub Actions 기반 AWS EC2 백엔드 자동 배포 |
-| 박희진 | 기능 정의서 초안 작성<br>ERD 및 DB 설계 | 1. WebSocket 기반 실시간 채팅<br>2. 공부 시간 측정 및 기록<br>3. 스터디방 멤버 관리/캘린더·플래너/공지사항/설정<br>4. 내 프로필 페이지<br>5. 내 스터디 페이지<br>6. Vercel 프론트엔드 배포 |
+| 안영아 | 기능 정의 구체화<br>화면 설계 | 1. JWT 기반 인증・인가 및 소셜 로그인 통합<br>2. 회원가입・로그인 페이지<br>3. 메인 페이지<br>4. LiveKit 기반 실시간 캠 스터디<br>5. 스터디방 생성 페이지<br>6. 방문한 방 페이지<br>7. GitHub Actions 기반 AWS EC2 백엔드 자동 배포 |
+| 박희진 | 기능 정의서 초안 작성<br>ERD 및 DB 설계 | 1. WebSocket 기반 실시간 채팅<br>2. 공부 시간 측정 및 기록<br>3. 스터디방 멤버 관리/캘린더・플래너/공지사항/설정<br>4. 내 프로필 페이지<br>5. 내 스터디 페이지<br>6. Vercel 프론트엔드 배포 |
 
 ## 기술 및 도구
 
@@ -141,12 +138,100 @@
 
 </details>
 
+### 화면 설계
+
+<details>
+<summary>이미지 보기</summary>
+
+#### 메인페이지
+
+![메인페이지](docs/portfolio/screen-design/mainpage.png)
+
+#### 메인페이지 - 입장
+
+![메인페이지 - 입장](docs/portfolio/screen-design/mainpage-modal.png)
+
+---
+
+#### 스터디방 생성 페이지
+
+![스터디방 생성 페이지](docs/portfolio/screen-design/roomcreate.png)
+
+#### 스터디방 생성 페이지 - 확인
+
+![스터디방 생성 페이지 - 확인](docs/portfolio/screen-design/roomcreate-confirm.png)
+
+#### 스터디방 생성 페이지 - 초기화
+
+![스터디방 생성 페이지 - 초기화](docs/portfolio/screen-design/roomcreate-reset.png)
+
+---
+
+#### 실시간 스터디방 페이지
+
+![실시간 스터디방 페이지](docs/portfolio/screen-design/studyroom.png)
+
+#### 실시간 스터디방 페이지 - 멤버 관리
+
+![실시간 스터디방 페이지 - 멤버 관리](docs/portfolio/screen-design/studyroom-members.png)
+
+#### 실시간 스터디방 페이지 - 캘린더/플래너
+
+![실시간 스터디방 페이지 - 캘린더/플래너](docs/portfolio/screen-design/studyroom-calendar.png)
+![실시간 스터디방 페이지 - 캘린더/플래너](docs/portfolio/screen-design/studyroom-planner.png)
+
+#### 실시간 스터디방 페이지 - 공지사항
+
+![실시간 스터디방 페이지 - 공지사항](docs/portfolio/screen-design/studyroom-notice.png)
+
+#### 실시간 스터디방 페이지 - 설정
+
+![실시간 스터디방 페이지 - 설정](docs/portfolio/screen-design/studyroom-settings.png)
+
+---
+
+#### 내 프로필 페이지
+
+![내 프로필 페이지](docs/portfolio/screen-design/profile.png)
+
+#### 내 프로필 페이지 - 비밀번호 변경
+
+![내 프로필 페이지 - 비밀번호 변경](docs/portfolio/screen-design/profile-password.png)
+
+#### 내 프로필 페이지 - 탈퇴
+
+![내 프로필 페이지 - 탈퇴](docs/portfolio/screen-design/profile-withdraw.png)
+
+---
+
+#### 내 스터디 페이지
+
+![내 스터디 페이지](docs/portfolio/screen-design/mystudy.png)
+
+#### 내 스터디 페이지 - 삭제
+
+![내 스터디 페이지 - 삭제](docs/portfolio/screen-design/mystudy-delete.png)
+
+---
+
+#### 방문한 방 페이지
+
+![방문한 방 페이지](docs/portfolio/screen-design/visited.png)
+
+---
+
+#### 검색 결과 페이지
+
+![검색 결과 페이지](docs/portfolio/screen-design/search.png)
+
+</details>
+
 ### 백엔드 CI/CD 및 AWS 배포 구조
 
 <details>
 <summary>이미지 보기</summary>
 
-[ 백엔드 CI/CD 및 AWS 배포 구조 이미지 없음 ]
+![백엔드 CI/CD 및 AWS 배포 구조](docs/portfolio/cicd/cicd-deploy-architecture-flow.png)
 
 </details>
 
