@@ -151,3 +151,6 @@ application-secret.properties
 ### docs (내부 분석·작업 자료 — GitHub 비공개, docs/portfolio/만 공개) ###
 docs/analysis/
 docs/deliverables/
+
+### Notion 원본 내보내기 (README 재료용, 절대 공개 금지) ###
+docs/portfolio/ExportBlock-*/

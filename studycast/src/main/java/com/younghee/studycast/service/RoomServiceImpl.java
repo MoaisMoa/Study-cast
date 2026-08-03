@@ -431,6 +431,14 @@ public class RoomServiceImpl implements RoomService {
         }
         String trimmed = (notice != null && !notice.trim().isEmpty()) ? notice.trim() : null;
         roomsMapper.updateRoomNotice(roomNo, trimmed);
+
+        // 다른 참여자들에게 공지 변경을 실시간 브로드캐스트 (방장 본인은 REST 응답으로 이미 반영되어 있어
+        // 같은 값을 한 번 더 받아도 무해함)
+        Map<String, Object> noticePayload = new java.util.HashMap<>();
+        noticePayload.put("type", "NOTICE");
+        noticePayload.put("notice", trimmed);
+        messagingTemplate.convertAndSend("/sub/room/" + roomNo + "/members", noticePayload);
+
         return trimmed;
     }
 
