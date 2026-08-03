@@ -51,7 +51,6 @@
 Study-cast/
 ├── studycastApp/                     # React 프론트엔드(Vite + TypeScript)
 ├── studycast/                        # Spring Boot 백엔드(Java 23, Gradle)
-├── docs/deliverables/                # 설계·포트폴리오 산출물(기능 정의서, API 명세서, ERD, 사용자 플로우, 구조도)
 ├── .github/workflows/                # GitHub Actions CI/CD
 ├── docker-compose.aws-ec2.yml        # EC2 운영 배포용 Docker Compose 정의
 └── deploy-update.sh                  # EC2 배포 스크립트
