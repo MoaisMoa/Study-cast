@@ -2,7 +2,7 @@
 
 ![StudyCast](docs/portfolio/banner/banner.png)
 
-🔗 **[배포된 서비스 바로가기](https://study-cast-ten.vercel.app/)**
+🔗 **[배포된 서비스 바로가기](https://study-cast-ten.vercel.app/)** ・ 📖 **[Notion 상세 포트폴리오 바로가기](https://hello0a.notion.site/StudyCast-AWS-39bbff13bc7980058317c0b65b1883b8)**
 
 ---
 
