@@ -2,7 +2,7 @@
 
 ![StudyCast](docs/portfolio/banner/banner.png)
 
-🔗 **[배포된 서비스 바로가기](https://study-cast-ten.vercel.app/)** ・ 📖 **[Notion 상세 포트폴리오 바로가기](https://hello0a.notion.site/StudyCast-AWS-39bbff13bc7980058317c0b65b1883b8)**
+🔗 **[배포된 서비스 바로가기](https://study-cast-ten.vercel.app/)**
 
 ---
 
@@ -20,15 +20,11 @@
   - [백엔드 CI/CD 및 AWS 배포 구조](#백엔드-cicd-및-aws-배포-구조)
   - [프로젝트 구조](#프로젝트-구조)
 
----
-
 ## 1. 프로젝트 개요
 
 'StudyCast' 프로젝트는 실시간 캠 스터디 서비스인 구루미를 참고하여 제작한 온라인 캠 스터디 플랫폼으로, LiveKit 기반 다자간 화상 연결과 WebSocket 기반 실시간 채팅을 제공합니다. 또한 개인 캘린더와 플래너를 통해 출결, 공부 기록, D-Day, 일일 계획 등 개인 학습 기록을 관리할 수 있습니다.
 
 기존 CRUD 중심 프로젝트에서 확장하여 실시간 통신, 외부 서비스 연동, 인증·인가와 실제 배포 과정을 경험하는 것을 목표로 진행했습니다. 또한 기능 구현과 테스트·검증 과정에서 Claude Code를 보조 도구로 활용했습니다.
-
----
 
 ## 2. 역할 분담
 
@@ -37,13 +33,9 @@
 | 안영아 | - 기능 정의 구체화<br>- 화면 설계 | 1. JWT 기반 인증・인가 및 소셜 로그인 통합<br>2. 회원가입・로그인 페이지<br>3. 메인 페이지<br>4. LiveKit 기반 실시간 캠 스터디<br>5. 스터디방 생성 페이지<br>6. 방문한 방 페이지<br>7. GitHub Actions 기반 AWS EC2 백엔드 자동 배포 |
 | 박희진 | - 기능 정의서 초안 작성<br>- ERD 및 DB 설계 | 1. WebSocket 기반 실시간 채팅<br>2. 공부 시간 측정 및 기록<br>3. 스터디방 멤버 관리/캘린더・플래너/공지사항/설정<br>4. 내 프로필 페이지<br>5. 내 스터디 페이지<br>6. Vercel 프론트엔드 배포 |
 
----
-
 ## 3. 기술 및 도구
 
 ![기술 스택](docs/portfolio/skill-tools/skill-tools.png)
-
----
 
 ## 4. 설계 구조 <sub>(펼쳐보기)</sub>
 
@@ -74,37 +66,37 @@
 <details>
 <summary><h3>사용자 플로우</h3></summary>
 
-#### 회원가입
+### 회원가입
 
 <img src="docs/portfolio/flows/auth-signup-flow.png" alt="회원가입 플로우" width="400">
 
----
+<img src="docs/portfolio/assets/divider.png" width="100%" height="1">
 
-#### 로그인
+### 로그인
 
 <img src="docs/portfolio/flows/auth-login-flow.png" alt="로그인 플로우" width="600">
 
----
+<img src="docs/portfolio/assets/divider.png" width="100%" height="1">
 
-#### 비밀번호 재설정
+### 비밀번호 재설정
 
 <img src="docs/portfolio/flows/password-reset-flow.png" alt="비밀번호 재설정 플로우" width="400">
 
----
+<img src="docs/portfolio/assets/divider.png" width="100%" height="1">
 
-#### 스터디방 생성
+### 스터디방 생성
 
 <img src="docs/portfolio/flows/room-create-flow.png" alt="스터디방 생성 플로우" width="600">
 
----
+<img src="docs/portfolio/assets/divider.png" width="100%" height="1">
 
-#### 스터디방 입장
+### 스터디방 입장
 
 <img src="docs/portfolio/flows/room-join-flow.png" alt="스터디방 입장 플로우" width="400">
 
----
+<img src="docs/portfolio/assets/divider.png" width="100%" height="1">
 
-#### 스터디방 이용
+### 스터디방 이용
 
 <img src="docs/portfolio/flows/live-study-flow.png" alt="스터디방 이용 플로우" width="600">
 
@@ -113,84 +105,84 @@
 <details>
 <summary><h3>화면 설계</h3></summary>
 
-#### 메인페이지
+### 메인페이지
 
 ![메인페이지](docs/portfolio/screen-design/mainpage.png)
 
-#### 메인페이지 - 입장
+### 메인페이지 - 입장
 
 ![메인페이지 - 입장](docs/portfolio/screen-design/mainpage-modal.png)
 
----
+<img src="docs/portfolio/assets/divider.png" width="100%" height="1">
 
-#### 스터디방 생성 페이지
+### 스터디방 생성 페이지
 
 ![스터디방 생성 페이지](docs/portfolio/screen-design/roomcreate.png)
 
-#### 스터디방 생성 페이지 - 확인
+### 스터디방 생성 페이지 - 확인
 
 ![스터디방 생성 페이지 - 확인](docs/portfolio/screen-design/roomcreate-confirm.png)
 
-#### 스터디방 생성 페이지 - 초기화
+### 스터디방 생성 페이지 - 초기화
 
 ![스터디방 생성 페이지 - 초기화](docs/portfolio/screen-design/roomcreate-reset.png)
 
----
+<img src="docs/portfolio/assets/divider.png" width="100%" height="1">
 
-#### 실시간 스터디방 페이지
+### 실시간 스터디방 페이지
 
 ![실시간 스터디방 페이지](docs/portfolio/screen-design/studyroom.png)
 
-#### 실시간 스터디방 페이지 - 멤버 관리
+### 실시간 스터디방 페이지 - 멤버 관리
 
 ![실시간 스터디방 페이지 - 멤버 관리](docs/portfolio/screen-design/studyroom-members.png)
 
-#### 실시간 스터디방 페이지 - 캘린더/플래너
+### 실시간 스터디방 페이지 - 캘린더/플래너
 
 ![실시간 스터디방 페이지 - 캘린더/플래너](docs/portfolio/screen-design/studyroom-calendar.png)
 ![실시간 스터디방 페이지 - 캘린더/플래너](docs/portfolio/screen-design/studyroom-planner.png)
 
-#### 실시간 스터디방 페이지 - 공지사항
+### 실시간 스터디방 페이지 - 공지사항
 
 ![실시간 스터디방 페이지 - 공지사항](docs/portfolio/screen-design/studyroom-notice.png)
 
-#### 실시간 스터디방 페이지 - 설정
+### 실시간 스터디방 페이지 - 설정
 
 ![실시간 스터디방 페이지 - 설정](docs/portfolio/screen-design/studyroom-settings.png)
 
----
+<img src="docs/portfolio/assets/divider.png" width="100%" height="1">
 
-#### 내 프로필 페이지
+### 내 프로필 페이지
 
 ![내 프로필 페이지](docs/portfolio/screen-design/profile.png)
 
-#### 내 프로필 페이지 - 비밀번호 변경
+### 내 프로필 페이지 - 비밀번호 변경
 
 ![내 프로필 페이지 - 비밀번호 변경](docs/portfolio/screen-design/profile-password.png)
 
-#### 내 프로필 페이지 - 탈퇴
+### 내 프로필 페이지 - 탈퇴
 
 ![내 프로필 페이지 - 탈퇴](docs/portfolio/screen-design/profile-withdraw.png)
 
----
+<img src="docs/portfolio/assets/divider.png" width="100%" height="1">
 
-#### 내 스터디 페이지
+### 내 스터디 페이지
 
 ![내 스터디 페이지](docs/portfolio/screen-design/mystudy.png)
 
-#### 내 스터디 페이지 - 삭제
+### 내 스터디 페이지 - 삭제
 
 ![내 스터디 페이지 - 삭제](docs/portfolio/screen-design/mystudy-delete.png)
 
----
+<img src="docs/portfolio/assets/divider.png" width="100%" height="1">
 
-#### 방문한 방 페이지
+### 방문한 방 페이지
 
 ![방문한 방 페이지](docs/portfolio/screen-design/visited.png)
 
----
+<img src="docs/portfolio/assets/divider.png" width="100%" height="1">
 
-#### 검색 결과 페이지
+### 검색 결과 페이지
 
 ![검색 결과 페이지](docs/portfolio/screen-design/search.png)
 
@@ -199,7 +191,7 @@
 <details>
 <summary><h3>백엔드 CI/CD 및 AWS 배포 구조</h3></summary>
 
-![백엔드 CI/CD 및 AWS 배포 구조](docs/portfolio/cicd/cicd-deploy-architecture-flow.png)
+<img src="docs/portfolio/cicd/cicd-deploy-architecture-flow.png" alt="백엔드 CI/CD 및 AWS 배포 구조" width="400">
 
 </details>
 
